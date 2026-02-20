@@ -1,0 +1,2 @@
+crytonews: cryptopanic
+api: 4cd086bc8de6d4cb6d3fc10a1cf82c974b625896
