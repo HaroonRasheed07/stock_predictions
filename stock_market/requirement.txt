@@ -1,0 +1,11 @@
+ Python 3.8+
+- Streamlit
+- yfinance
+- pandas
+- numpy
+- plotly
+- scikit-learn
+- tensorflow
+- transformers
+- requests
+- textblob (optional fallback)

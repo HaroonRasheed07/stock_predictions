@@ -1,0 +1,31 @@
+Dataframe shape: (6, 15)
+Dataframe columns: MultiIndex([( 'Close', 'AAPL'),
+            ( 'Close', 'NVDA'),
+            ( 'Close', 'TSLA'),
+            (  'High', 'AAPL'),
+            (  'High', 'NVDA'),
+            (  'High', 'TSLA'),
+            (   'Low', 'AAPL'),
+            (   'Low', 'NVDA'),
+            (   'Low', 'TSLA'),
+            (  'Open', 'AAPL'),
+            (  'Open', 'NVDA'),
+            (  'Open', 'TSLA'),
+            ('Volume', 'AAPL'),
+            ('Volume', 'NVDA'),
+            ('Volume', 'TSLA')],
+           names=['Price', 'Ticker'])
+Dataframe head:
+Price            Close  ...    Volume
+Ticker            AAPL  ...      TSLA
+Date                    ...          
+2025-12-02  286.190002  ...  69336600
+2025-12-03  284.149994  ...  87483000
+2025-12-04  280.700012  ...  71906500
+2025-12-05  278.779999  ...  56427500
+2025-12-08  277.890015  ...  68911900
+
+[5 rows x 15 columns]
+Column levels: 2
+Close column found at top level.
+List of columns: [('Close', 'AAPL'), ('Close', 'NVDA'), ('Close', 'TSLA'), ('High', 'AAPL'), ('High', 'NVDA'), ('High', 'TSLA'), ('Low', 'AAPL'), ('Low', 'NVDA'), ('Low', 'TSLA'), ('Open', 'AAPL'), ('Open', 'NVDA'), ('Open', 'TSLA'), ('Volume', 'AAPL'), ('Volume', 'NVDA'), ('Volume', 'TSLA')]
