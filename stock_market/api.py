@@ -125,6 +125,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
+import traceback
 
 # Import your core logic (all files in same folder)
 from utils import load_data, get_latest_price, get_top_performing_stocks
@@ -222,15 +223,23 @@ async def options_sentiment():
     return {}
 
 @app.post("/api/data/indicators")
-async def get_stock_data_and_indicators(request: TickerRequest):
+def get_stock_data_and_indicators(request: TickerRequest):
     """Return stock indicators and overview data"""
     try:
         df = load_data(request.ticker, request.period)
         df_indicators = calculate_indicators(df)
 
+        # Safety: ensure Close/Volume are Series (not MultiIndex DataFrames)
+        close_vals = df['Close']
+        if isinstance(close_vals, pd.DataFrame):
+            close_vals = close_vals.iloc[:, 0]
+        volume_vals = df['Volume']
+        if isinstance(volume_vals, pd.DataFrame):
+            volume_vals = volume_vals.iloc[:, 0]
+
         # Example calculations for dashboard
-        total_market_cap = round(df['Close'].sum() * 1_000_000, 2)
-        trading_volume = int(df['Volume'].sum())
+        total_market_cap = round(close_vals.sum() * 1_000_000, 2)
+        trading_volume = int(volume_vals.sum())
         # Fix: 'active_stocks' logic was flawed checking unique prices. 
         # Since we load one ticker, it is 1.
         active_stocks = 1
@@ -239,8 +248,8 @@ async def get_stock_data_and_indicators(request: TickerRequest):
         top_stocks_list = get_top_performing_stocks()
         if not top_stocks_list:
              # Fallback to current ticker if fetch fails
-             current_price = get_latest_price(request.ticker) or float(df['Close'].iloc[-1])
-             previous_close = float(df['Close'].iloc[-2]) if len(df) > 1 else current_price
+             current_price = get_latest_price(request.ticker) or float(close_vals.iloc[-1])
+             previous_close = float(close_vals.iloc[-2]) if len(close_vals) > 1 else current_price
              
              top_stocks_list = [{
                 "symbol": request.ticker,
@@ -252,8 +261,8 @@ async def get_stock_data_and_indicators(request: TickerRequest):
 
         
         # Current ticker info
-        current_price = get_latest_price(request.ticker) or float(df['Close'].iloc[-1])
-        previous_close = float(df['Close'].iloc[-2]) if len(df) > 1 else current_price
+        current_price = get_latest_price(request.ticker) or float(close_vals.iloc[-1])
+        previous_close = float(close_vals.iloc[-2]) if len(close_vals) > 1 else current_price
         change_val = current_price - previous_close
         change_pct = ((change_val) / previous_close * 100) if previous_close != 0 else 0
 
@@ -270,11 +279,24 @@ async def get_stock_data_and_indicators(request: TickerRequest):
             "changePercent": safe_float(change_pct)
         }
 
+    except ValueError as e:
+        # User-facing errors (invalid ticker, no data, etc.)
+        msg = str(e)
+        if "No data found" in msg or "No historical data" in msg:
+            raise HTTPException(status_code=404, detail=f"Ticker '{request.ticker}' not found. Please check the symbol and try again.")
+        raise HTTPException(status_code=400, detail=msg)
+    except RuntimeError as e:
+        msg = str(e)
+        if "No data found" in msg:
+            raise HTTPException(status_code=404, detail=f"Ticker '{request.ticker}' not found. Please check the symbol and try again.")
+        raise HTTPException(status_code=500, detail=msg)
     except Exception as e:
+        print(f"❌ Indicators Error for {request.ticker}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Server error: {e}")
 
 @app.post("/api/data/forecast")
-async def get_stock_forecast(request: ForecastRequest):
+def get_stock_forecast(request: ForecastRequest):
     """Return stock forecast using LSTM Attention"""
     if not _load_stock_model():
          if MODEL_LOADING:
@@ -282,7 +304,12 @@ async def get_stock_forecast(request: ForecastRequest):
          raise HTTPException(status_code=503, detail="Forecast model not available.")
 
     try:
-        df = load_data(request.ticker, request.period)[["Close"]].dropna()
+        raw_df = load_data(request.ticker, request.period)
+        # Ensure 'Close' is a Series, not a single-column DataFrame
+        close_col = raw_df['Close']
+        if isinstance(close_col, pd.DataFrame):
+            close_col = close_col.iloc[:, 0]
+        df = pd.DataFrame({"Close": close_col}).dropna()
         if df is None or len(df) == 0:
             raise ValueError("No historical data returned for this ticker/timeframe.")
         if len(df) < 61:
@@ -329,8 +356,22 @@ async def get_stock_forecast(request: ForecastRequest):
             "results": forecast_data
         }
 
+    except ValueError as e:
+        # User-facing errors (invalid ticker, no data, not enough data)
+        msg = str(e)
+        if "No data found" in msg or "No historical data" in msg:
+            raise HTTPException(status_code=404, detail=f"Ticker '{request.ticker}' not found. Please check the symbol and try again.")
+        if "Not enough data" in msg:
+            raise HTTPException(status_code=400, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
+    except RuntimeError as e:
+        msg = str(e)
+        if "No data found" in msg:
+            raise HTTPException(status_code=404, detail=f"Ticker '{request.ticker}' not found. Please check the symbol and try again.")
+        raise HTTPException(status_code=500, detail=msg)
     except Exception as e:
-        print(f"Stock Forecast Error: {e}")
+        print(f"❌ Forecast Error for {request.ticker}: {e}")
+        traceback.print_exc()
         # Fallback to last-known-good forecast to avoid blank UI during transient failures
         cache_key = _forecast_cache_key(request.ticker, request.period, request.forecast_days)
         cached = _LAST_GOOD_FORECAST.get(cache_key)
@@ -345,7 +386,7 @@ async def get_stock_forecast(request: ForecastRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/data/sentiment")
-async def get_sentiment(request: SentimentRequest):
+def get_sentiment(request: SentimentRequest):
     """Return market sentiment for a stock"""
     try:
         result = analyze_sentiment(request.ticker)
@@ -358,4 +399,6 @@ async def get_sentiment(request: SentimentRequest):
             "news": result["news"]
         }
     except Exception as e:
+        print(f"❌ Sentiment Error for {request.ticker}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Server error: {e}")

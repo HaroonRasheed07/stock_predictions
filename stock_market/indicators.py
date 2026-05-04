@@ -378,7 +378,22 @@ import pandas as pd
 # Removed: import streamlit as st
 
 def calculate_indicators(df):
-    # All calculation logic remains the same (perfect!)
+    # Work on a copy to avoid mutating cached DataFrames
+    df = df.copy()
+
+    # Robust MultiIndex handling: flatten and squeeze so df['Close'] is always a Series
+    if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+        df.columns = df.columns.droplevel(1)  # drop the ticker level
+    # If columns are still MultiIndex with one level, flatten to plain Index
+    if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+        df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
+    # Squeeze: if df['Close'] returns a DataFrame (single-column), convert to Series
+    for col in ['Close', 'High', 'Low', 'Open', 'Volume']:
+        if col in df.columns:
+            val = df[col]
+            if isinstance(val, pd.DataFrame):
+                df[col] = val.iloc[:, 0]
+
     df['SMA20'] = df['Close'].rolling(20).mean()
     df['SMA50'] = df['Close'].rolling(50).mean()
     
@@ -401,6 +416,14 @@ def calculate_indicators(df):
     df['MACD'] = exp12 - exp26
     df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
 
-    return df.dropna().reset_index().rename(columns={'index': 'Date'}).to_dict('records') # <-- CRUCIAL: Return JSON-friendly list of dicts
+    result = df.dropna().reset_index()
+    # Ensure the date column is named 'Date' regardless of index name
+    date_col = result.columns[0]
+    if date_col != 'Date':
+        result = result.rename(columns={date_col: 'Date'})
+    # Convert Timestamp objects to strings for JSON serialization
+    if 'Date' in result.columns:
+        result['Date'] = result['Date'].astype(str)
+    return result.to_dict('records')
 
 # Removed: The entire plot_indicators function. Plotting is a frontend (Next.js) task.

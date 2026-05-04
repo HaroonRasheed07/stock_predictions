@@ -232,6 +232,29 @@ def fetch_cryptopanic_posts(token: str, coin: str, days_back: int = 30, max_page
     return df
 
 
+def _parse_rss_items(content, feed_name):
+    """Parse RSS content with fallback parser if lxml is missing."""
+    if not BeautifulSoup:
+        return []
+    # Suppress XMLParsedAsHTMLWarning when falling back to html.parser
+    try:
+        from bs4 import XMLParsedAsHTMLWarning
+        import warnings
+        warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+    except ImportError:
+        pass
+    # Try xml parser first (needs lxml), fall back to html.parser
+    for parser in ["xml", "html.parser"]:
+        try:
+            soup = BeautifulSoup(content, parser)
+            items = soup.find_all("item")
+            if items:
+                return items
+        except Exception:
+            continue
+    return []
+
+
 def fetch_rss_news(coin: str, limit: int = 30) -> pd.DataFrame:
     feeds = [
         {"name": "Cointelegraph", "url": "https://cointelegraph.com/rss"},
@@ -264,10 +287,9 @@ def fetch_rss_news(coin: str, limit: int = 30) -> pd.DataFrame:
             resp = scraper.get(feed["url"], timeout=10)
             if resp.status_code != 200:
                 continue
-            if not BeautifulSoup:
+            items = _parse_rss_items(resp.content, feed["name"])
+            if not items:
                 continue
-            soup = BeautifulSoup(resp.content, "xml")
-            items = soup.find_all("item")
             for it in items:
                 title = it.title.text if it.title else ""
                 link = it.link.text if it.link else ""
@@ -280,27 +302,29 @@ def fetch_rss_news(coin: str, limit: int = 30) -> pd.DataFrame:
                         "title": title, "url": link, "source": feed["name"],
                         "full_text": title + ". " + desc,
                     })
-        except Exception:
+        except Exception as e:
+            print(f"RSS feed {feed['name']} error: {e}")
             continue
 
-    # Fallback to general crypto news if nothing specific
+    # Fallback to general crypto news if nothing specific found
     if not all_rows:
         for feed in feeds:
             try:
                 resp = scraper.get(feed["url"], timeout=10)
                 if resp.status_code != 200:
                     continue
-                if not BeautifulSoup:
+                items = _parse_rss_items(resp.content, feed["name"])
+                if not items:
                     continue
-                soup = BeautifulSoup(resp.content, "xml")
-                items = soup.find_all("item")[:10]
-                for it in items:
+                for it in items[:10]:
+                    title = it.title.text if it.title else ""
+                    link = it.link.text if it.link else ""
+                    pub_date = it.pubDate.text if it.pubDate else ""
+                    desc = it.description.text if it.description else ""
                     all_rows.append({
-                        "published_at": pd.to_datetime(it.pubDate.text if it.pubDate else "", utc=True, errors="coerce"),
-                        "title": it.title.text if it.title else "",
-                        "url": it.link.text if it.link else "",
-                        "source": feed["name"],
-                        "full_text": (it.title.text if it.title else "") + ". " + (it.description.text if it.description else ""),
+                        "published_at": pd.to_datetime(pub_date, utc=True, errors="coerce"),
+                        "title": title, "url": link, "source": feed["name"],
+                        "full_text": title + ". " + desc,
                     })
             except Exception:
                 continue
@@ -951,7 +975,7 @@ async def get_crypto_sentiment(request: SymbolRequest):
         symbol = request.symbol.upper()
         all_news = []
 
-        # CryptoPanic (quick timeout)
+        # CryptoPanic (quick timeout) — may return 404 if token expired
         if CP_TOKEN:
             try:
                 cp = fetch_cryptopanic_posts(token=CP_TOKEN, coin=symbol, days_back=30, max_pages=1)

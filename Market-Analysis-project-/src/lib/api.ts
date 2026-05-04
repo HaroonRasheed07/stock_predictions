@@ -58,8 +58,15 @@ export async function fetchIndicators(
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err);
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      message = data.detail || data.error || JSON.stringify(data);
+    } catch {
+      const text = await res.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
   }
 
   return res.json();
@@ -82,8 +89,15 @@ export async function fetchForecast(
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err);
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      message = data.detail || data.error || JSON.stringify(data);
+    } catch {
+      const text = await res.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
   }
 
   return res.json();
@@ -105,8 +119,15 @@ export async function fetchSentiment(
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err);
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      message = data.detail || data.error || JSON.stringify(data);
+    } catch {
+      const text = await res.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
   }
 
   return res.json();

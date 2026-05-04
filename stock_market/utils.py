@@ -32,7 +32,22 @@
 # utils.py (Cleaned for API use)
 import yfinance as yf
 import pandas as pd
+import time
 # Removed: import streamlit as st
+
+# --- Simple in-memory cache ---
+_data_cache: dict = {}  # key -> (timestamp, dataframe)
+_DATA_CACHE_TTL = 120  # seconds (2 minutes)
+
+def _get_cached_df(key: str):
+    if key in _data_cache:
+        ts, df = _data_cache[key]
+        if time.time() - ts < _DATA_CACHE_TTL:
+            return df
+    return None
+
+def _set_cached_df(key: str, df):
+    _data_cache[key] = (time.time(), df)
 
 def load_data(ticker, period="1y", interval=None): 
     try:
@@ -49,16 +64,34 @@ def load_data(ticker, period="1y", interval=None):
             else:
                 interval = "1d"
                 
+        # Check cache first
+        cache_key = f"{ticker}|{period}|{interval}"
+        cached = _get_cached_df(cache_key)
+        if cached is not None:
+            return cached
+        
         # Removed: progress=False and st.error/st.cache_data
         data = yf.download(ticker, period=period, interval=interval)
         
         # Flatten MultiIndex columns if present (Fix for new yfinance behavior)
         if hasattr(data.columns, 'nlevels') and data.columns.nlevels > 1:
             data.columns = data.columns.droplevel(1)
+        # Extra safety: if still MultiIndex, flatten tuple column names
+        if hasattr(data.columns, 'nlevels') and data.columns.nlevels > 1:
+            data.columns = [col[0] if isinstance(col, tuple) else col for col in data.columns]
+        # Squeeze: ensure OHLCV columns are Series, not single-column DataFrames
+        for col in ['Close', 'High', 'Low', 'Open', 'Volume']:
+            if col in data.columns:
+                val = data[col]
+                if isinstance(val, pd.DataFrame):
+                    data[col] = val.iloc[:, 0]
             
         if data.empty:
             # Instead of a Streamlit error, raise a Python exception
             raise ValueError(f"No data found for the ticker: {ticker}")
+        
+        # Store in cache
+        _set_cached_df(cache_key, data)
         return data
     except Exception as e:
         # Re-raise the exception to be caught by FastAPI
@@ -118,7 +151,13 @@ def get_top_performing_stocks(limit=6):
     """
     Fetches a watchlist of popular stocks and returns the top performers
     based on the last day's change.
+    Results are cached for 5 minutes.
     """
+    # Check cache
+    cached = _get_cached_df("__top_performers__")
+    if cached is not None:
+        return cached[:limit]
+    
     try:
         # Download data for all watchlist stocks (last 5 days to be safe)
         df = yf.download(TOP_WATCHLIST, period="5d", progress=False)
@@ -169,6 +208,9 @@ def get_top_performing_stocks(limit=6):
                 
         # Sort by change percent descending (Top Gainers)
         results.sort(key=lambda x: x['changePercent'], reverse=True)
+        
+        # Cache for 5 minutes (separate TTL for top stocks)
+        _data_cache["__top_performers__"] = (time.time(), results)
         
         return results[:limit]
     except Exception as e:

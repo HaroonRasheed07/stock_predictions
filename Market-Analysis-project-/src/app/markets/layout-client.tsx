@@ -7,7 +7,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 
-const marketSections = [
+const marketSections: Array<{
+  title: string;
+  path: string;
+  icon: any;
+  comingSoon?: boolean;
+  subPages?: Array<{ title: string; path: string; icon: any }>;
+}> = [
   {
     title: 'Stock Market',
     path: '/markets/stock',
@@ -34,7 +40,11 @@ const marketSections = [
     title: 'E-commerce',
     path: '/markets/ecommerce',
     icon: ShoppingBag,
-    comingSoon: true,
+    subPages: [
+      { title: 'Overview', path: '/markets/ecommerce', icon: BarChart3 },
+      { title: 'Sentiment', path: '/markets/ecommerce/sentiment', icon: MessageSquare },
+      { title: 'Products', path: '/markets/ecommerce/products', icon: ShoppingBag },
+    ],
   },
 ];
 
@@ -64,7 +74,7 @@ export function MarketsLayout({ children }: { children: ReactNode }) {
                         <Button
                           variant={pathname.startsWith(section.path) ? 'default' : 'ghost'}
                           className={`w-full justify-start ${section.comingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          disabled={section.comingSoon}
+                          disabled={!!section.comingSoon}
                         >
                           <section.icon className="mr-2 h-4 w-4" />
                           {section.title}
