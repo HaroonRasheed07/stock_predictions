@@ -17,3 +17,5 @@ scipy
 beautifulsoup4
 lxml
 cloudscraper
+fastapi
+uvicorn
