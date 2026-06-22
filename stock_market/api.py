@@ -183,10 +183,16 @@ def get_stock_forecast(request: ForecastRequest):
                 "data": []
             }
         
-        from sklearn.preprocessing import MinMaxScaler
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        close_prices = df[["Close"]].values
-        scaler.fit(close_prices)
+        # Use the pre-fitted scaler for this ticker
+        ticker = request.ticker
+        if ticker in SCALERS:
+            scaler = SCALERS[ticker]
+        else:
+            # Fallback if ticker was not in training set
+            from sklearn.preprocessing import MinMaxScaler
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            close_prices = df[["Close"]].values
+            scaler.fit(close_prices)
 
         actual, predicted, forecast, dates = forecast_stock(
             df, MODEL, scaler, forecast_days=request.forecast_days

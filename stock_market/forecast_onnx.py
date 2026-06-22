@@ -9,16 +9,20 @@ def load_forecast_model(model_path="lstm_attention_final.onnx", scalers_path="sc
     """
     Load the ONNX model and scalers once.
     """
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model not found: {model_path}")
+    base_dir = os.path.dirname(__file__)
+    model_full_path = os.path.join(base_dir, model_path)
+    scalers_full_path = os.path.join(base_dir, scalers_path)
+
+    if not os.path.exists(model_full_path):
+        raise FileNotFoundError(f"Model not found: {model_full_path}")
     
-    if not os.path.exists(scalers_path):
-        raise FileNotFoundError(f"Scalers not found: {scalers_path}")
+    if not os.path.exists(scalers_full_path):
+        raise FileNotFoundError(f"Scalers not found: {scalers_full_path}")
 
     # Initialize ONNX Runtime session
-    session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
+    session = ort.InferenceSession(model_full_path, providers=['CPUExecutionProvider'])
     
-    with open(scalers_path, "rb") as f:
+    with open(scalers_full_path, "rb") as f:
         scalers = pickle.load(f)
 
     return session, scalers
