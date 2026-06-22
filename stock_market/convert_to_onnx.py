@@ -24,11 +24,11 @@ def convert_model():
     onnx_model_path = "lstm_attention_final.onnx"
     
     if not os.path.exists(model_path):
-        print(f"❌ Error: Could not find {model_path}")
+        print(f"Error: Could not find {model_path}")
         print("Please ensure the H5 model is in the current directory.")
         return
 
-    print(f"⏳ Loading Keras model from {model_path}...")
+    print(f"Loading Keras model from {model_path}...")
     
     # Load model with custom objects
     model = tf.keras.models.load_model(
@@ -40,8 +40,8 @@ def convert_model():
         }
     )
     
-    print("✅ Model loaded successfully.")
-    print("⏳ Converting to ONNX format...")
+    print("Model loaded successfully.")
+    print("Converting to ONNX format...")
     
     # Specify the input signature. Our model takes a sequence of shape (None, 60, 1)
     # The batch size can be dynamic, hence None.
@@ -54,7 +54,7 @@ def convert_model():
     with open(onnx_model_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
         
-    print(f"✅ Conversion complete! ONNX model saved to {onnx_model_path}")
+    print(f"Conversion complete! ONNX model saved to {onnx_model_path}")
 
 if __name__ == "__main__":
     convert_model()

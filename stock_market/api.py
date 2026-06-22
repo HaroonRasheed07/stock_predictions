@@ -166,9 +166,7 @@ def get_stock_forecast(request: ForecastRequest):
     # ⚠️ 5. FIX FORECAST API FAILURE HANDLING
     if MODEL is None or SCALERS is None:
         return {
-            "status": "error",
-            "message": "forecast model unavailable",
-            "data": []
+            "detail": "Forecast model not found. ONNX model missing on server."
         }
 
     try:
@@ -219,9 +217,7 @@ def get_stock_forecast(request: ForecastRequest):
         traceback.print_exc()
         # ⚠️ 5. FIX FORECAST API FAILURE HANDLING (no hard crash)
         return {
-            "status": "error",
-            "message": "forecast model unavailable",
-            "data": []
+            "detail": "Forecast model not found. ONNX model missing on server."
         }
 
 @app.post("/api/data/sentiment")
