@@ -166,7 +166,10 @@ def get_stock_forecast(request: ForecastRequest):
     # ⚠️ 5. FIX FORECAST API FAILURE HANDLING
     if MODEL is None or SCALERS is None:
         return {
-            "detail": "Forecast model not found. ONNX model missing on server."
+            "status": "error",
+            "message": "Model not available on server",
+            "forecast_prices": [],
+            "forecast_dates": []
         }
 
     try:
@@ -179,8 +182,9 @@ def get_stock_forecast(request: ForecastRequest):
         if df is None or len(df) < 61:
             return {
                 "status": "error",
-                "message": "forecast model unavailable",
-                "data": []
+                "message": "Model not available on server",
+                "forecast_prices": [],
+                "forecast_dates": []
             }
         
         # Use the pre-fitted scaler for this ticker
@@ -208,8 +212,9 @@ def get_stock_forecast(request: ForecastRequest):
         if not forecast_data["actual_prices"] or not forecast_data["forecast_prices"]:
              return {
                  "status": "error",
-                 "message": "forecast model unavailable",
-                 "data": []
+                 "message": "Model not available on server",
+                 "forecast_prices": [],
+                 "forecast_dates": []
              }
 
         return {
@@ -221,9 +226,11 @@ def get_stock_forecast(request: ForecastRequest):
 
     except Exception as e:
         traceback.print_exc()
-        # ⚠️ 5. FIX FORECAST API FAILURE HANDLING (no hard crash)
         return {
-            "detail": "Forecast model not found. ONNX model missing on server."
+            "status": "error",
+            "message": "Model not available on server",
+            "forecast_prices": [],
+            "forecast_dates": []
         }
 
 @app.post("/api/data/sentiment")

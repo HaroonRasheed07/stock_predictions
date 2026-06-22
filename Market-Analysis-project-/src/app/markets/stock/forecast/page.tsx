@@ -207,21 +207,23 @@ export default function PriceForecasting() {
     );
   }
 
+  console.log("Parsed forecastData in component:", forecastData);
+
   const apiStatus: string | undefined = (forecastData as any)?.status;
   const apiMeta: any = (forecastData as any)?._meta;
 
-  // Transform API data for chart
-  const results: any = (forecastData as any)?.results ?? (forecastData as any)?.data?.results ?? (forecastData as any)?.data ?? null;
-  const actualPrices: number[] =
-    (Array.isArray(results?.actual_prices) ? results.actual_prices : undefined) ??
-    (Array.isArray(results?.actual) ? results.actual : undefined) ??
-    [];
-  const predictedHistoricalPrices: number[] =
-    (Array.isArray(results?.predicted_historical_prices) ? results.predicted_historical_prices : undefined) ??
-    (Array.isArray(results?.predicted_prices) ? results.predicted_prices : undefined) ??
-    [];
+  const results = forecastData.results;
+  const actualPrices: number[] = Array.isArray(results?.actual_prices) ? results.actual_prices : [];
+  const predictedHistoricalPrices: number[] = Array.isArray(results?.predicted_historical_prices) ? results.predicted_historical_prices : [];
   const forecastPrices: number[] = Array.isArray(results?.forecast_prices) ? results.forecast_prices : [];
   const forecastDates: string[] = Array.isArray(results?.forecast_dates) ? results.forecast_dates : [];
+
+  console.log("Chart datasets before rendering:", {
+    actualPricesLength: actualPrices.length,
+    predictedHistoricalPricesLength: predictedHistoricalPrices.length,
+    forecastPricesLength: forecastPrices.length,
+    forecastDatesLength: forecastDates.length
+  });
 
   const historicalLength = actualPrices.length;
   const forecastLength = forecastPrices.length;

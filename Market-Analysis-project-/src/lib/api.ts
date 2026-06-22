@@ -15,7 +15,7 @@ export const mockApiCall = async <T,>(data: T, delay: number = 500): Promise<T> 
   return data;
 };
 
-const API_BASE = '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://stock-predictions-b6yx.onrender.com";
 
 export interface IndicatorsResponse {
   ticker: string;
@@ -72,35 +72,40 @@ export async function fetchIndicators(
   return res.json();
 }
 
-// Fetch forecast
 export async function fetchForecast(
   ticker: string,
   forecastDays: number = 7,
   period: string = "1y"
-): Promise<ForecastResponse> {
-  const res = await fetch(`${API_BASE}/api/data/forecast`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ticker,
-      forecast_days: forecastDays,
-      period,
-    }),
-  });
+): Promise<ForecastResponse | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/data/forecast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ticker,
+        forecast_days: forecastDays,
+        period,
+      }),
+    });
 
-  if (!res.ok) {
-    let message = `Request failed (${res.status})`;
-    try {
-      const data = await res.json();
-      message = data.detail || data.error || JSON.stringify(data);
-    } catch {
-      const text = await res.text();
-      if (text) message = text;
+    if (!res.ok) {
+      console.error(`Forecast API Request failed: ${res.status}`);
+      return null;
     }
-    throw new Error(message);
-  }
 
-  return res.json();
+    const data = await res.json();
+    console.log("Raw API Response:", data);
+
+    if (data.detail || data.status === "error" || !data.results) {
+      console.warn("Forecast API returned error or missing results:", data);
+      return null;
+    }
+
+    return data as ForecastResponse;
+  } catch (error) {
+    console.error("Forecast fetch exception:", error);
+    return null;
+  }
 }
 
 // Fetch sentiment

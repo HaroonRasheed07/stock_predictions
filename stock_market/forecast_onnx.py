@@ -9,7 +9,7 @@ def load_forecast_model(model_path="lstm_attention_final.onnx", scalers_path="sc
     """
     Load the ONNX model and scalers once.
     """
-    base_dir = os.path.dirname(__file__)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     model_full_path = os.path.join(base_dir, model_path)
     scalers_full_path = os.path.join(base_dir, scalers_path)
 
