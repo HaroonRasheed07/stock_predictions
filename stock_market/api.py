@@ -121,6 +121,17 @@
 # # Command: uvicorn api:app --reload --port 8000
 
 # api.py
+
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def home():
+    return {
+        "status": "running",
+        "message": "Stock Prediction API is live 🚀"
+    }
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
