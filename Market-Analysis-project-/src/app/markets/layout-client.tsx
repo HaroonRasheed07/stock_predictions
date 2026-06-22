@@ -25,27 +25,27 @@ const marketSections: Array<{
       { title: 'Forecasting', path: '/markets/stock/forecast', icon: Activity },
     ],
   },
-  {
-    title: 'Cryptocurrency',
-    path: '/markets/crypto',
-    icon: Bitcoin,
-    subPages: [
-      { title: 'Overview', path: '/markets/crypto', icon: BarChart3 },
-      { title: 'Technical Analysis', path: '/markets/crypto/technical', icon: LineChart },
-      { title: 'Sentiment', path: '/markets/crypto/sentiment', icon: MessageSquare },
-      { title: 'Forecasting', path: '/markets/crypto/forecast', icon: Activity },
-    ],
-  },
-  {
-    title: 'E-commerce',
-    path: '/markets/ecommerce',
-    icon: ShoppingBag,
-    subPages: [
-      { title: 'Overview', path: '/markets/ecommerce', icon: BarChart3 },
-      { title: 'Sentiment', path: '/markets/ecommerce/sentiment', icon: MessageSquare },
-      { title: 'Products', path: '/markets/ecommerce/products', icon: ShoppingBag },
-    ],
-  },
+  // {
+  //   title: 'Cryptocurrency',
+  //   path: '/markets/crypto',
+  //   icon: Bitcoin,
+  //   subPages: [
+  //     { title: 'Overview', path: '/markets/crypto', icon: BarChart3 },
+  //     { title: 'Technical Analysis', path: '/markets/crypto/technical', icon: LineChart },
+  //     { title: 'Sentiment', path: '/markets/crypto/sentiment', icon: MessageSquare },
+  //     { title: 'Forecasting', path: '/markets/crypto/forecast', icon: Activity },
+  //   ],
+  // },
+  // {
+  //   title: 'E-commerce',
+  //   path: '/markets/ecommerce',
+  //   icon: ShoppingBag,
+  //   subPages: [
+  //     { title: 'Overview', path: '/markets/ecommerce', icon: BarChart3 },
+  //     { title: 'Sentiment', path: '/markets/ecommerce/sentiment', icon: MessageSquare },
+  //     { title: 'Products', path: '/markets/ecommerce/products', icon: ShoppingBag },
+  //   ],
+  // },
 ];
 
 export function MarketsLayout({ children }: { children: ReactNode }) {
