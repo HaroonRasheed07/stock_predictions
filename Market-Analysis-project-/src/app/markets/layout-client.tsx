@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Bitcoin, ShoppingBag, BarChart3, LineChart, MessageSquare, Activity } from 'lucide-react';
+import { TrendingUp, Bitcoin, ShoppingBag, BarChart3, LineChart, MessageSquare, Activity, Star } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
@@ -23,6 +23,7 @@ const marketSections: Array<{
       { title: 'Technical Analysis', path: '/markets/stock/technical', icon: LineChart },
       { title: 'Sentiment', path: '/markets/stock/sentiment', icon: MessageSquare },
       { title: 'Forecasting', path: '/markets/stock/forecast', icon: Activity },
+      { title: 'Watchlist', path: '/markets/stock/watchlist', icon: Star },
     ],
   },
   // {

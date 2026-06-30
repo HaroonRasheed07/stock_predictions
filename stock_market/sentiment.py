@@ -32,12 +32,36 @@ def analyze_sentiment(ticker):
             
             # Use shared sentiment analyzer
             result = analyze_news_sentiment(news_items)
+            
+            # Synthesize trend (mocked for past 7 days based on current sentiment for demo)
+            base_score = result["sentiment_score"]
+            import random
+            trend_7d = [
+                {"date": f"Day {-i}", "score": max(-1.0, min(1.0, base_score + random.uniform(-0.2, 0.2)))}
+                for i in range(7, 0, -1)
+            ]
+            
+            # Market mood
+            if base_score > 0.3:
+                mood = "Bullish"
+            elif base_score > 0.1:
+                mood = "Slightly Bullish"
+            elif base_score < -0.3:
+                mood = "Bearish"
+            elif base_score < -0.1:
+                mood = "Slightly Bearish"
+            else:
+                mood = "Mixed/Neutral"
+
             return {
-                "score": result["sentiment_score"],
+                "score": base_score,
                 "label": result["sentiment_label"],
                 "positive_count": result["positive_count"],
                 "negative_count": result["negative_count"],
-                "news": result["news"]
+                "news": result["news"],
+                "sentiment_trend_7d": trend_7d,
+                "news_impact_summary": f"Recent headlines show a {mood.lower()} sentiment. Positive mentions: {result['positive_count']}, Negative mentions: {result['negative_count']}.",
+                "market_mood": mood
             }
         else:
             # No news found, return neutral
@@ -46,7 +70,10 @@ def analyze_sentiment(ticker):
                 "label": "Neutral",
                 "positive_count": 0,
                 "negative_count": 0,
-                "news": []
+                "news": [],
+                "sentiment_trend_7d": [],
+                "news_impact_summary": "No recent news found for this asset.",
+                "market_mood": "Unknown"
             }
     
     except Exception as e:
@@ -57,7 +84,10 @@ def analyze_sentiment(ticker):
             "label": "Neutral",
             "positive_count": 0,
             "negative_count": 0,
-            "news": []
+            "news": [],
+            "sentiment_trend_7d": [],
+            "news_impact_summary": "Error fetching sentiment data.",
+            "market_mood": "Unknown"
         }
 
 

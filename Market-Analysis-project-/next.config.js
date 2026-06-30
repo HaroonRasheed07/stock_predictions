@@ -4,20 +4,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Disable static generation for development - pages will be dynamically rendered
-  output: undefined,
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.cache = false;
-    }
-    return config;
-  },
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts']
+  }
 };
 
 module.exports = nextConfig;

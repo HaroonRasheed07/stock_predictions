@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { fetchSentiment } from '@/lib/api';
 import { useStockStore } from '@/store/stockStore';
+import { SentimentTrend } from '@/components/analysis/SentimentTrend';
+import { WatchlistButton } from '@/components/common/WatchlistButton';
 import ProfessionalSentimentChart from '@/components/ProfessionalSentimentChart';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -74,18 +76,21 @@ export default function SentimentAnalysis() {
               <h1 className="text-3xl md:text-4xl font-bold mb-2">Sentiment Analysis</h1>
               <p className="text-muted-foreground">Real-time market sentiment from news and social media for {ticker}</p>
             </div>
-            <form onSubmit={handleSearch} className="flex items-center gap-2">
-              <Input
-                type="text"
-                placeholder="Enter Ticker (e.g. NVDA)"
-                value={inputTicker}
-                onChange={(e) => setInputTicker(e.target.value)}
-                className="w-40 md:w-48 bg-background/50 backdrop-blur-sm"
-              />
-              <Button type="submit" size="icon" variant="secondary">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
+            <div className="flex items-center gap-2">
+              <WatchlistButton ticker={ticker} />
+              <form onSubmit={handleSearch} className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Enter Ticker (e.g. NVDA)"
+                  value={inputTicker}
+                  onChange={(e) => setInputTicker(e.target.value)}
+                  className="w-40 md:w-48 bg-background/50 backdrop-blur-sm"
+                />
+                <Button type="submit" size="icon" variant="secondary">
+                  <Search className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
           </div>
         </motion.div>
 
@@ -175,13 +180,25 @@ export default function SentimentAnalysis() {
         </Card>
       </div>
 
+      {/* Sentiment Trend */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <SentimentTrend 
+          data={sentimentData || null} 
+          isLoading={isLoading} 
+        />
+      </motion.div>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Sentiment Distribution */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3 }}
         >
           <Card className="glass relative overflow-hidden h-full min-h-[460px]">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
@@ -211,7 +228,7 @@ export default function SentimentAnalysis() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
         >
           <Card className="glass relative overflow-hidden h-full min-h-[460px]">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-secondary/12 via-transparent to-transparent" />

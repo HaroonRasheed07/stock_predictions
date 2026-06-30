@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChartNoAxesCombined, Github, Twitter, Linkedin } from 'lucide-react';
+import { ChartNoAxesCombined, Github, Linkedin } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -55,7 +55,12 @@ export const Footer = () => {
                   About Us
                 </Link>
               </li>
-              
+              <li>
+                <Link href="/contact" className="text-muted-foreground hover:text-primary transition-colors">
+                  Contact
+                </Link>
+              </li>
+
               {/* <li>
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
                   Documentation
@@ -69,21 +74,18 @@ export const Footer = () => {
             <h3 className="font-semibold mb-4">Connect</h3>
             <div className="flex space-x-3">
               <a
-                href="#"
-                className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-                aria-label="Twitter"
-              >
-                <Twitter className="h-4 w-4" />
-              </a>
-              <a
-                href="#"
+                href="https://www.linkedin.com/in/haroon-rasheed-55022427a"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="h-4 w-4" />
               </a>
               <a
-                href="#"
+                href="https://github.com/HaroonRasheed07"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
                 aria-label="GitHub"
               >

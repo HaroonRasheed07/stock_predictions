@@ -396,6 +396,15 @@ def calculate_indicators(df):
 
     df['SMA20'] = df['Close'].rolling(20).mean()
     df['SMA50'] = df['Close'].rolling(50).mean()
+    df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
+    
+    # Calculate ATR
+    prev_close = df['Close'].shift(1)
+    tr1 = df['High'] - df['Low']
+    tr2 = (df['High'] - prev_close).abs()
+    tr3 = (df['Low'] - prev_close).abs()
+    true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    df['ATR'] = true_range.rolling(window=14).mean()
     
     # ... (Rest of Bollinger, RSI, MACD calculation logic is fine) ...
     rolling_mean = df['Close'].rolling(20).mean()

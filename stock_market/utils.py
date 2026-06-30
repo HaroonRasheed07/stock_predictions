@@ -39,6 +39,10 @@ import time
 _data_cache: dict = {}  # key -> (timestamp, dataframe)
 _DATA_CACHE_TTL = 120  # seconds (2 minutes)
 
+# --- Separate cache for scan operations (10-minute TTL) ---
+_scan_cache: dict = {}  # key -> (timestamp, result)
+_SCAN_CACHE_TTL = 600  # seconds (10 minutes)
+
 def _get_cached_df(key: str):
     if key in _data_cache:
         ts, df = _data_cache[key]
@@ -48,6 +52,16 @@ def _get_cached_df(key: str):
 
 def _set_cached_df(key: str, df):
     _data_cache[key] = (time.time(), df)
+
+def _get_cached_scan(key: str):
+    if key in _scan_cache:
+        ts, result = _scan_cache[key]
+        if time.time() - ts < _SCAN_CACHE_TTL:
+            return result
+    return None
+
+def _set_cached_scan(key: str, result):
+    _scan_cache[key] = (time.time(), result)
 
 def load_data(ticker, period="1y", interval=None): 
     try:
@@ -79,6 +93,16 @@ def load_data(ticker, period="1y", interval=None):
         # Extra safety: if still MultiIndex, flatten tuple column names
         if hasattr(data.columns, 'nlevels') and data.columns.nlevels > 1:
             data.columns = [col[0] if isinstance(col, tuple) else col for col in data.columns]
+        # Handle missing volume data (common for forex and indices)
+        if 'Volume' not in data.columns:
+            data['Volume'] = 0.0
+        else:
+            # Check for all NaNs and fill
+            if data['Volume'].isna().all():
+                data['Volume'] = 0.0
+            else:
+                data['Volume'] = data['Volume'].fillna(0)
+                
         # Squeeze: ensure OHLCV columns are Series, not single-column DataFrames
         for col in ['Close', 'High', 'Low', 'Open', 'Volume']:
             if col in data.columns:
@@ -143,9 +167,16 @@ STOCK_NAMES = {
     'XOM': 'Exxon Mobil',
     'JNJ': 'Johnson & Johnson',
     'HD': 'Home Depot',
-    'BAC': 'Bank of America'
+    'BAC': 'Bank of America',
+    # Multi-asset defaults
+    'GC=F': 'Gold Futures',
+    'SI=F': 'Silver Futures',
+    'CL=F': 'Crude Oil',
+    'EURUSD=X': 'EUR/USD',
+    '^GSPC': 'S&P 500',
+    '^DJI': 'Dow Jones'
 }
-TOP_WATCHLIST = list(STOCK_NAMES.keys())
+TOP_WATCHLIST = ['NVDA', 'TSLA', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'AMD', 'GC=F', 'EURUSD=X', '^GSPC']
 
 def get_top_performing_stocks(limit=6):
     """
@@ -153,14 +184,14 @@ def get_top_performing_stocks(limit=6):
     based on the last day's change.
     Results are cached for 5 minutes.
     """
-    # Check cache
-    cached = _get_cached_df("__top_performers__")
-    if cached is not None:
-        return cached[:limit]
-    
     try:
+        # Check cache
+        cached = _get_cached_df("__top_performers__")
+        if cached is not None:
+            return cached[:limit]
+            
         # Download data for all watchlist stocks (last 5 days to be safe)
-        df = yf.download(TOP_WATCHLIST, period="5d", progress=False)
+        df = yf.download(TOP_WATCHLIST, period="5d")
         
         if df.empty:
             return []

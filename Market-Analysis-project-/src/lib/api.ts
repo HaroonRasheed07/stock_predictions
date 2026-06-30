@@ -46,6 +46,102 @@ export interface ForecastResponse {
   };
 }
 
+// ─── New Interfaces for Multi-Asset Platform ───────────────────────────────
+
+export interface AssetInfo {
+  ticker: string;
+  name: string;
+  asset_class: string;
+  asset_class_label: string;
+  has_volume: boolean;
+  currency: string;
+}
+
+export interface OpportunityScore {
+  ticker: string;
+  name: string;
+  asset_class: string;
+  score: number;
+  price: number;
+  change: number;
+  change_percent: number;
+  factors: Array<{
+    name: string;
+    impact: number;
+    value: string;
+    detail: string;
+  }>;
+}
+
+export interface VolatilitySummary {
+  daily_volatility: number;
+  weekly_volatility: number;
+  atr: number;
+  expected_range: {
+    current_price: number;
+    atr: number;
+    expected_high: number;
+    expected_low: number;
+    range_percent: number;
+  };
+  relative_volume: {
+    available: boolean;
+    current_volume: number;
+    avg_volume: number;
+    relative_volume: number;
+    classification: string;
+    recent_volumes?: Array<{
+      date: string;
+      volume: number;
+      is_above_avg: boolean;
+    }>;
+  };
+}
+
+export interface RiskAssessment {
+  ticker: string;
+  risk_level: 'Low' | 'Medium' | 'High' | 'Unknown';
+  risk_score: number;
+  message: string;
+  factors: Array<{
+    name: string;
+    value: string;
+    level: string;
+    impact: string;
+    description: string;
+  }>;
+}
+
+export interface TrendStrength {
+  ticker: string;
+  trend_score: number;
+  trend_label: string;
+}
+
+export interface TradeConfirmation {
+  ticker: string;
+  name: string;
+  opportunity_score: number;
+  trend: { score: number; label: string };
+  technicals: { rsi: number; macd_signal: string };
+  risk: { level: string; score: number };
+  volatility: { level: string; daily: number };
+  sentiment: { score: number; label: string } | null;
+  relative_volume: { available: boolean; relative_volume?: number; classification?: string };
+}
+
+export interface EnhancedSentiment {
+  score: number;
+  label: string;
+  positive_count: number;
+  negative_count: number;
+  news: Array<{ title: string; source: string; url: string; published_at: string }>;
+  sentiment_trend_7d: Array<{ date: string; score: number }>;
+  news_impact_summary: string;
+  market_mood: string;
+}
+
+
 // Fetch indicators
 export async function fetchIndicators(
   ticker: string,
@@ -78,7 +174,7 @@ export async function fetchForecast(
   period: string = "1y"
 ): Promise<ForecastResponse | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/data/forecast`, {
+    const res = await fetch(`${API_BASE}/api/forecast/onnx`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -111,12 +207,7 @@ export async function fetchForecast(
 // Fetch sentiment
 export async function fetchSentiment(
   ticker: string
-): Promise<{
-  ticker: string;
-  sentiment_score: number;
-  sentiment_label: string;
-  news: Array<{ title: string; source: string; url: string; published_at: string }>;
-}> {
+): Promise<EnhancedSentiment> {
   const res = await fetch(`${API_BASE}/api/data/sentiment`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -135,6 +226,101 @@ export async function fetchSentiment(
     throw new Error(message);
   }
 
+  return res.json();
+}
+
+// ─── New API Fetch Functions ───────────────────────────────────────────────
+
+export async function fetchAssetSearch(query: string): Promise<AssetInfo[]> {
+  const res = await fetch(`${API_BASE}/api/multi-asset/search?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("Failed to search assets");
+  return res.json();
+}
+
+export async function fetchWatchlistDefaults(category?: string) {
+  const url = category ? `${API_BASE}/api/multi-asset/watchlist?category=${category}` : `${API_BASE}/api/multi-asset/watchlist`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch watchlist defaults");
+  return res.json();
+}
+
+export async function fetchOpportunityScan(tickers: string[], period = "1y"): Promise<{ scan_results: OpportunityScore[] }> {
+  const res = await fetch(`${API_BASE}/api/opportunities/scan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers, period }),
+  });
+  if (!res.ok) throw new Error("Failed to scan opportunities");
+  return res.json();
+}
+
+export async function fetchVolatilitySummary(ticker: string, period = "1y"): Promise<VolatilitySummary> {
+  const res = await fetch(`${API_BASE}/api/volatility/summary`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch volatility summary");
+  return res.json();
+}
+
+export async function fetchVolatilityMonitor(tickers: string[], period = "1y"): Promise<{ volatility_monitor: any[] }> {
+  const res = await fetch(`${API_BASE}/api/volatility/monitor`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch volatility monitor");
+  return res.json();
+}
+
+export async function fetchRiskAssessment(ticker: string, period = "1y"): Promise<RiskAssessment> {
+  const res = await fetch(`${API_BASE}/api/risk/assess`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch risk assessment");
+  return res.json();
+}
+
+export async function fetchTrendStrength(ticker: string, period = "1y"): Promise<TrendStrength> {
+  const res = await fetch(`${API_BASE}/api/data/trend-strength`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch trend strength");
+  return res.json();
+}
+
+export async function fetchRelativeVolume(ticker: string, period = "1y"): Promise<VolatilitySummary['relative_volume']> {
+  const res = await fetch(`${API_BASE}/api/data/relative-volume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch relative volume");
+  return res.json();
+}
+
+export async function fetchExpectedRange(ticker: string, period = "1y"): Promise<VolatilitySummary['expected_range']> {
+  const res = await fetch(`${API_BASE}/api/data/expected-range`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch expected range");
+  return res.json();
+}
+
+export async function fetchTradeConfirmation(ticker: string, period = "1y"): Promise<TradeConfirmation> {
+  const res = await fetch(`${API_BASE}/api/data/trade-confirmation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch trade confirmation");
   return res.json();
 }
 

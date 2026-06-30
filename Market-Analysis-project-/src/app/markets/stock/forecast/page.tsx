@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useStockStore } from '@/store/stockStore';
+import { WatchlistButton } from '@/components/common/WatchlistButton';
 
 interface ForecastData {
   ticker: string;
@@ -143,18 +144,21 @@ export default function PriceForecasting() {
                   </option>
                 ))}
               </select>
-              <form onSubmit={handleSearch} className="flex items-center space-x-2">
-                <Input
-                  type="text"
-                  placeholder="Enter Ticker (e.g. NVDA)"
-                  value={inputTicker}
-                  onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                  className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
-                />
-                <Button type="submit" size="icon" variant="secondary">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </form>
+              <div className="flex items-center space-x-2">
+                <WatchlistButton ticker={ticker} />
+                <form onSubmit={handleSearch} className="flex items-center space-x-2">
+                  <Input
+                    type="text"
+                    placeholder="Enter Ticker (e.g. NVDA)"
+                    value={inputTicker}
+                    onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                    className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
+                  />
+                  <Button type="submit" size="icon" variant="secondary">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </form>
+              </div>
             </div>
           </div>
         </motion.div>

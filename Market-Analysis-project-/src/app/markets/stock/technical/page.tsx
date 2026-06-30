@@ -5,8 +5,11 @@ export const dynamic = 'force-dynamic';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
-import { fetchIndicators } from '@/lib/api';
+import { fetchIndicators, fetchTrendStrength, fetchVolatilitySummary } from '@/lib/api';
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
+import { TrendStrength } from '@/components/analysis/TrendStrength';
+import { ExpectedRange } from '@/components/analysis/ExpectedRange';
+import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { useState, useEffect } from 'react';
 import {
   ComposedChart,
@@ -50,6 +53,16 @@ export default function TechnicalAnalysis() {
     queryKey: ['technical-data', ticker, timeRange],
     queryFn: () => fetchIndicators(ticker, timeRange),
     refetchInterval: 30000, // Auto-refresh every 30 seconds for live data
+  });
+
+  const { data: trendStrengthData, isLoading: isLoadingTrendStrength } = useQuery({
+    queryKey: ['trend-strength', ticker],
+    queryFn: () => fetchTrendStrength(ticker),
+  });
+
+  const { data: volatilitySummaryData, isLoading: isLoadingVolatilitySummary } = useQuery({
+    queryKey: ['volatility-summary', ticker],
+    queryFn: () => fetchVolatilitySummary(ticker),
   });
 
   const candleData = apiData?.data?.map((d: any) => ({
@@ -98,18 +111,21 @@ export default function TechnicalAnalysis() {
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Technical Analysis</h1>
             <p className="text-muted-foreground">Advanced charting and live signals for {ticker}</p>
           </div>
-          <form onSubmit={handleSearch} className="flex items-center space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter Ticker (e.g. NVDA)"
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value)}
-              className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
-            />
-            <Button type="submit" size="icon" variant="secondary">
-              <Search className="h-4 w-4" />
-            </Button>
-          </form>
+          <div className="flex items-center space-x-2">
+            <WatchlistButton ticker={ticker} />
+            <form onSubmit={handleSearch} className="flex items-center space-x-2">
+              <Input
+                type="text"
+                placeholder="Enter Ticker (e.g. NVDA)"
+                value={inputTicker}
+                onChange={(e) => setInputTicker(e.target.value)}
+                className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
+              />
+              <Button type="submit" size="icon" variant="secondary">
+                <Search className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
         </div>
       </motion.div>
 
@@ -157,11 +173,36 @@ export default function TechnicalAnalysis() {
         </Card>
       </div>
 
+      {/* Trend Strength and Expected Range */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <TrendStrength 
+            data={trendStrengthData || { ticker, trend_score: 50, trend_label: 'Neutral' }} 
+            isLoading={isLoadingTrendStrength} 
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <ExpectedRange 
+            data={volatilitySummaryData?.expected_range || { current_price: 0, atr: 0, expected_high: 0, expected_low: 0, range_percent: 0 }} 
+            isLoading={isLoadingVolatilitySummary} 
+          />
+        </motion.div>
+      </div>
+
       {/* Professional Candlestick Chart */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.3 }}
       >
         <Card className="glass">
           <CardHeader>
