@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChartNoAxesCombined, Github, Linkedin } from 'lucide-react';
+import { ChartNoAxesCombined, Github, Twitter, Linkedin } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -60,12 +60,6 @@ export const Footer = () => {
                   Contact
                 </Link>
               </li>
-
-              {/* <li>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  Documentation
-                </a>
-              </li> */}
             </ul>
           </div>
 

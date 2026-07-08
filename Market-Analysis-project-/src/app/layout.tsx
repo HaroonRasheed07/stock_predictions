@@ -2,6 +2,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LayoutWrapper } from './layout-wrapper';
+import { Analytics } from '@vercel/analytics/next';
 import '@/index.css';
 import type { Metadata } from 'next';
 
@@ -24,6 +25,7 @@ export default function RootLayout({
             <Toaster />
             <Sonner />
             <LayoutWrapper>{children}</LayoutWrapper>
+            <Analytics />
           </TooltipProvider>
         </div>
       </body>
