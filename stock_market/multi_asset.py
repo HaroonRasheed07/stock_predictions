@@ -2,9 +2,11 @@
 """
 Provides asset class definitions, Yahoo Finance symbol mapping,
 and utility functions for multi-asset support.
+Includes live Yahoo Finance search for autocomplete recommendations.
 """
 
 from typing import Optional, List, Dict, Any
+from yahooquery_adapter import search_yahoo
 
 
 # ─── Asset Class Definitions ───────────────────────────────────────────────────
@@ -136,16 +138,23 @@ def get_asset_info(ticker: str) -> Dict[str, Any]:
     }
 
 
-def search_assets(query: str, limit: int = 20) -> List[Dict[str, Any]]:
+def search_assets(query: str, limit: int = 20, live: bool = True) -> List[Dict[str, Any]]:
     """
-    Search the asset registry by ticker symbol or name.
-    Returns matching entries with metadata.
+    Search for assets by ticker symbol or name.
+    Combines local registry results with live Yahoo Finance search
+    for autocomplete/recommendation dropdowns.
+
+    When live=True, fetches real-time suggestions from Yahoo Finance
+    and merges them with local registry hits (registry takes priority).
     """
     query_lower = query.lower().strip()
     if not query_lower:
         return []
 
     results = []
+    seen_tickers = set()
+
+    # 1. Local registry search (instant, no network)
     for ticker, info in ASSET_REGISTRY.items():
         if (query_lower in ticker.lower() or
                 query_lower in info["name"].lower()):
@@ -156,11 +165,41 @@ def search_assets(query: str, limit: int = 20) -> List[Dict[str, Any]]:
                 "asset_class_label": ASSET_CLASSES.get(info["class"], "Unknown"),
                 "has_volume": info["has_volume"],
                 "currency": info["currency"],
+                "exchange": "Yahoo Finance",
             })
+            seen_tickers.add(ticker)
             if len(results) >= limit:
                 break
 
-    return results
+    # 2. Live Yahoo Finance search (for autocomplete recommendations)
+    if live and len(results) < limit:
+        try:
+            remaining = limit - len(results)
+            live_results = search_yahoo(query, limit=remaining + 5)  # fetch extras for dedup
+            for item in live_results:
+                ticker = item.get("ticker", "")
+                if ticker and ticker not in seen_tickers:
+                    # Infer has_volume and currency from asset class
+                    has_volume = item.get("asset_class") not in ("forex",)
+                    currency = "USD"  # default; could be enriched from registry
+
+                    results.append({
+                        "ticker": ticker,
+                        "name": item.get("name", ticker),
+                        "asset_class": item.get("asset_class", "stock"),
+                        "asset_class_label": ASSET_CLASSES.get(item.get("asset_class", "stock"), "Unknown"),
+                        "has_volume": has_volume,
+                        "currency": currency,
+                        "exchange": item.get("exchange", ""),
+                    })
+                    seen_tickers.add(ticker)
+                    if len(results) >= limit:
+                        break
+        except Exception:
+            # Gracefully degrade: return only registry results on network error
+            pass
+
+    return results[:limit]
 
 
 def get_default_watchlist() -> List[str]:

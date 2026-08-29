@@ -102,11 +102,14 @@ def get_multi_asset_info(ticker: str):
     return get_asset_info(ticker)
 
 @app.get("/api/multi-asset/search")
-def search_multi_assets(q: str):
-    """Search for assets by ticker or name"""
+def search_multi_assets(q: str, live: bool = True):
+    """
+    Search for assets by ticker or name.
+    When live=true (default), includes Yahoo Finance autocomplete suggestions.
+    """
     if not q:
         return []
-    return search_assets(q)
+    return search_assets(q, live=live)
 
 @app.get("/api/multi-asset/watchlist")
 def get_watchlist_defaults(category: Optional[str] = None):

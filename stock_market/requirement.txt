@@ -1,6 +1,6 @@
  Python 3.8+
 - Streamlit
-- yfinance
+- yahooquery
 - pandas
 - numpy
 - plotly

@@ -9,16 +9,64 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOpportunityScan, fetchWatchlistDefaults, OpportunityScore } from '@/lib/api';
+import { fetchOpportunityScan, fetchWatchlistDefaults, fetchAssetSearch, OpportunityScore, AssetInfo } from '@/lib/api';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { Star, Plus, Trash2, TrendingUp, Search, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function WatchlistPage() {
   const { watchlist, addToWatchlist, removeFromWatchlist, setWatchlist } = useWatchlistStore();
   const [newTicker, setNewTicker] = useState('');
+  const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+
+  // Debounced autocomplete search
+  const handleTickerInput = useCallback((value: string) => {
+    setNewTicker(value);
+    setShowSuggestions(true);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length < 1) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await fetchAssetSearch(value.trim(), true);
+        setSuggestions(results.slice(0, 6));
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, []);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   // Fetch opportunity scores for watchlist
   const { data: opportunityData, isLoading: isLoadingOpportunities, refetch: refetchOpportunities } = useQuery({
@@ -36,9 +84,18 @@ export default function WatchlistPage() {
   const handleAddTicker = (e: React.FormEvent) => {
     e.preventDefault();
     if (newTicker.trim()) {
-      addToWatchlist(newTicker.trim());
+      addToWatchlist(newTicker.trim().toUpperCase());
       setNewTicker('');
+      setShowSuggestions(false);
+      setSuggestions([]);
     }
+  };
+
+  const handleSelectSuggestion = (asset: AssetInfo) => {
+    addToWatchlist(asset.ticker);
+    setNewTicker('');
+    setShowSuggestions(false);
+    setSuggestions([]);
   };
 
   const handleAddCategory = (categoryTickers: string[]) => {
@@ -97,22 +154,59 @@ export default function WatchlistPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Card className="glass">
-          <CardContent className="p-4">
-            <form onSubmit={handleAddTicker} className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Add ticker (e.g., AAPL, GC=F, EURUSD=X)"
-                value={newTicker}
-                onChange={(e) => setNewTicker(e.target.value)}
-                className="flex-1"
-              />
-              <Button type="submit" size="icon">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+          <Card className="glass">
+            <CardContent className="p-4">
+              <div ref={searchRef} className="relative">
+                <form onSubmit={handleAddTicker} className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Add ticker (e.g., AAPL, GC=F, EURUSD=X)"
+                    value={newTicker}
+                    onChange={(e) => handleTickerInput(e.target.value)}
+                    onFocus={() => newTicker.trim().length >= 1 && setShowSuggestions(true)}
+                    className="flex-1"
+                  />
+                  <Button type="submit" size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </form>
+
+                {/* Autocomplete Dropdown */}
+                {showSuggestions && (suggestions.length > 0 || isSearching) && (
+                  <div className="absolute top-full left-0 right-10 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+                    {isSearching && suggestions.length === 0 && (
+                      <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+                        <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Searching...
+                      </div>
+                    )}
+                    {suggestions.map((asset) => (
+                      <button
+                        key={asset.ticker}
+                        onClick={() => handleSelectSuggestion(asset)}
+                        className="w-full px-4 py-2.5 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs">
+                            {asset.ticker.slice(0, 2)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{asset.ticker}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                              {asset.name}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground capitalize">
+                          {asset.asset_class}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
       </motion.div>
 
       {/* Quick Add Categories */}
