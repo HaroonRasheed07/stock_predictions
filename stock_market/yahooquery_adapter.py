@@ -15,10 +15,13 @@ Strategy:
 import pandas as pd
 import numpy as np
 import threading
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional, Union
 from yahooquery import Ticker as YQTicker
 from yahooquery.session_management import initialize_session
+
+logger = logging.getLogger(__name__)
 
 # Interval auto-determination based on period (mirrors yfinance logic)
 _INTERVAL_MAP = {
@@ -30,19 +33,32 @@ _INTERVAL_MAP = {
 # Module-level shared session (initialized lazily, thread-safe)
 _shared_session = None
 _session_lock = threading.Lock()
+_session_ready = False
 
 
 def _get_shared_session():
     """
     Lazily initialize a single curl_cffi session for all yahooquery calls.
-    This prevents the 30-second setup_session timeout on every Ticker() call.
+    Thread-safe via double-checked locking.
     """
-    global _shared_session
-    if _shared_session is None:
-        with _session_lock:
-            if _shared_session is None:
-                _shared_session = initialize_session()
+    global _shared_session, _session_ready
+    if _session_ready:
+        return _shared_session
+    with _session_lock:
+        if _shared_session is None:
+            logger.info("Initializing yahooquery shared session...")
+            _shared_session = initialize_session()
+            _session_ready = True
+            logger.info("Yahooquery session ready.")
     return _shared_session
+
+
+def warm_session():
+    """Pre-initialize the session in background. Called at FastAPI startup."""
+    try:
+        _get_shared_session()
+    except Exception as e:
+        logger.warning(f"Session warm-up failed (non-fatal): {e}")
 
 
 def _resolve_interval(period: str, interval: Optional[str] = None) -> str:
@@ -106,7 +122,8 @@ def _fetch_single_history(symbol: str, period: str, interval: str) -> pd.DataFra
         yq = YQTicker(symbol, session=session)
         df = yq.history(period=period, interval=interval)
         return _flatten_yq_history(df)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"History fetch failed for {symbol}: {e}")
         return _empty_ohlcv_df()
 
 
@@ -165,11 +182,13 @@ def get_fast_live_data(
                     "regularMarketDayHigh": float(info.get("regularMarketDayHigh", 0) or 0),
                     "regularMarketDayLow": float(info.get("regularMarketDayLow", 0) or 0),
                 }
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Price parse failed for {sym}: {e}")
                 result[sym] = _fallback_quote(sym)
 
         return result
-    except Exception:
+    except Exception as e:
+        logger.error(f"Batch price fetch failed: {e}")
         return {sym: _fallback_quote(sym) for sym in (symbols if isinstance(symbols, list) else [symbols])}
 
 
@@ -195,12 +214,14 @@ def get_fast_batch_history(
                 sym = futures[future]
                 try:
                     results[sym] = future.result(timeout=60)
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Batch history timeout for {sym}: {e}")
                     results[sym] = _empty_ohlcv_df()
 
         # Preserve input order
         return {sym: results.get(sym, _empty_ohlcv_df()) for sym in symbols}
-    except Exception:
+    except Exception as e:
+        logger.error(f"Batch history fetch failed: {e}")
         return {sym: _empty_ohlcv_df() for sym in symbols}
 
 
@@ -220,8 +241,20 @@ def _fallback_quote(sym: str) -> Dict[str, Any]:
 def search_yahoo(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Search Yahoo Finance for matching tickers/names via v1/finance/search API.
+    Falls back to v6/quote endpoint search if v1 fails.
     Returns [{ticker, name, asset_class, exchange}] for autocomplete dropdowns.
     """
+    results = _search_yahoo_v1(query, limit)
+    if results:
+        return results
+
+    # Fallback: try v6/quote endpoint search
+    results = _search_yahoo_v6(query, limit)
+    return results
+
+
+def _search_yahoo_v1(query: str, limit: int) -> List[Dict[str, Any]]:
+    """Primary search via Yahoo Finance v1/finance/search API."""
     try:
         import requests as _requests
 
@@ -231,7 +264,7 @@ def search_yahoo(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             "quotes_count": limit,
             "news_count": 0,
             "lists_count": 0,
-            "enableFuzzyQuery": False,
+            "enableFuzzyQuery": True,
             "quotesQueryId": "tss_match_phrase_query",
         }
         headers = {
@@ -239,34 +272,80 @@ def search_yahoo(query: str, limit: int = 10) -> List[Dict[str, Any]]:
                           "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
         }
 
-        resp = _requests.get(url, params=params, headers=headers, timeout=5)
+        resp = _requests.get(url, params=params, headers=headers, timeout=8)
         resp.raise_for_status()
         data = resp.json()
 
-        results = []
-        for quote in data.get("quotes", [])[:limit]:
-            quote_type = quote.get("quoteType", "").upper()
-            asset_class = "stock"
-            if quote_type == "ETF":
-                asset_class = "etf"
-            elif quote_type == "CURRENCY":
-                asset_class = "forex"
-            elif quote_type == "INDEX":
-                asset_class = "index"
-            elif quote_type in ("FUTURE", "COMMODITY"):
-                asset_class = "commodity"
+        return _parse_yahoo_quotes(data.get("quotes", []), limit)
+    except Exception as e:
+        logger.debug(f"Yahoo v1 search failed for '{query}': {e}")
+        return []
 
-            symbol = quote.get("symbol", "")
-            if not symbol:
+
+def _search_yahoo_v6(query: str, limit: int) -> List[Dict[str, Any]]:
+    """Fallback search using yahooquery's quote endpoint."""
+    try:
+        session = _get_shared_session()
+        yq = YQTicker(query, session=session)
+        quote_data = yq.quote
+
+        if not quote_data or not isinstance(quote_data, dict):
+            return []
+
+        # v6 returns a single quote for the exact symbol
+        # Try to get the symbol and its info
+        results = []
+        for sym, info in quote_data.items():
+            if not isinstance(info, dict) or sym == query.upper():
                 continue
+            asset_class = "stock"
+            qt = info.get("quoteType", "").upper()
+            if qt == "ETF":
+                asset_class = "etf"
+            elif qt == "CURRENCY":
+                asset_class = "forex"
+            elif qt == "INDEX":
+                asset_class = "index"
 
             results.append({
-                "ticker": symbol,
-                "name": quote.get("longname") or quote.get("shortname") or symbol,
+                "ticker": sym,
+                "name": info.get("shortName") or info.get("longName") or sym,
                 "asset_class": asset_class,
-                "exchange": quote.get("exchange", ""),
+                "exchange": info.get("exchange", ""),
             })
+            if len(results) >= limit:
+                break
 
         return results
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Yahoo v6 search failed for '{query}': {e}")
         return []
+
+
+def _parse_yahoo_quotes(quotes: list, limit: int) -> List[Dict[str, Any]]:
+    """Parse Yahoo Finance quote results into our standard format."""
+    results = []
+    for quote in quotes[:limit]:
+        quote_type = quote.get("quoteType", "").upper()
+        asset_class = "stock"
+        if quote_type == "ETF":
+            asset_class = "etf"
+        elif quote_type == "CURRENCY":
+            asset_class = "forex"
+        elif quote_type == "INDEX":
+            asset_class = "index"
+        elif quote_type in ("FUTURE", "COMMODITY"):
+            asset_class = "commodity"
+
+        symbol = quote.get("symbol", "")
+        if not symbol:
+            continue
+
+        results.append({
+            "ticker": symbol,
+            "name": quote.get("longname") or quote.get("shortname") or symbol,
+            "asset_class": asset_class,
+            "exchange": quote.get("exchange", ""),
+        })
+
+    return results

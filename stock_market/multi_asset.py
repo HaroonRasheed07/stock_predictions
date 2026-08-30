@@ -215,7 +215,3 @@ def get_watchlist_by_category(category: Optional[str] = None) -> Dict[str, List[
     if category and category in WATCHLIST_BY_CATEGORY:
         return {category: WATCHLIST_BY_CATEGORY[category]}
     return dict(WATCHLIST_BY_CATEGORY)
-
-def get_default_watchlist() -> List[str]:
-    """Get the default multi-asset watchlist."""
-    return DEFAULT_WATCHLIST

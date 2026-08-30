@@ -6,15 +6,21 @@ All function signatures and return types are preserved for zero-cascading change
 
 import pandas as pd
 import time
+import logging
 from yahooquery_adapter import get_fast_history, get_fast_batch_history, get_fast_live_data
 
+logger = logging.getLogger(__name__)
+
 # --- Simple in-memory cache ---
-_data_cache: dict = {}  # key -> (timestamp, dataframe)
+_data_cache: dict = {}  # key -> (timestamp, dataframe_or_list)
 _DATA_CACHE_TTL = 120  # seconds (2 minutes)
 
 # --- Separate cache for scan operations (10-minute TTL) ---
 _scan_cache: dict = {}  # key -> (timestamp, result)
 _SCAN_CACHE_TTL = 600  # seconds (10 minutes)
+
+# --- Top performers cache with separate key and longer TTL ---
+_TOP_PERFORMERS_CACHE_TTL = 300  # 5 minutes
 
 def _get_cached_df(key: str):
     if key in _data_cache:
@@ -148,12 +154,14 @@ def get_top_performing_stocks(limit=6):
     Results are cached for 5 minutes.
     """
     try:
-        # Check cache
-        cached = _get_cached_df("__top_performers__")
-        if cached is not None:
-            return cached[:limit]
+        # Check cache (separate key, 5-minute TTL)
+        cache_key = "__top_performers__"
+        if cache_key in _scan_cache:
+            ts, cached = _scan_cache[cache_key]
+            if time.time() - ts < _TOP_PERFORMERS_CACHE_TTL:
+                return cached[:limit]
 
-        # Batch download for all watchlist stocks (single API call)
+        # Batch download for all watchlist stocks (parallel threads)
         batch = get_fast_batch_history(TOP_WATCHLIST, period="5d", interval="1d")
 
         results = []
@@ -190,9 +198,9 @@ def get_top_performing_stocks(limit=6):
         results.sort(key=lambda x: x['changePercent'], reverse=True)
 
         # Cache for 5 minutes
-        _data_cache["__top_performers__"] = (time.time(), results)
+        _scan_cache[cache_key] = (time.time(), results)
 
         return results[:limit]
     except Exception as e:
-        print(f"Error fetching top performers: {e}")
+        logger.error(f"Error fetching top performers: {e}")
         return []

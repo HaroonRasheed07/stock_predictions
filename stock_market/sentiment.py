@@ -2,6 +2,7 @@ import requests
 import numpy as np
 import sys
 import os
+from urllib.parse import quote
 
 # Add parent directory to path for shared modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,7 +15,10 @@ def analyze_sentiment(ticker):
     """
     try:
         api_key = "pub_d4ca502ff69e478d991d8d30f9557d64"
-        url = f"https://newsdata.io/api/1/news?apikey={api_key}&q={ticker}&language=en&size=10"
+        # URL-encode the ticker to handle special chars like =, ^, etc.
+        # e.g. "GC=F" -> "GC%3DF", "^GSPC" -> "%5EGSPC"
+        encoded_ticker = quote(ticker, safe="")
+        url = f"https://newsdata.io/api/1/news?apikey={api_key}&q={encoded_ticker}&language=en&size=10"
         response = requests.get(url, timeout=10)
         news_json = response.json()
 

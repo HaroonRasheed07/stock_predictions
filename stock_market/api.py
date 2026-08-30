@@ -5,9 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import pandas as pd
+import threading
 
 # Import core logic
-from utils import get_top_performing_stocks, load_data, STOCK_NAMES
+from utils import get_top_performing_stocks, get_latest_price, load_data, STOCK_NAMES
 from indicators import calculate_indicators
 from sentiment import analyze_sentiment
 from forecast_onnx import load_forecast_model, forecast_stock
@@ -45,6 +46,18 @@ def load_models_at_startup():
         print(f"ONNX Stock model load failed: {e}")
         MODEL = None
         SCALERS = None
+
+    # Pre-warm yahooquery session in background so first request is fast
+    def _warm_session():
+        try:
+            from yahooquery_adapter import _get_shared_session
+            print("Pre-warming yahooquery session...")
+            _get_shared_session()
+            print("Yahooquery session ready.")
+        except Exception as e:
+            print(f"Yahooquery session warm-up failed (non-fatal): {e}")
+
+    threading.Thread(target=_warm_session, daemon=True).start()
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,13 +99,62 @@ def health_check():
 
 @app.post("/api/data/indicators")
 def get_stock_data_and_indicators(req: IndicatorRequest):
-    """Return stock indicators and overview data"""
+    """
+    Return stock indicators, overview data, current price, and top performers.
+    Frontend expects: ticker, data, topStocks, currentPrice, change, changePercent
+    """
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found for ticker")
-    
+
     indicators = calculate_indicators(df)
-    return {"ticker": req.ticker, "data": indicators}
+
+    # Get current price from live data or last close
+    current_price = 0.0
+    price_change = 0.0
+    price_change_pct = 0.0
+    try:
+        live = get_latest_price(req.ticker)
+        if live is not None and live > 0:
+            current_price = live
+            # Calculate change from previous close using history
+            if len(df) >= 2:
+                prev_close = float(df["Close"].iloc[-2]) if not isinstance(df["Close"].iloc[-2], pd.DataFrame) else float(df["Close"].iloc[-2].iloc[0])
+                if prev_close > 0:
+                    price_change = current_price - prev_close
+                    price_change_pct = (price_change / prev_close) * 100
+        elif len(df) > 0:
+            # Fallback: use last close from history
+            last_close = df["Close"].iloc[-1]
+            if isinstance(last_close, pd.DataFrame):
+                last_close = last_close.iloc[:, 0]
+            current_price = float(last_close)
+            if len(df) >= 2:
+                prev_close = df["Close"].iloc[-2]
+                if isinstance(prev_close, pd.DataFrame):
+                    prev_close = prev_close.iloc[:, 0]
+                prev_close = float(prev_close)
+                if prev_close > 0:
+                    price_change = current_price - prev_close
+                    price_change_pct = (price_change / prev_close) * 100
+    except Exception:
+        pass
+
+    # Get top performing stocks (cached, fast)
+    top_stocks = []
+    try:
+        top_stocks = get_top_performing_stocks(limit=6)
+    except Exception:
+        pass
+
+    return {
+        "ticker": req.ticker,
+        "data": indicators,
+        "currentPrice": current_price,
+        "change": price_change,
+        "changePercent": price_change_pct,
+        "topStocks": top_stocks,
+    }
 
 # ─── New Multi-Asset Endpoints ──────────────────────────────────────────────
 
@@ -123,7 +185,7 @@ def scan_opportunities(req: WatchlistScanRequest):
     """Scan a list of tickers and rank them by opportunity score"""
     if not req.tickers:
         req.tickers = get_default_watchlist()
-    
+
     # Optional: limit to 20 to avoid timeouts on free tier
     tickers_to_scan = req.tickers[:20]
     results = scan_watchlist(tickers_to_scan, req.period)
@@ -135,10 +197,10 @@ def volatility_summary(req: SingleAssetRequest):
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found")
-        
+
     asset_info = get_asset_info(req.ticker)
     has_volume = asset_info["has_volume"]
-    
+
     return get_volatility_summary(df, has_volume, req.ticker, req.period)
 
 @app.post("/api/volatility/monitor")
@@ -146,7 +208,7 @@ def volatility_monitor(req: WatchlistScanRequest):
     """Get volatility metrics for multiple assets for the monitor table"""
     if not req.tickers:
         req.tickers = get_default_watchlist()
-        
+
     results = []
     for ticker in req.tickers[:20]:
         df = load_data(ticker, req.period)
@@ -160,7 +222,7 @@ def volatility_monitor(req: WatchlistScanRequest):
                 "weekly_volatility": summary["weekly_volatility"],
                 "atr": summary["atr"]
             })
-            
+
     # Sort by daily volatility descending
     results.sort(key=lambda x: x["daily_volatility"], reverse=True)
     return {"volatility_monitor": results}
@@ -171,11 +233,11 @@ def risk_assessment(req: SingleAssetRequest):
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found")
-        
+
     # We need indicators for trend strength
     df_ind_records = calculate_indicators(df)
     df_ind = pd.DataFrame(df_ind_records)
-    
+
     return assess_risk(df_ind, req.ticker)
 
 @app.post("/api/data/trend-strength")
@@ -184,13 +246,13 @@ def trend_strength(req: SingleAssetRequest):
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found")
-        
+
     df_ind_records = calculate_indicators(df)
     df_ind = pd.DataFrame(df_ind_records)
-    
+
     score = calculate_trend_strength(df_ind)
     label = "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
-    
+
     return {
         "ticker": req.ticker,
         "trend_score": round(score, 1),
@@ -203,14 +265,14 @@ def relative_volume(req: SingleAssetRequest):
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found")
-        
+
     asset_info = get_asset_info(req.ticker)
     if not asset_info["has_volume"]:
         return {
             "available": False,
             "message": "Asset class does not support volume data"
         }
-        
+
     return calculate_relative_volume(df)
 
 @app.post("/api/data/expected-range")
@@ -219,7 +281,7 @@ def expected_range(req: SingleAssetRequest):
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found")
-        
+
     return calculate_expected_range(df)
 
 @app.post("/api/data/trade-confirmation")
@@ -228,26 +290,26 @@ def trade_confirmation(req: SingleAssetRequest):
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found")
-        
+
     # Gather all necessary data
     df_ind_records = calculate_indicators(df)
     df_ind = pd.DataFrame(df_ind_records)
-    
+
     trend_score = calculate_trend_strength(df_ind)
     risk_data = assess_risk(df_ind, req.ticker)
-    
+
     asset_info = get_asset_info(req.ticker)
     vol_summary = get_volatility_summary(df, asset_info["has_volume"])
-    
+
     # Get latest technicals
     latest = df_ind.iloc[-1]
-    
+
     # Try quick sentiment
     sentiment_data = None
     try:
         sent_res = analyze_sentiment(req.ticker)
         sentiment_data = {"score": sent_res["score"], "label": sent_res["label"]}
-    except:
+    except Exception:
         sentiment_data = {"score": 0.0, "label": "Neutral"}
 
     # Opportunity score runs it all together nicely
@@ -298,7 +360,7 @@ def get_stock_forecast(request: ForecastRequest):
         if isinstance(close_col, pd.DataFrame):
             close_col = close_col.iloc[:, 0]
         df = pd.DataFrame({"Close": close_col}).dropna()
-        
+
         if df is None or len(df) < 61:
             return {
                 "status": "error",
@@ -306,7 +368,7 @@ def get_stock_forecast(request: ForecastRequest):
                 "forecast_prices": [],
                 "forecast_dates": []
             }
-        
+
         # Use the pre-fitted scaler for this ticker
         ticker = request.ticker
         if ticker in SCALERS:
@@ -355,16 +417,23 @@ def get_stock_forecast(request: ForecastRequest):
 
 @app.post("/api/data/sentiment")
 def get_sentiment(request: SentimentRequest):
-    """Return market sentiment for a stock"""
+    """Return market sentiment for a stock — all fields for frontend components."""
     try:
         result = analyze_sentiment(request.ticker)
         return {
             "ticker": request.ticker,
+            # Fields used by sentiment page & chart
             "sentiment_score": result["score"],
             "sentiment_label": result["label"],
             "positive_count": result.get("positive_count", 0),
             "negative_count": result.get("negative_count", 0),
-            "news": result["news"]
+            "news": result["news"],
+            # Fields used by SentimentTrend component (expects 'score', not 'sentiment_score')
+            "score": result["score"],
+            "label": result["label"],
+            "sentiment_trend_7d": result.get("sentiment_trend_7d", []),
+            "news_impact_summary": result.get("news_impact_summary", ""),
+            "market_mood": result.get("market_mood", "Unknown"),
         }
     except Exception as e:
         traceback.print_exc()
