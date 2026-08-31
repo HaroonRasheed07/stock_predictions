@@ -156,6 +156,191 @@ def get_stock_data_and_indicators(req: IndicatorRequest):
         "topStocks": top_stocks,
     }
 
+
+@app.post("/api/market/overview")
+def get_market_overview(req: IndicatorRequest):
+    """
+    COMBINED endpoint: returns ALL data needed for the market overview page
+    in a single API call. Replaces 7+ separate calls with 1.
+    Returns: indicators, currentPrice, change, changePercent, topStocks,
+             volatility, risk, tradeConfirmation, sentiment, watchlist.
+    """
+    ticker = req.ticker
+    period = req.period
+    result = {"ticker": ticker}
+
+    # 1. Load data (shared across all sub-calculations)
+    try:
+        df = load_data(ticker, period)
+    except Exception:
+        df = None
+
+    # 2. Indicators + price
+    if df is not None and not df.empty:
+        indicators = calculate_indicators(df)
+        result["data"] = indicators
+
+        # Current price
+        current_price = 0.0
+        price_change = 0.0
+        price_change_pct = 0.0
+        try:
+            live = get_latest_price(ticker)
+            if live and live > 0:
+                current_price = live
+                if len(df) >= 2:
+                    prev = float(df["Close"].iloc[-2])
+                    if prev > 0:
+                        price_change = current_price - prev
+                        price_change_pct = (price_change / prev) * 100
+            elif len(df) > 0:
+                last_c = df["Close"].iloc[-1]
+                if isinstance(last_c, pd.DataFrame):
+                    last_c = last_c.iloc[:, 0]
+                current_price = float(last_c)
+                if len(df) >= 2:
+                    prev = df["Close"].iloc[-2]
+                    if isinstance(prev, pd.DataFrame):
+                        prev = prev.iloc[:, 0]
+                    prev = float(prev)
+                    if prev > 0:
+                        price_change = current_price - prev
+                        price_change_pct = (price_change / prev) * 100
+        except Exception:
+            pass
+
+        result["currentPrice"] = current_price
+        result["change"] = price_change
+        result["changePercent"] = price_change_pct
+
+        # 3. Volatility summary
+        try:
+            asset_info = get_asset_info(ticker)
+            result["volatility"] = get_volatility_summary(df, asset_info["has_volume"])
+        except Exception:
+            result["volatility"] = None
+
+        # 4. Risk assessment
+        try:
+            df_ind_records = calculate_indicators(df)
+            df_ind = pd.DataFrame(df_ind_records)
+            result["risk"] = assess_risk(df_ind, ticker)
+        except Exception:
+            result["risk"] = None
+
+        # 5. Trend strength
+        try:
+            if "risk" in result and result["risk"]:
+                score = calculate_trend_strength(df_ind)
+                result["trendStrength"] = {
+                    "ticker": ticker,
+                    "trend_score": round(score, 1),
+                    "trend_label": "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
+                }
+            else:
+                result["trendStrength"] = None
+        except Exception:
+            result["trendStrength"] = None
+
+        # 6. Trade confirmation (lightweight version)
+        try:
+            latest = df_ind.iloc[-1]
+            sent_data = {"score": 0.0, "label": "Neutral"}
+            try:
+                sent_res = analyze_sentiment(ticker)
+                sent_data = {"score": sent_res["score"], "label": sent_res["label"]}
+            except Exception:
+                pass
+
+            opp = calculate_opportunity_score(ticker, period)
+            vol_s = result.get("volatility", {}) or {}
+            risk_d = result.get("risk", {}) or {}
+
+            result["tradeConfirmation"] = {
+                "ticker": ticker,
+                "name": asset_info["name"],
+                "opportunity_score": opp["score"] if opp else 50.0,
+                "trend": result.get("trendStrength", {}),
+                "technicals": {
+                    "rsi": round(float(latest.get("RSI", 50)), 1),
+                    "macd_signal": "Bullish" if float(latest.get("MACD", 0)) > float(latest.get("Signal", 0)) else "Bearish"
+                },
+                "risk": {
+                    "level": risk_d.get("risk_level", "Unknown"),
+                    "score": risk_d.get("risk_score", 50)
+                },
+                "volatility": {
+                    "level": "High" if vol_s.get("daily_volatility", 0) > 35 else "Low" if vol_s.get("daily_volatility", 0) < 15 else "Medium",
+                    "daily": round(vol_s.get("daily_volatility", 0), 1)
+                },
+                "sentiment": sent_data,
+                "relative_volume": vol_s.get("relative_volume", {"available": False})
+            }
+        except Exception:
+            result["tradeConfirmation"] = None
+
+        # 7. Sentiment (full, for sentiment page if navigated)
+        try:
+            sent_full = analyze_sentiment(ticker)
+            result["sentiment"] = {
+                "ticker": ticker,
+                "sentiment_score": sent_full["score"],
+                "sentiment_label": sent_full["label"],
+                "positive_count": sent_full.get("positive_count", 0),
+                "negative_count": sent_full.get("negative_count", 0),
+                "news": sent_full["news"],
+                "score": sent_full["score"],
+                "label": sent_full["label"],
+                "sentiment_trend_7d": sent_full.get("sentiment_trend_7d", []),
+                "news_impact_summary": sent_full.get("news_impact_summary", ""),
+                "market_mood": sent_full.get("market_mood", "Unknown"),
+            }
+        except Exception:
+            result["sentiment"] = None
+
+    else:
+        result["data"] = []
+        result["currentPrice"] = 0
+        result["change"] = 0
+        result["changePercent"] = 0
+        result["volatility"] = None
+        result["risk"] = None
+        result["trendStrength"] = None
+        result["tradeConfirmation"] = None
+        result["sentiment"] = None
+
+    # 8. Top performers (independent of ticker, cached)
+    try:
+        result["topStocks"] = get_top_performing_stocks(limit=6)
+    except Exception:
+        result["topStocks"] = []
+
+    # 9. Watchlist defaults
+    try:
+        result["watchlist"] = get_default_watchlist()
+    except Exception:
+        result["watchlist"] = []
+
+    # 10. Market status
+    try:
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        # US Eastern = UTC-4 (EDT) or UTC-5 (EST) — approximate as UTC-4
+        et = now - timedelta(hours=4)
+        hour, minute = et.hour, et.minute
+        weekday = et.weekday()  # 0=Mon, 6=Sun
+        market_time = hour * 60 + minute
+        market_open = 9 * 60 + 30   # 9:30 AM ET
+        market_close = 16 * 60       # 4:00 PM ET
+        is_weekday = weekday < 5
+        is_open = is_weekday and market_open <= market_time < market_close
+        result["marketStatus"] = "Open" if is_open else "Closed"
+    except Exception:
+        result["marketStatus"] = "Unknown"
+
+    return result
+
+
 # ─── New Multi-Asset Endpoints ──────────────────────────────────────────────
 
 @app.get("/api/multi-asset/info/{ticker}")

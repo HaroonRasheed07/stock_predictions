@@ -4,9 +4,9 @@ export const dynamic = 'force-dynamic';
 
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, DollarSign, Activity, Users, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Users, BarChart3, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchIndicators, fetchSentiment, fetchOpportunityScan, fetchVolatilityMonitor, fetchVolatilitySummary, fetchRiskAssessment, fetchTradeConfirmation, fetchWatchlistDefaults, fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { fetchMarketOverview, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { OpportunityDashboard } from '@/components/dashboard/OpportunityDashboard';
 import { VolatilityMonitor } from '@/components/dashboard/VolatilityMonitor';
@@ -21,6 +21,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useStockStore } from '@/store/stockStore';
 
 export default function StockOverview() {
@@ -56,7 +57,7 @@ export default function StockOverview() {
       } finally {
         setIsSearching(false);
       }
-    }, 300); // 300ms debounce
+    }, 300);
   }, []);
 
   // Close suggestions on outside click
@@ -70,7 +71,6 @@ export default function StockOverview() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -102,51 +102,25 @@ export default function StockOverview() {
 
   const [timeRange, setTimeRange] = useState('1y');
 
-  const { data: apiData, isLoading, error } = useQuery({
-    queryKey: ['stock-indicators', ticker, timeRange],
-    queryFn: () => fetchIndicators(ticker, timeRange),
+  // SINGLE combined API call instead of 7+ separate calls
+  const { data: overview, isLoading, error, refetch } = useQuery({
+    queryKey: ['market-overview', ticker, timeRange],
+    queryFn: () => fetchMarketOverview(ticker, timeRange),
     refetchInterval: 30000,
+    staleTime: 15000,
   });
 
-  const { data: sentimentData } = useQuery({
-    queryKey: ['stock-sentiment', ticker],
-    queryFn: () => fetchSentiment(ticker),
-    refetchInterval: 30000,
-  });
-
-  // New feature data fetching
-  const { data: defaultWatchlist } = useQuery({
-    queryKey: ['watchlist-defaults'],
-    queryFn: () => fetchWatchlistDefaults(),
-  });
-
-  const defaultTickers = defaultWatchlist?.default || ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'GC=F', 'SI=F', 'CL=F', 'EURUSD=X', '^GSPC', '^DJI', '^IXIC'];
-
+  // Separate lightweight queries for data that refreshes differently
   const { data: opportunityData, isLoading: isLoadingOpportunities, refetch: refetchOpportunities } = useQuery({
-    queryKey: ['opportunities', defaultTickers],
-    queryFn: () => fetchOpportunityScan(defaultTickers),
-    enabled: defaultTickers.length > 0,
+    queryKey: ['opportunities', overview?.watchlist || []],
+    queryFn: () => import('@/lib/api').then(m => m.fetchOpportunityScan(overview?.watchlist || [])),
+    enabled: !!overview?.watchlist?.length,
   });
 
   const { data: volatilityMonitorData, isLoading: isLoadingVolatilityMonitor, refetch: refetchVolatilityMonitor } = useQuery({
-    queryKey: ['volatility-monitor', defaultTickers],
-    queryFn: () => fetchVolatilityMonitor(defaultTickers),
-    enabled: defaultTickers.length > 0,
-  });
-
-  const { data: volatilitySummaryData, isLoading: isLoadingVolatilitySummary } = useQuery({
-    queryKey: ['volatility-summary', ticker],
-    queryFn: () => fetchVolatilitySummary(ticker),
-  });
-
-  const { data: riskData, isLoading: isLoadingRisk } = useQuery({
-    queryKey: ['risk-assessment', ticker],
-    queryFn: () => fetchRiskAssessment(ticker),
-  });
-
-  const { data: tradeConfirmationData, isLoading: isLoadingTradeConfirmation } = useQuery({
-    queryKey: ['trade-confirmation', ticker],
-    queryFn: () => fetchTradeConfirmation(ticker),
+    queryKey: ['volatility-monitor', overview?.watchlist || []],
+    queryFn: () => import('@/lib/api').then(m => m.fetchVolatilityMonitor(overview?.watchlist || [])),
+    enabled: !!overview?.watchlist?.length,
   });
 
   if (isLoading) return <LoadingSkeleton type="card" />;
@@ -160,12 +134,13 @@ export default function StockOverview() {
     );
   }
 
-  const stocks = apiData?.topStocks || [];
-  const currentPrice = apiData?.currentPrice || 0;
-  const priceChange = apiData?.change || 0;
-  const priceChangePercent = apiData?.changePercent || 0;
+  const stocks = overview?.topStocks || [];
+  const currentPrice = overview?.currentPrice || 0;
+  const priceChange = overview?.change || 0;
+  const priceChangePercent = overview?.changePercent || 0;
+  const marketStatus = overview?.marketStatus || 'Unknown';
 
-  const historicalData = apiData?.data || [];
+  const historicalData = overview?.data || [];
   const latestCandle = historicalData.length > 0 ? historicalData[historicalData.length - 1] : null;
   const openPrice = latestCandle?.Open || 0;
 
@@ -179,14 +154,14 @@ export default function StockOverview() {
     close: d.Close
   })) || [];
 
-  const sentimentLabel = sentimentData?.sentiment_label || 'Neutral';
-  const sentimentScore = sentimentData?.sentiment_score || 0;
+  const sentimentLabel = overview?.sentiment?.sentiment_label || 'Neutral';
+  const sentimentScore = overview?.sentiment?.sentiment_score || 0;
 
   const marketStats = [
     {
       title: 'Selected Stock',
       value: ticker,
-      change: 'Active',
+      change: marketStatus,
       trend: 'up',
       icon: Activity,
       color: 'text-primary',
@@ -213,7 +188,7 @@ export default function StockOverview() {
       change: `${(sentimentScore * 100).toFixed(0)}% Score`,
       trend: sentimentScore > 0.5 ? 'up' : 'down',
       icon: Users,
-      color: sentimentLabel === 'Bullish' ? 'text-success' : 'text-destructive',
+      color: sentimentLabel === 'Positive' ? 'text-success' : sentimentLabel === 'Negative' ? 'text-destructive' : 'text-muted-foreground',
     },
   ];
 
@@ -226,7 +201,13 @@ export default function StockOverview() {
       >
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold">Stock Market Overview</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl md:text-4xl font-bold">Stock Market Overview</h1>
+              <Badge variant={marketStatus === 'Open' ? 'default' : 'secondary'} className="text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                Market {marketStatus}
+              </Badge>
+            </div>
             <p className="text-muted-foreground">Real-time market data and analytics</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -304,10 +285,16 @@ export default function StockOverview() {
                     <div className="flex items-center space-x-1">
                       {stat.trend === 'up' ? (
                         <TrendingUp className="h-4 w-4 text-success" />
-                      ) : (
+                      ) : stat.trend === 'down' ? (
                         <TrendingDown className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <Activity className="h-4 w-4 text-muted-foreground" />
                       )}
-                      <span className={stat.trend === 'up' ? 'text-success' : 'text-destructive'}>
+                      <span className={
+                        stat.trend === 'up' ? 'text-success' :
+                        stat.trend === 'down' ? 'text-destructive' :
+                        'text-muted-foreground'
+                      }>
                         {stat.change}
                       </span>
                     </div>
@@ -382,53 +369,35 @@ export default function StockOverview() {
         </Card>
       </motion.div>
 
-      {/* New Components Grid */}
+      {/* Components Grid — data from combined endpoint */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Trade Confirmation */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
-          <TradeConfirmation 
-            data={tradeConfirmationData || null} 
-            isLoading={isLoadingTradeConfirmation} 
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <TradeConfirmation
+            data={overview?.tradeConfirmation || null}
+            isLoading={isLoading}
           />
         </motion.div>
 
-        {/* Risk Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <RiskOverview 
-            data={riskData || null} 
-            isLoading={isLoadingRisk} 
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <RiskOverview
+            data={overview?.risk || null}
+            isLoading={isLoading}
           />
         </motion.div>
       </div>
 
       {/* Relative Volume */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
-      >
-        <RelativeVolume 
-          data={volatilitySummaryData?.relative_volume} 
-          isLoading={isLoadingVolatilitySummary} 
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+        <RelativeVolume
+          data={overview?.volatility?.relative_volume}
+          isLoading={isLoading}
         />
       </motion.div>
 
       {/* Opportunity Dashboard */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-      >
-        <OpportunityDashboard 
-          data={opportunityData?.scan_results || []} 
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+        <OpportunityDashboard
+          data={opportunityData?.scan_results || []}
           isLoading={isLoadingOpportunities}
           onRefresh={() => refetchOpportunities()}
           onAssetClick={(selectedTicker) => {
@@ -440,11 +409,7 @@ export default function StockOverview() {
       </motion.div>
 
       {/* Volatility Monitor - Collapsible */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.55 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
         <Accordion type="single" collapsible className="glass">
           <AccordionItem value="volatility-monitor">
             <AccordionTrigger className="px-6">
@@ -454,8 +419,8 @@ export default function StockOverview() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-6 pb-6">
-              <VolatilityMonitor 
-                data={volatilityMonitorData?.volatility_monitor || []} 
+              <VolatilityMonitor
+                data={volatilityMonitorData?.volatility_monitor || []}
                 isLoading={isLoadingVolatilityMonitor}
                 onRefresh={() => refetchVolatilityMonitor()}
                 onAssetClick={(selectedTicker) => {
@@ -470,21 +435,22 @@ export default function StockOverview() {
       </motion.div>
 
       {/* Top Performing Stocks */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
         <Card className="glass">
           <CardHeader>
             <CardTitle>Top Performing Stocks</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stocks?.map((stock, idx) => (
+              {stocks?.map((stock: any, idx: number) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setInputTicker(stock.symbol);
+                    setTicker(stock.symbol);
+                    setSelectedTicker(stock.symbol);
+                  }}
                 >
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center">

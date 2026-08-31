@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { fetchForecast } from '@/lib/api';
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ComposedChart,
   Line,
@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useStockStore } from '@/store/stockStore';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
+import { fetchAssetSearch, AssetInfo } from '@/lib/api';
 
 interface ForecastData {
   ticker: string;
@@ -38,28 +39,6 @@ interface ForecastData {
   };
 }
 
-const POPULAR_TICKERS = [
-  { symbol: 'AAPL', name: 'Apple Inc' },
-  { symbol: 'MSFT', name: 'Microsoft Corp' },
-  { symbol: 'NVDA', name: 'NVIDIA Corp' },
-  { symbol: 'TSLA', name: 'Tesla Inc' },
-  { symbol: 'AMZN', name: 'Amazon.com' },
-  { symbol: 'GOOGL', name: 'Alphabet Inc' },
-  { symbol: 'META', name: 'Meta Platforms' },
-  { symbol: 'AMD', name: 'AMD' },
-  { symbol: 'NFLX', name: 'Netflix' },
-  { symbol: 'JPM', name: 'JPMorgan Chase' },
-  { symbol: 'V', name: 'Visa Inc' },
-  { symbol: 'WMT', name: 'Walmart' },
-  { symbol: 'PG', name: 'Procter & Gamble' },
-  { symbol: 'JNJ', name: 'Johnson & Johnson' },
-  { symbol: 'HD', name: 'Home Depot' },
-  { symbol: 'BAC', name: 'Bank of America' },
-  { symbol: 'SPY', name: 'S&P 500 ETF' },
-  { symbol: 'QQQ', name: 'Invesco QQQ' },
-];
-
-// Common ticker typos auto-correction
 const TICKER_AUTOCORRECT: Record<string, string> = {
   'APPL': 'AAPL',
   'APPLE': 'AAPL',
@@ -80,26 +59,74 @@ export default function PriceForecasting() {
   const [ticker, setTicker] = useState('AAPL');
   const [inputTicker, setInputTicker] = useState('AAPL');
   const [timeRange, setTimeRange] = useState('1y');
+  const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchInput = useCallback((value: string) => {
+    setInputTicker(value);
+    setShowSuggestions(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 1) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await fetchAssetSearch(value.trim(), true);
+        setSuggestions(results.slice(0, 8));
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, []);
 
   useEffect(() => {
-    // Hydrate store after mount
+    const handleClick = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     setTicker(selectedTicker);
     setInputTicker(selectedTicker);
   }, [selectedTicker]);
+
+  const handleSelectSuggestion = (asset: AssetInfo) => {
+    setInputTicker(asset.ticker);
+    setTicker(asset.ticker);
+    setSelectedTicker(asset.ticker);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputTicker.trim()) {
       let newTicker = inputTicker.toUpperCase().trim();
-      
-      // Auto-correct common typos
       if (TICKER_AUTOCORRECT[newTicker]) {
         newTicker = TICKER_AUTOCORRECT[newTicker];
         setInputTicker(newTicker);
       }
-      
       setTicker(newTicker);
       setSelectedTicker(newTicker);
+      setShowSuggestions(false);
     }
   };
 
@@ -126,38 +153,49 @@ export default function PriceForecasting() {
               <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM & Prophet models</p>
             </div>
             <div className="flex items-center space-x-2">
-              {/* Popular Tickers Dropdown */}
-              <select
-                value={inputTicker}
-                onChange={(e) => {
-                  setInputTicker(e.target.value);
-                  const newTicker = e.target.value;
-                  setTicker(newTicker);
-                  setSelectedTicker(newTicker);
-                }}
-                className="bg-background/50 backdrop-blur-sm border border-border rounded-md px-3 py-2 text-sm w-48"
-              >
-                <option value="">Select Popular Stock...</option>
-                {POPULAR_TICKERS.map((stock) => (
-                  <option key={stock.symbol} value={stock.symbol}>
-                    {stock.symbol} - {stock.name}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center space-x-2">
-                <WatchlistButton ticker={ticker} />
+              <WatchlistButton ticker={ticker} />
+              <div ref={searchRef} className="relative">
                 <form onSubmit={handleSearch} className="flex items-center space-x-2">
                   <Input
                     type="text"
-                    placeholder="Enter Ticker (e.g. NVDA)"
+                    placeholder="Search stocks, forex, futures..."
                     value={inputTicker}
-                    onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                    className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
+                    onChange={(e) => handleSearchInput(e.target.value)}
+                    onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                    className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
                   />
                   <Button type="submit" size="icon" variant="secondary">
                     <Search className="h-4 w-4" />
                   </Button>
                 </form>
+                {showSuggestions && (suggestions.length > 0 || isSearching) && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+                    {isSearching && suggestions.length === 0 && (
+                      <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+                        <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Searching...
+                      </div>
+                    )}
+                    {suggestions.map((asset) => (
+                      <button
+                        key={asset.ticker}
+                        onClick={() => handleSelectSuggestion(asset)}
+                        className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs">
+                            {asset.ticker.slice(0, 2)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{asset.ticker}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground capitalize">{asset.asset_class}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -189,10 +227,11 @@ export default function PriceForecasting() {
             <form onSubmit={handleSearch} className="flex items-center space-x-2">
               <Input
                 type="text"
-                placeholder="Enter Ticker (e.g. NVDA)"
+                placeholder="Search stocks, forex, futures..."
                 value={inputTicker}
-                onChange={(e) => setInputTicker(e.target.value)}
-                className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
               />
               <Button type="submit" size="icon" variant="secondary">
                 <Search className="h-4 w-4" />
@@ -308,10 +347,11 @@ export default function PriceForecasting() {
             <form onSubmit={handleSearch} className="flex items-center space-x-2">
               <Input
                 type="text"
-                placeholder="Enter Ticker (e.g. NVDA)"
+                placeholder="Search stocks, forex, futures..."
                 value={inputTicker}
-                onChange={(e) => setInputTicker(e.target.value)}
-                className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
               />
               <Button type="submit" size="icon" variant="secondary">
                 <Search className="h-4 w-4" />
@@ -345,10 +385,11 @@ export default function PriceForecasting() {
             <form onSubmit={handleSearch} className="flex items-center space-x-2">
               <Input
                 type="text"
-                placeholder="Enter Ticker (e.g. NVDA)"
+                placeholder="Search stocks, forex, futures..."
                 value={inputTicker}
-                onChange={(e) => setInputTicker(e.target.value)}
-                className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
               />
               <Button type="submit" size="icon" variant="secondary">
                 <Search className="h-4 w-4" />
@@ -384,18 +425,19 @@ export default function PriceForecasting() {
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
             <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
           </div>
-          <form onSubmit={handleSearch} className="flex items-center space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter Ticker (e.g. NVDA)"
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value)}
-              className="w-32 md:w-48 bg-background/50 backdrop-blur-sm"
-            />
-            <Button type="submit" size="icon" variant="secondary">
-              <Search className="h-4 w-4" />
-            </Button>
-          </form>
+            <form onSubmit={handleSearch} className="flex items-center space-x-2">
+              <Input
+                type="text"
+                placeholder="Search stocks, forex, futures..."
+                value={inputTicker}
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
+              />
+              <Button type="submit" size="icon" variant="secondary">
+                <Search className="h-4 w-4" />
+              </Button>
+            </form>
         </div>
       </motion.div>
 

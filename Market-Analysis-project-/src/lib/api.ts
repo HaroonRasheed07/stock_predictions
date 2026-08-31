@@ -168,6 +168,48 @@ export async function fetchIndicators(
   return res.json();
 }
 
+// Combined market overview — single call for all market page data
+export interface MarketOverviewResponse {
+  ticker: string;
+  data: Record<string, any>[];
+  currentPrice: number;
+  change: number;
+  changePercent: number;
+  topStocks: Array<{ symbol: string; name: string; price: number; change: number; changePercent: number }>;
+  volatility: any;
+  risk: any;
+  trendStrength: any;
+  tradeConfirmation: any;
+  sentiment: any;
+  watchlist: string[];
+  marketStatus: string;
+}
+
+export async function fetchMarketOverview(
+  ticker: string,
+  period: string = "1y"
+): Promise<MarketOverviewResponse> {
+  const res = await fetch(`${API_BASE}/api/market/overview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      message = data.detail || data.error || JSON.stringify(data);
+    } catch {
+      const text = await res.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+
+  return res.json();
+}
+
 export async function fetchForecast(
   ticker: string,
   forecastDays: number = 7,

@@ -29,13 +29,8 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/markets/crypto" className="text-muted-foreground hover:text-primary transition-colors">
-                  Cryptocurrency
-                </Link>
-              </li>
-              <li>
-                <Link href="/markets/ecommerce" className="text-muted-foreground hover:text-primary transition-colors">
-                  E-commerce
+                <Link href="/markets/stock/watchlist" className="text-muted-foreground hover:text-primary transition-colors">
+                  Watchlist
                 </Link>
               </li>
             </ul>
@@ -90,7 +85,7 @@ export const Footer = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
-          <p>© 2025 AI Driven Market Anaiysis. All rights reserved.</p>
+          <p>© 2026 AI Driven Market Analysis. All rights reserved.</p>
         </div>
       </div>
     </footer>
