@@ -27,6 +27,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useStockStore } from '@/store/stockStore';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { TickerLogo } from '@/components/common/TickerLogo';
 
 interface ForecastData {
   ticker: string;
@@ -130,6 +131,50 @@ export default function PriceForecasting() {
     }
   };
 
+  const renderSearchForm = () => (
+    <div ref={searchRef} className="relative">
+      <form onSubmit={handleSearch} className="flex items-center space-x-2">
+        <Input
+          type="text"
+          placeholder="Search stocks, forex, futures..."
+          value={inputTicker}
+          onChange={(e) => handleSearchInput(e.target.value)}
+          onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+          className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
+        />
+        <Button type="submit" size="icon" variant="secondary">
+          <Search className="h-4 w-4" />
+        </Button>
+      </form>
+      {showSuggestions && (suggestions.length > 0 || isSearching) && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+          {isSearching && suggestions.length === 0 && (
+            <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+              <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              Searching...
+            </div>
+          )}
+          {suggestions.map((asset) => (
+            <button
+              key={asset.ticker}
+              onClick={() => handleSelectSuggestion(asset)}
+              className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
+            >
+              <div className="flex items-center gap-3">
+                <TickerLogo ticker={asset.ticker} logoUrl={asset.logo_url} size="md" />
+                <div>
+                  <p className="font-semibold text-sm">{asset.ticker}</p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>
+                </div>
+              </div>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground capitalize">{asset.asset_class}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const { data: forecastData, isLoading, error, refetch } = useQuery({
     queryKey: ['price-forecast', ticker, timeRange],
     queryFn: () => fetchForecast(ticker, 10, timeRange),
@@ -154,49 +199,7 @@ export default function PriceForecasting() {
             </div>
             <div className="flex items-center space-x-2">
               <WatchlistButton ticker={ticker} />
-              <div ref={searchRef} className="relative">
-                <form onSubmit={handleSearch} className="flex items-center space-x-2">
-                  <Input
-                    type="text"
-                    placeholder="Search stocks, forex, futures..."
-                    value={inputTicker}
-                    onChange={(e) => handleSearchInput(e.target.value)}
-                    onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                    className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
-                  />
-                  <Button type="submit" size="icon" variant="secondary">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </form>
-                {showSuggestions && (suggestions.length > 0 || isSearching) && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
-                    {isSearching && suggestions.length === 0 && (
-                      <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
-                        <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                        Searching...
-                      </div>
-                    )}
-                    {suggestions.map((asset) => (
-                      <button
-                        key={asset.ticker}
-                        onClick={() => handleSelectSuggestion(asset)}
-                        className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs">
-                            {asset.ticker.slice(0, 2)}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">{asset.ticker}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>
-                          </div>
-                        </div>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground capitalize">{asset.asset_class}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {renderSearchForm()}
             </div>
           </div>
         </motion.div>
@@ -220,24 +223,12 @@ export default function PriceForecasting() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
-              <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
-            </div>
-            <form onSubmit={handleSearch} className="flex items-center space-x-2">
-              <Input
-                type="text"
-                placeholder="Search stocks, forex, futures..."
-                value={inputTicker}
-                onChange={(e) => handleSearchInput(e.target.value)}
-                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
-              />
-              <Button type="submit" size="icon" variant="secondary">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
+            <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
           </div>
+          {renderSearchForm()}
+        </div>
         </motion.div>
 
         <Alert>
@@ -344,19 +335,7 @@ export default function PriceForecasting() {
               <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
               <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
             </div>
-            <form onSubmit={handleSearch} className="flex items-center space-x-2">
-              <Input
-                type="text"
-                placeholder="Search stocks, forex, futures..."
-                value={inputTicker}
-                onChange={(e) => handleSearchInput(e.target.value)}
-                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
-              />
-              <Button type="submit" size="icon" variant="secondary">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
+            {renderSearchForm()}
           </div>
         </motion.div>
 
@@ -382,19 +361,7 @@ export default function PriceForecasting() {
               <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
               <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
             </div>
-            <form onSubmit={handleSearch} className="flex items-center space-x-2">
-              <Input
-                type="text"
-                placeholder="Search stocks, forex, futures..."
-                value={inputTicker}
-                onChange={(e) => handleSearchInput(e.target.value)}
-                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
-              />
-              <Button type="submit" size="icon" variant="secondary">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
+            {renderSearchForm()}
           </div>
         </motion.div>
 
@@ -425,19 +392,7 @@ export default function PriceForecasting() {
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
             <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
           </div>
-            <form onSubmit={handleSearch} className="flex items-center space-x-2">
-              <Input
-                type="text"
-                placeholder="Search stocks, forex, futures..."
-                value={inputTicker}
-                onChange={(e) => handleSearchInput(e.target.value)}
-                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
-              />
-              <Button type="submit" size="icon" variant="secondary">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
+          {renderSearchForm()}
         </div>
       </motion.div>
 

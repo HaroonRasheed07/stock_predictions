@@ -14,6 +14,7 @@ import { RelativeVolume } from '@/components/dashboard/RelativeVolume';
 import { RiskOverview } from '@/components/analysis/RiskOverview';
 import { TradeConfirmation } from '@/components/analysis/TradeConfirmation';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
+import { TickerLogo } from '@/components/common/TickerLogo';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -243,9 +244,7 @@ export default function StockOverview() {
                       className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs">
-                          {asset.ticker.slice(0, 2)}
-                        </div>
+                        <TickerLogo ticker={asset.ticker} logoUrl={asset.logo_url} size="md" />
                         <div>
                           <p className="font-semibold text-sm">{asset.ticker}</p>
                           <p className="text-xs text-muted-foreground truncate max-w-[200px]">
@@ -453,9 +452,7 @@ export default function StockOverview() {
                   }}
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center">
-                      <span className="text-white font-bold">{stock.symbol.slice(0, 2)}</span>
-                    </div>
+                    <TickerLogo ticker={stock.symbol} size="lg" />
                     <div>
                       <p className="font-semibold">{stock.symbol}</p>
                       <p className="text-sm text-muted-foreground">{stock.name}</p>

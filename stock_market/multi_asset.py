@@ -166,6 +166,7 @@ def search_assets(query: str, limit: int = 20, live: bool = True) -> List[Dict[s
                 "has_volume": info["has_volume"],
                 "currency": info["currency"],
                 "exchange": "Yahoo Finance",
+                "logo_url": "",
             })
             seen_tickers.add(ticker)
             if len(results) >= limit:
@@ -191,6 +192,7 @@ def search_assets(query: str, limit: int = 20, live: bool = True) -> List[Dict[s
                         "has_volume": has_volume,
                         "currency": currency,
                         "exchange": item.get("exchange", ""),
+                        "logo_url": item.get("logo_url", ""),
                     })
                     seen_tickers.add(ticker)
                     if len(results) >= limit:

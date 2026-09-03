@@ -341,11 +341,20 @@ def _parse_yahoo_quotes(quotes: list, limit: int) -> List[Dict[str, Any]]:
         if not symbol:
             continue
 
+        # Extract logo URL from Yahoo search response
+        logo_url = ""
+        logo_data = quote.get("logo", {})
+        if isinstance(logo_data, dict):
+            logo_url = logo_data.get("url", "")
+        if not logo_url:
+            logo_url = quote.get("logo_url", "")
+
         results.append({
             "ticker": symbol,
             "name": quote.get("longname") or quote.get("shortname") or symbol,
             "asset_class": asset_class,
             "exchange": quote.get("exchange", ""),
+            "logo_url": logo_url,
         })
 
     return results

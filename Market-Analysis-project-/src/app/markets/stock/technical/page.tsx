@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useStockStore } from '@/store/stockStore';
 import { fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { TickerLogo } from '@/components/common/TickerLogo';
 import ProfessionalCandlestickChart from '@/components/ProfessionalCandlestickChart';
 
 export default function TechnicalAnalysis() {
@@ -194,9 +195,7 @@ export default function TechnicalAnalysis() {
                       className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs">
-                          {asset.ticker.slice(0, 2)}
-                        </div>
+                        <TickerLogo ticker={asset.ticker} logoUrl={asset.logo_url} size="md" />
                         <div>
                           <p className="font-semibold text-sm">{asset.ticker}</p>
                           <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>

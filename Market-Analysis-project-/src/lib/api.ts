@@ -55,6 +55,7 @@ export interface AssetInfo {
   asset_class_label: string;
   has_volume: boolean;
   currency: string;
+  logo_url?: string;
 }
 
 export interface OpportunityScore {

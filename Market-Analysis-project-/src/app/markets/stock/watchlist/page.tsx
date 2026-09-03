@@ -11,6 +11,7 @@ import { useWatchlistStore } from '@/store/watchlistStore';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOpportunityScan, fetchWatchlistDefaults, fetchAssetSearch, OpportunityScore, AssetInfo } from '@/lib/api';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
+import { TickerLogo } from '@/components/common/TickerLogo';
 import { Star, Plus, Trash2, TrendingUp, Search, Sparkles } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -187,9 +188,7 @@ export default function WatchlistPage() {
                         className="w-full px-4 py-2.5 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs">
-                            {asset.ticker.slice(0, 2)}
-                          </div>
+                          <TickerLogo ticker={asset.ticker} logoUrl={asset.logo_url} size="sm" />
                           <div>
                             <p className="font-semibold text-sm">{asset.ticker}</p>
                             <p className="text-xs text-muted-foreground truncate max-w-[180px]">
