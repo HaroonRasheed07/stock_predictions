@@ -132,6 +132,9 @@ export interface TradeConfirmation {
 }
 
 export interface EnhancedSentiment {
+  ticker?: string;
+  sentiment_score: number;
+  sentiment_label: string;
   score: number;
   label: string;
   positive_count: number;

@@ -2,17 +2,31 @@ import requests
 import numpy as np
 import sys
 import os
+import time
 from urllib.parse import quote
 
 # Add parent directory to path for shared modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared_sentiment import analyze_news_sentiment, score_text_keywords
 
+# --- Sentiment cache (10-minute TTL) ---
+_sentiment_cache: dict = {}
+_SENTIMENT_CACHE_TTL = 600  # 10 minutes
+
+
 def analyze_sentiment(ticker):
     """
     Analyze sentiment for a ticker using newsdata.io API.
+    Results are cached for 10 minutes to avoid repeated slow API calls.
     Returns: dict with score, label, positive_count, negative_count, news
     """
+    # Check cache first
+    cache_key = f"sentiment_{ticker}"
+    if cache_key in _sentiment_cache:
+        ts, cached = _sentiment_cache[cache_key]
+        if time.time() - ts < _SENTIMENT_CACHE_TTL:
+            return cached
+
     try:
         api_key = "pub_d4ca502ff69e478d991d8d30f9557d64"
         # URL-encode the ticker to handle special chars like =, ^, etc.
@@ -57,7 +71,7 @@ def analyze_sentiment(ticker):
             else:
                 mood = "Mixed/Neutral"
 
-            return {
+            sentiment_result = {
                 "score": base_score,
                 "label": result["sentiment_label"],
                 "positive_count": result["positive_count"],
@@ -67,9 +81,11 @@ def analyze_sentiment(ticker):
                 "news_impact_summary": f"Recent headlines show a {mood.lower()} sentiment. Positive mentions: {result['positive_count']}, Negative mentions: {result['negative_count']}.",
                 "market_mood": mood
             }
+            _sentiment_cache[cache_key] = (time.time(), sentiment_result)
+            return sentiment_result
         else:
             # No news found, return neutral
-            return {
+            neutral_result = {
                 "score": 0.0,
                 "label": "Neutral",
                 "positive_count": 0,
@@ -79,6 +95,8 @@ def analyze_sentiment(ticker):
                 "news_impact_summary": "No recent news found for this asset.",
                 "market_mood": "Unknown"
             }
+            _sentiment_cache[cache_key] = (time.time(), neutral_result)
+            return neutral_result
     
     except Exception as e:
         print(f"Sentiment analysis error: {str(e)}")

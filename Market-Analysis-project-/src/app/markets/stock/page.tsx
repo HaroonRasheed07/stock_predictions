@@ -124,7 +124,31 @@ export default function StockOverview() {
     enabled: !!overview?.watchlist?.length,
   });
 
-  if (isLoading) return <LoadingSkeleton type="card" />;
+  if (isLoading) return (
+    <div className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold">Stock Market Overview</h1>
+            <p className="text-muted-foreground">Real-time market data and analytics</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <WatchlistButton ticker={ticker} />
+            <div ref={searchRef} className="relative">
+              <form onSubmit={handleSearch} className="flex items-center space-x-2">
+                <Input type="text" placeholder="Search stocks, forex, futures..." value={inputTicker}
+                  onChange={(e) => handleSearchInput(e.target.value)}
+                  onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                  className="w-48 md:w-64 bg-background/50 backdrop-blur-sm" />
+                <Button type="submit" size="icon" variant="secondary"><Search className="h-4 w-4" /></Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+      <LoadingSkeleton type="card" />
+    </div>
+  );
 
   if (error) {
     return (

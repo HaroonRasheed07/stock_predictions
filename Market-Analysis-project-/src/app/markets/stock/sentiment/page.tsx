@@ -114,66 +114,79 @@ export default function SentimentAnalysis() {
     refetchInterval: 60000,
   });
 
-  if (isLoading) return <LoadingSkeleton type="chart" />;
+  // ALWAYS show the search header — never block it behind a skeleton
+  const headerSection = (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">Sentiment Analysis</h1>
+          <p className="text-muted-foreground">Real-time market sentiment from news and social media for {ticker}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <WatchlistButton ticker={ticker} />
+          <div ref={searchRef} className="relative">
+            <form onSubmit={handleSearch} className="flex items-center gap-2">
+              <Input
+                type="text"
+                placeholder="Search stocks, forex, futures..."
+                value={inputTicker}
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
+              />
+              <Button type="submit" size="icon" variant="secondary">
+                <Search className="h-4 w-4" />
+              </Button>
+            </form>
+            {showSuggestions && (suggestions.length > 0 || isSearching) && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+                {isSearching && suggestions.length === 0 && (
+                  <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+                    <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    Searching...
+                  </div>
+                )}
+                {suggestions.map((asset) => (
+                  <button
+                    key={asset.ticker}
+                    onClick={() => handleSelectSuggestion(asset)}
+                    className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <TickerLogo ticker={asset.ticker} logoUrl={asset.logo_url} size="md" />
+                      <div>
+                        <p className="font-semibold text-sm">{asset.ticker}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground capitalize">{asset.asset_class}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  // Show header + loading state for sentiment data
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {headerSection}
+        <LoadingSkeleton type="chart" />
+      </div>
+    );
+  }
 
   if (!sentimentData) {
     return (
       <div className="space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">Sentiment Analysis</h1>
-              <p className="text-muted-foreground">Real-time market sentiment from news and social media for {ticker}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <WatchlistButton ticker={ticker} />
-              <div ref={searchRef} className="relative">
-                <form onSubmit={handleSearch} className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Search stocks, forex, futures..."
-                    value={inputTicker}
-                    onChange={(e) => handleSearchInput(e.target.value)}
-                    onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                    className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
-                  />
-                  <Button type="submit" size="icon" variant="secondary">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </form>
-                {showSuggestions && (suggestions.length > 0 || isSearching) && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
-                    {isSearching && suggestions.length === 0 && (
-                      <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
-                        <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                        Searching...
-                      </div>
-                    )}
-                    {suggestions.map((asset) => (
-                      <button
-                        key={asset.ticker}
-                        onClick={() => handleSelectSuggestion(asset)}
-                        className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between border-b border-border/30 last:border-0"
-                      >
-                        <div className="flex items-center gap-3">
-                          <TickerLogo ticker={asset.ticker} logoUrl={asset.logo_url} size="md" />
-                          <div>
-                            <p className="font-semibold text-sm">{asset.ticker}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>
-                          </div>
-                        </div>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground capitalize">{asset.asset_class}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        {headerSection}
 
         <Card className="glass overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
@@ -187,30 +200,7 @@ export default function SentimentAnalysis() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Sentiment Analysis</h1>
-            <p className="text-muted-foreground">Real-time market sentiment from news and social media for {ticker}</p>
-          </div>
-          <form onSubmit={handleSearch} className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder="Search stocks, forex, futures..."
-              value={inputTicker}
-              onChange={(e) => handleSearchInput(e.target.value)}
-              onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-              className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
-            />
-            <Button type="submit" size="icon" variant="secondary">
-              <Search className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
-      </motion.div>
+      {headerSection}
 
       {/* Sentiment Score */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

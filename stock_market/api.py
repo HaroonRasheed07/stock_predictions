@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import pandas as pd
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Import core logic
 from utils import get_top_performing_stocks, get_latest_price, load_data, STOCK_NAMES
@@ -161,106 +162,158 @@ def get_stock_data_and_indicators(req: IndicatorRequest):
 def get_market_overview(req: IndicatorRequest):
     """
     COMBINED endpoint: returns ALL data needed for the market overview page
-    in a single API call. Replaces 7+ separate calls with 1.
-    Returns: indicators, currentPrice, change, changePercent, topStocks,
-             volatility, risk, tradeConfirmation, sentiment, watchlist.
+    in a single API call. Independent operations run in parallel for speed.
     """
     ticker = req.ticker
     period = req.period
     result = {"ticker": ticker}
 
-    # 1. Load data (shared across all sub-calculations)
+    # 1. Load data first (everything else depends on this)
     try:
         df = load_data(ticker, period)
     except Exception:
         df = None
 
-    # 2. Indicators + price
-    if df is not None and not df.empty:
+    if df is None or df.empty:
+        result.update({
+            "data": [], "currentPrice": 0, "change": 0, "changePercent": 0,
+            "volatility": None, "risk": None, "trendStrength": None,
+            "tradeConfirmation": None, "sentiment": None,
+            "topStocks": [], "watchlist": [], "marketStatus": "Unknown"
+        })
+        return result
+
+    # 2. Compute indicators ONCE (shared by multiple sub-calculations)
+    try:
         indicators = calculate_indicators(df)
         result["data"] = indicators
+        df_ind = pd.DataFrame(indicators)
+    except Exception:
+        indicators = []
+        df_ind = pd.DataFrame()
 
-        # Current price
-        current_price = 0.0
-        price_change = 0.0
-        price_change_pct = 0.0
+    # 3. Current price
+    current_price = 0.0
+    price_change = 0.0
+    price_change_pct = 0.0
+    try:
+        live = get_latest_price(ticker)
+        if live and live > 0:
+            current_price = live
+            if len(df) >= 2:
+                prev = float(df["Close"].iloc[-2])
+                if prev > 0:
+                    price_change = current_price - prev
+                    price_change_pct = (price_change / prev) * 100
+        elif len(df) > 0:
+            last_c = df["Close"].iloc[-1]
+            if isinstance(last_c, pd.DataFrame):
+                last_c = last_c.iloc[:, 0]
+            current_price = float(last_c)
+            if len(df) >= 2:
+                prev = df["Close"].iloc[-2]
+                if isinstance(prev, pd.DataFrame):
+                    prev = prev.iloc[:, 0]
+                prev = float(prev)
+                if prev > 0:
+                    price_change = current_price - prev
+                    price_change_pct = (price_change / prev) * 100
+    except Exception:
+        pass
+
+    result["currentPrice"] = current_price
+    result["change"] = price_change
+    result["changePercent"] = price_change_pct
+
+    # 4. Run independent operations IN PARALLEL
+    asset_info = get_asset_info(ticker)
+    has_volume = asset_info["has_volume"]
+
+    def _compute_volatility():
         try:
-            live = get_latest_price(ticker)
-            if live and live > 0:
-                current_price = live
-                if len(df) >= 2:
-                    prev = float(df["Close"].iloc[-2])
-                    if prev > 0:
-                        price_change = current_price - prev
-                        price_change_pct = (price_change / prev) * 100
-            elif len(df) > 0:
-                last_c = df["Close"].iloc[-1]
-                if isinstance(last_c, pd.DataFrame):
-                    last_c = last_c.iloc[:, 0]
-                current_price = float(last_c)
-                if len(df) >= 2:
-                    prev = df["Close"].iloc[-2]
-                    if isinstance(prev, pd.DataFrame):
-                        prev = prev.iloc[:, 0]
-                    prev = float(prev)
-                    if prev > 0:
-                        price_change = current_price - prev
-                        price_change_pct = (price_change / prev) * 100
+            return ("volatility", get_volatility_summary(df, has_volume))
+        except Exception:
+            return ("volatility", None)
+
+    def _compute_risk():
+        try:
+            if not df_ind.empty:
+                return ("risk", assess_risk(df_ind, ticker))
         except Exception:
             pass
+        return ("risk", None)
 
-        result["currentPrice"] = current_price
-        result["change"] = price_change
-        result["changePercent"] = price_change_pct
-
-        # 3. Volatility summary
+    def _compute_trend():
         try:
-            asset_info = get_asset_info(ticker)
-            result["volatility"] = get_volatility_summary(df, asset_info["has_volume"])
-        except Exception:
-            result["volatility"] = None
-
-        # 4. Risk assessment
-        try:
-            df_ind_records = calculate_indicators(df)
-            df_ind = pd.DataFrame(df_ind_records)
-            result["risk"] = assess_risk(df_ind, ticker)
-        except Exception:
-            result["risk"] = None
-
-        # 5. Trend strength
-        try:
-            if "risk" in result and result["risk"]:
+            if not df_ind.empty:
                 score = calculate_trend_strength(df_ind)
-                result["trendStrength"] = {
+                return ("trendStrength", {
                     "ticker": ticker,
                     "trend_score": round(score, 1),
                     "trend_label": "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
-                }
-            else:
-                result["trendStrength"] = None
+                })
         except Exception:
-            result["trendStrength"] = None
+            pass
+        return ("trendStrength", None)
 
-        # 6. Trade confirmation (lightweight version)
+    def _compute_sentiment():
         try:
-            latest = df_ind.iloc[-1]
-            sent_data = {"score": 0.0, "label": "Neutral"}
+            sent_full = analyze_sentiment(ticker)
+            return ("sentiment", {
+                "ticker": ticker,
+                "sentiment_score": sent_full["score"],
+                "sentiment_label": sent_full["label"],
+                "positive_count": sent_full.get("positive_count", 0),
+                "negative_count": sent_full.get("negative_count", 0),
+                "news": sent_full["news"],
+                "score": sent_full["score"],
+                "label": sent_full["label"],
+                "sentiment_trend_7d": sent_full.get("sentiment_trend_7d", []),
+                "news_impact_summary": sent_full.get("news_impact_summary", ""),
+                "market_mood": sent_full.get("market_mood", "Unknown"),
+            })
+        except Exception:
+            return ("sentiment", None)
+
+    def _compute_top_stocks():
+        try:
+            return ("topStocks", get_top_performing_stocks(limit=6))
+        except Exception:
+            return ("topStocks", [])
+
+    # Run all independent computations in parallel
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {
+            executor.submit(_compute_volatility): "volatility",
+            executor.submit(_compute_risk): "risk",
+            executor.submit(_compute_trend): "trendStrength",
+            executor.submit(_compute_sentiment): "sentiment",
+            executor.submit(_compute_top_stocks): "topStocks",
+        }
+        for future in as_completed(futures):
             try:
-                sent_res = analyze_sentiment(ticker)
-                sent_data = {"score": sent_res["score"], "label": sent_res["label"]}
+                key, value = future.result()
+                result[key] = value
             except Exception:
                 pass
 
+    # 5. Trade confirmation (depends on volatility + risk + trend + sentiment)
+    try:
+        if not df_ind.empty:
+            latest = df_ind.iloc[-1]
+            sent_data = {"score": 0.0, "label": "Neutral"}
+            if result.get("sentiment"):
+                sent_data = {"score": result["sentiment"]["score"], "label": result["sentiment"]["label"]}
+
             opp = calculate_opportunity_score(ticker, period)
-            vol_s = result.get("volatility", {}) or {}
-            risk_d = result.get("risk", {}) or {}
+            vol_s = result.get("volatility") or {}
+            risk_d = result.get("risk") or {}
 
             result["tradeConfirmation"] = {
                 "ticker": ticker,
                 "name": asset_info["name"],
                 "opportunity_score": opp["score"] if opp else 50.0,
-                "trend": result.get("trendStrength", {}),
+                "trend": result.get("trendStrength") or {},
                 "technicals": {
                     "rsi": round(float(latest.get("RSI", 50)), 1),
                     "macd_signal": "Bullish" if float(latest.get("MACD", 0)) > float(latest.get("Signal", 0)) else "Bearish"
@@ -276,62 +329,27 @@ def get_market_overview(req: IndicatorRequest):
                 "sentiment": sent_data,
                 "relative_volume": vol_s.get("relative_volume", {"available": False})
             }
-        except Exception:
+        else:
             result["tradeConfirmation"] = None
-
-        # 7. Sentiment (full, for sentiment page if navigated)
-        try:
-            sent_full = analyze_sentiment(ticker)
-            result["sentiment"] = {
-                "ticker": ticker,
-                "sentiment_score": sent_full["score"],
-                "sentiment_label": sent_full["label"],
-                "positive_count": sent_full.get("positive_count", 0),
-                "negative_count": sent_full.get("negative_count", 0),
-                "news": sent_full["news"],
-                "score": sent_full["score"],
-                "label": sent_full["label"],
-                "sentiment_trend_7d": sent_full.get("sentiment_trend_7d", []),
-                "news_impact_summary": sent_full.get("news_impact_summary", ""),
-                "market_mood": sent_full.get("market_mood", "Unknown"),
-            }
-        except Exception:
-            result["sentiment"] = None
-
-    else:
-        result["data"] = []
-        result["currentPrice"] = 0
-        result["change"] = 0
-        result["changePercent"] = 0
-        result["volatility"] = None
-        result["risk"] = None
-        result["trendStrength"] = None
-        result["tradeConfirmation"] = None
-        result["sentiment"] = None
-
-    # 8. Top performers (independent of ticker, cached)
-    try:
-        result["topStocks"] = get_top_performing_stocks(limit=6)
     except Exception:
-        result["topStocks"] = []
+        result["tradeConfirmation"] = None
 
-    # 9. Watchlist defaults
+    # 6. Watchlist defaults
     try:
         result["watchlist"] = get_default_watchlist()
     except Exception:
         result["watchlist"] = []
 
-    # 10. Market status
+    # 7. Market status
     try:
         from datetime import datetime, timezone, timedelta
         now = datetime.now(timezone.utc)
-        # US Eastern = UTC-4 (EDT) or UTC-5 (EST) — approximate as UTC-4
         et = now - timedelta(hours=4)
         hour, minute = et.hour, et.minute
-        weekday = et.weekday()  # 0=Mon, 6=Sun
+        weekday = et.weekday()
         market_time = hour * 60 + minute
-        market_open = 9 * 60 + 30   # 9:30 AM ET
-        market_close = 16 * 60       # 4:00 PM ET
+        market_open = 9 * 60 + 30
+        market_close = 16 * 60
         is_weekday = weekday < 5
         is_open = is_weekday and market_open <= market_time < market_close
         result["marketStatus"] = "Open" if is_open else "Closed"
@@ -394,19 +412,31 @@ def volatility_monitor(req: WatchlistScanRequest):
     if not req.tickers:
         req.tickers = get_default_watchlist()
 
+    def _compute_single(ticker):
+        try:
+            df = load_data(ticker, req.period)
+            if df is not None:
+                asset_info = get_asset_info(ticker)
+                summary = get_volatility_summary(df, asset_info["has_volume"])
+                return {
+                    "ticker": ticker,
+                    "name": asset_info["name"],
+                    "daily_volatility": summary["daily_volatility"],
+                    "weekly_volatility": summary["weekly_volatility"],
+                    "atr": summary["atr"]
+                }
+        except Exception:
+            pass
+        return None
+
+    # Run all tickers in parallel
     results = []
-    for ticker in req.tickers[:20]:
-        df = load_data(ticker, req.period)
-        if df is not None:
-            asset_info = get_asset_info(ticker)
-            summary = get_volatility_summary(df, asset_info["has_volume"])
-            results.append({
-                "ticker": ticker,
-                "name": asset_info["name"],
-                "daily_volatility": summary["daily_volatility"],
-                "weekly_volatility": summary["weekly_volatility"],
-                "atr": summary["atr"]
-            })
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(_compute_single, t): t for t in req.tickers[:20]}
+        for future in as_completed(futures):
+            r = future.result()
+            if r:
+                results.append(r)
 
     # Sort by daily volatility descending
     results.sort(key=lambda x: x["daily_volatility"], reverse=True)

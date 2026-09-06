@@ -193,15 +193,25 @@ def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool
 def scan_watchlist(tickers: List[str], period: str = "1y") -> List[Dict[str, Any]]:
     """
     Scan a list of tickers and return them ranked by opportunity score.
+    Runs all tickers in parallel for speed.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     results = []
-    # For a real production app, we'd use asyncio or concurrent.futures here
-    # Since we are keeping it simple for the API, we iterate synchronously
-    for ticker in tickers:
-        score_data = calculate_opportunity_score(ticker, period)
-        if score_data:
-            results.append(score_data)
-            
+
+    def _score_one(ticker):
+        try:
+            return calculate_opportunity_score(ticker, period)
+        except Exception:
+            return None
+
+    with ThreadPoolExecutor(max_workers=min(len(tickers), 10)) as executor:
+        futures = {executor.submit(_score_one, t): t for t in tickers}
+        for future in as_completed(futures):
+            score_data = future.result()
+            if score_data:
+                results.append(score_data)
+
     # Sort descending by score
     results.sort(key=lambda x: x["score"], reverse=True)
     return results

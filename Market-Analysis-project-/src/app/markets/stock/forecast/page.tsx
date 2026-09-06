@@ -183,7 +183,20 @@ export default function PriceForecasting() {
     enabled: !!ticker,
   });
 
-  if (isLoading) return <LoadingSkeleton type="chart" />;
+  if (isLoading) return (
+    <div className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
+            <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
+          </div>
+          {renderSearchForm()}
+        </div>
+      </motion.div>
+      <LoadingSkeleton type="chart" />
+    </div>
+  );
   
   if (error) {
     return (

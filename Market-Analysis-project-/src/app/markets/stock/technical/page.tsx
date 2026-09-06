@@ -148,7 +148,31 @@ export default function TechnicalAnalysis() {
     signal: latest.macd > latest.signal ? 'Buy' : 'Sell',
   } : null;
 
-  if (isLoading) return <LoadingSkeleton type="chart" />;
+  if (isLoading) return (
+    <div className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">Technical Analysis</h1>
+            <p className="text-muted-foreground">Advanced charting and live signals for {ticker}</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <WatchlistButton ticker={ticker} />
+            <div ref={searchRef} className="relative">
+              <form onSubmit={handleSearch} className="flex items-center space-x-2">
+                <Input type="text" placeholder="Search stocks, forex, futures..." value={inputTicker}
+                  onChange={(e) => handleSearchInput(e.target.value)}
+                  onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                  className="w-48 md:w-64 bg-background/50 backdrop-blur-sm" />
+                <Button type="submit" size="icon" variant="secondary"><Search className="h-4 w-4" /></Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+      <LoadingSkeleton type="chart" />
+    </div>
+  );
 
   // charts use full `candleData` (no timeframe selector)
   const filteredCandleData = candleData;
