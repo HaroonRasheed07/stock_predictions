@@ -10,13 +10,15 @@ Strategy:
     can timeout on flaky connections.
   - Live quotes: Multi-symbol Ticker(symbols).price (single batch API call)
   - History:     Parallel individual Ticker(symbol).history() via ThreadPoolExecutor
+  - Request coalescing: Duplicate requests for the same symbol share one in-flight future
 """
 
 import pandas as pd
 import numpy as np
 import threading
+import time
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, Future
 from typing import List, Dict, Any, Optional, Union
 from yahooquery import Ticker as YQTicker
 from yahooquery.session_management import initialize_session
@@ -34,6 +36,23 @@ _INTERVAL_MAP = {
 _shared_session = None
 _session_lock = threading.Lock()
 _session_ready = False
+
+# ─── Request Coalescing ─────────────────────────────────────────────────────
+# If 10 users request AAPL 1y simultaneously, only ONE Yahoo Query runs.
+_inflight: Dict[str, Future] = {}
+_inflight_lock = threading.Lock()
+
+# ─── History Cache (TTL = 10 minutes for historical data) ───────────────────
+_history_cache: Dict[str, tuple] = {}  # key -> (timestamp, DataFrame)
+_HISTORY_CACHE_TTL = 600  # 10 minutes
+
+_history_cache_lock = threading.Lock()
+
+# ─── Live Quote Cache (TTL = 30 seconds) ────────────────────────────────────
+_quote_cache: Dict[str, tuple] = {}  # key -> (timestamp, result)
+_QUOTE_CACHE_TTL = 30  # 30 seconds
+
+_quote_cache_lock = threading.Lock()
 
 
 def _get_shared_session():
@@ -77,9 +96,6 @@ def _flatten_yq_history(df: pd.DataFrame) -> pd.DataFrame:
     """
     Transform yahooquery history output into a flat DataFrame with
     capitalized OHLCV columns matching yfinance output format.
-
-    yahooquery returns columns: open, high, low, close, volume, adjclose
-    with a MultiIndex on rows (symbol, date) for multi-symbol queries.
     """
     if df is None or df.empty:
         return _empty_ohlcv_df()
@@ -134,16 +150,46 @@ def get_fast_history(
 ) -> pd.DataFrame:
     """
     Fetch historical OHLCV data for a single symbol using yahooquery.
-    Returns a DataFrame identical to yfinance's download():
-      - DatetimeIndex
-      - Columns: Open, High, Low, Close, Volume (Title Case)
+    Includes request coalescing and TTL caching.
     """
     try:
         resolved = _resolve_interval(period, interval)
-        result = _fetch_single_history(symbol, period, resolved)
+        cache_key = f"{symbol}|{period}|{resolved}"
+
+        # 1. Check in-memory cache first (stale-while-revalidate)
+        with _history_cache_lock:
+            if cache_key in _history_cache:
+                ts, df = _history_cache[cache_key]
+                if time.time() - ts < _HISTORY_CACHE_TTL:
+                    logger.debug(f"Cache HIT for {cache_key}")
+                    return df
+
+        # 2. Request coalescing: if same request is in-flight, wait for it
+        with _inflight_lock:
+            if cache_key in _inflight:
+                logger.debug(f"Coalescing request for {cache_key}")
+                future = _inflight[cache_key]
+            else:
+                executor = ThreadPoolExecutor(max_workers=1)
+                future = executor.submit(_fetch_single_history, symbol, period, resolved)
+                _inflight[cache_key] = future
+
+        try:
+            result = future.result(timeout=60)
+        except Exception as e:
+            logger.warning(f"History fetch timeout/error for {cache_key}: {e}")
+            result = _empty_ohlcv_df()
+        finally:
+            with _inflight_lock:
+                _inflight.pop(cache_key, None)
 
         if result.empty:
             raise ValueError(f"No data returned for {symbol} (period={period}, interval={resolved})")
+
+        # 3. Store in cache
+        with _history_cache_lock:
+            _history_cache[cache_key] = (time.time(), result)
+
         return result
     except Exception as e:
         raise RuntimeError(f"yahooquery history error for {symbol}: {e}")
@@ -154,12 +200,19 @@ def get_fast_live_data(
 ) -> Dict[str, Dict[str, Any]]:
     """
     Batch-fetch live quote data using yahooquery's multi-symbol .price endpoint.
-    Single API call for all symbols.
-    Returns {ticker: {regularMarketPrice, regularMarketChangePercent, ...}} dict.
+    Single API call for all symbols. Includes 30-second TTL cache.
     """
     try:
         if isinstance(symbols, str):
             symbols = [symbols]
+
+        # Check cache for all symbols
+        cache_key = "|".join(sorted(symbols))
+        with _quote_cache_lock:
+            if cache_key in _quote_cache:
+                ts, cached = _quote_cache[cache_key]
+                if time.time() - ts < _QUOTE_CACHE_TTL:
+                    return cached
 
         session = _get_shared_session()
         yq = YQTicker(symbols, session=session)
@@ -186,6 +239,10 @@ def get_fast_live_data(
                 logger.warning(f"Price parse failed for {sym}: {e}")
                 result[sym] = _fallback_quote(sym)
 
+        # Cache the result
+        with _quote_cache_lock:
+            _quote_cache[cache_key] = (time.time(), result)
+
         return result
     except Exception as e:
         logger.error(f"Batch price fetch failed: {e}")
@@ -200,6 +257,7 @@ def get_fast_batch_history(
     """
     Fetch historical data for multiple symbols in parallel using ThreadPoolExecutor.
     Each symbol uses the shared session to avoid repeated initialization timeouts.
+    Includes request coalescing per-symbol.
     """
     try:
         resolved = _resolve_interval(period, interval)
@@ -207,10 +265,10 @@ def get_fast_batch_history(
         results: Dict[str, pd.DataFrame] = {}
         with ThreadPoolExecutor(max_workers=min(len(symbols), 8)) as executor:
             futures = {
-                executor.submit(_fetch_single_history, sym, period, resolved): sym
+                executor.submit(get_fast_history, sym, period, resolved): sym
                 for sym in symbols
             }
-            for future in as_completed(futures):
+            for future in futures:
                 sym = futures[future]
                 try:
                     results[sym] = future.result(timeout=60)
@@ -292,8 +350,6 @@ def _search_yahoo_v6(query: str, limit: int) -> List[Dict[str, Any]]:
         if not quote_data or not isinstance(quote_data, dict):
             return []
 
-        # v6 returns a single quote for the exact symbol
-        # Try to get the symbol and its info
         results = []
         for sym, info in quote_data.items():
             if not isinstance(info, dict) or sym == query.upper():

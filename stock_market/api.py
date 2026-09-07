@@ -1,15 +1,16 @@
 import math
+import time
+import threading
 import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import pandas as pd
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Import core logic
-from utils import get_top_performing_stocks, get_latest_price, load_data, STOCK_NAMES
+from utils import get_top_performing_stocks, get_latest_price, load_data, STOCK_NAMES, get_cached_forecast, set_cached_forecast
 from indicators import calculate_indicators
 from sentiment import analyze_sentiment
 from forecast_onnx import load_forecast_model, forecast_stock
@@ -32,6 +33,60 @@ def safe_float(val, default=0.0):
         return f
     except (TypeError, ValueError):
         return default
+
+
+# ─── Performance Instrumentation ────────────────────────────────────────────
+import logging
+logger = logging.getLogger(__name__)
+
+class _Timer:
+    """Context manager that logs elapsed time on exit."""
+    def __init__(self, label: str):
+        self.label = label
+        self.start = 0.0
+        self.elapsed = 0.0
+
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
+
+    def __exit__(self, *args):
+        self.elapsed = (time.perf_counter() - self.start) * 1000  # ms
+        logger.info(f"[PERF] {self.label}: {self.elapsed:.0f}ms")
+
+
+# ─── Background Precomputation ─────────────────────────────────────────────
+# Precomputed market-wide data that many endpoints share.
+# Refreshed in background every 2 minutes to avoid request-time latency.
+_precomputed = {
+    "top_stocks": [],
+    "top_stocks_ts": 0.0,
+    "market_overview_cache": {},  # ticker -> (ts, result)
+}
+_precomputed_lock = threading.Lock()
+_TOP_STOCKS_PRECOMP_TTL = 120  # 2 minutes
+
+
+def _precompute_top_stocks():
+    """Background: refresh top performing stocks every 2 minutes."""
+    while True:
+        try:
+            result = get_top_performing_stocks(limit=10)
+            with _precomputed_lock:
+                _precomputed["top_stocks"] = result
+                _precomputed["top_stocks_ts"] = time.time()
+        except Exception as e:
+            logger.debug(f"Precompute top stocks failed: {e}")
+        time.sleep(_TOP_STOCKS_PRECOMP_TTL)
+
+
+def _get_precomputed_top_stocks():
+    """Get precomputed top stocks. Returns cached if fresh, else empty list."""
+    with _precomputed_lock:
+        ts = _precomputed.get("top_stocks_ts", 0)
+        if time.time() - ts < _TOP_STOCKS_PRECOMP_TTL and _precomputed["top_stocks"]:
+            return _precomputed["top_stocks"]
+    return []
 
 app = FastAPI(title="AI Driven Market Analysis API")
 
@@ -59,6 +114,10 @@ def load_models_at_startup():
             print(f"Yahooquery session warm-up failed (non-fatal): {e}")
 
     threading.Thread(target=_warm_session, daemon=True).start()
+
+    # Start background precomputation for market-wide rankings
+    threading.Thread(target=_precompute_top_stocks, daemon=True).start()
+    print("Background precomputation started.")
 
 app.add_middleware(
     CORSMiddleware,
@@ -163,198 +222,209 @@ def get_market_overview(req: IndicatorRequest):
     """
     COMBINED endpoint: returns ALL data needed for the market overview page
     in a single API call. Independent operations run in parallel for speed.
+    Includes timing instrumentation for performance monitoring.
     """
     ticker = req.ticker
     period = req.period
     result = {"ticker": ticker}
 
-    # 1. Load data first (everything else depends on this)
-    try:
-        df = load_data(ticker, period)
-    except Exception:
-        df = None
-
-    if df is None or df.empty:
-        result.update({
-            "data": [], "currentPrice": 0, "change": 0, "changePercent": 0,
-            "volatility": None, "risk": None, "trendStrength": None,
-            "tradeConfirmation": None, "sentiment": None,
-            "topStocks": [], "watchlist": [], "marketStatus": "Unknown"
-        })
-        return result
-
-    # 2. Compute indicators ONCE (shared by multiple sub-calculations)
-    try:
-        indicators = calculate_indicators(df)
-        result["data"] = indicators
-        df_ind = pd.DataFrame(indicators)
-    except Exception:
-        indicators = []
-        df_ind = pd.DataFrame()
-
-    # 3. Current price
-    current_price = 0.0
-    price_change = 0.0
-    price_change_pct = 0.0
-    try:
-        live = get_latest_price(ticker)
-        if live and live > 0:
-            current_price = live
-            if len(df) >= 2:
-                prev = float(df["Close"].iloc[-2])
-                if prev > 0:
-                    price_change = current_price - prev
-                    price_change_pct = (price_change / prev) * 100
-        elif len(df) > 0:
-            last_c = df["Close"].iloc[-1]
-            if isinstance(last_c, pd.DataFrame):
-                last_c = last_c.iloc[:, 0]
-            current_price = float(last_c)
-            if len(df) >= 2:
-                prev = df["Close"].iloc[-2]
-                if isinstance(prev, pd.DataFrame):
-                    prev = prev.iloc[:, 0]
-                prev = float(prev)
-                if prev > 0:
-                    price_change = current_price - prev
-                    price_change_pct = (price_change / prev) * 100
-    except Exception:
-        pass
-
-    result["currentPrice"] = current_price
-    result["change"] = price_change
-    result["changePercent"] = price_change_pct
-
-    # 4. Run independent operations IN PARALLEL
-    asset_info = get_asset_info(ticker)
-    has_volume = asset_info["has_volume"]
-
-    def _compute_volatility():
-        try:
-            return ("volatility", get_volatility_summary(df, has_volume))
-        except Exception:
-            return ("volatility", None)
-
-    def _compute_risk():
-        try:
-            if not df_ind.empty:
-                return ("risk", assess_risk(df_ind, ticker))
-        except Exception:
-            pass
-        return ("risk", None)
-
-    def _compute_trend():
-        try:
-            if not df_ind.empty:
-                score = calculate_trend_strength(df_ind)
-                return ("trendStrength", {
-                    "ticker": ticker,
-                    "trend_score": round(score, 1),
-                    "trend_label": "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
-                })
-        except Exception:
-            pass
-        return ("trendStrength", None)
-
-    def _compute_sentiment():
-        try:
-            sent_full = analyze_sentiment(ticker)
-            return ("sentiment", {
-                "ticker": ticker,
-                "sentiment_score": sent_full["score"],
-                "sentiment_label": sent_full["label"],
-                "positive_count": sent_full.get("positive_count", 0),
-                "negative_count": sent_full.get("negative_count", 0),
-                "news": sent_full["news"],
-                "score": sent_full["score"],
-                "label": sent_full["label"],
-                "sentiment_trend_7d": sent_full.get("sentiment_trend_7d", []),
-                "news_impact_summary": sent_full.get("news_impact_summary", ""),
-                "market_mood": sent_full.get("market_mood", "Unknown"),
-            })
-        except Exception:
-            return ("sentiment", None)
-
-    def _compute_top_stocks():
-        try:
-            return ("topStocks", get_top_performing_stocks(limit=6))
-        except Exception:
-            return ("topStocks", [])
-
-    # Run all independent computations in parallel
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {
-            executor.submit(_compute_volatility): "volatility",
-            executor.submit(_compute_risk): "risk",
-            executor.submit(_compute_trend): "trendStrength",
-            executor.submit(_compute_sentiment): "sentiment",
-            executor.submit(_compute_top_stocks): "topStocks",
-        }
-        for future in as_completed(futures):
+    with _Timer(f"market_overview({ticker},{period})") as total:
+        # 1. Load data first (everything else depends on this)
+        with _Timer("load_data") as t_load:
             try:
-                key, value = future.result()
-                result[key] = value
+                df = load_data(ticker, period)
+            except Exception:
+                df = None
+
+        if df is None or df.empty:
+            result.update({
+                "data": [], "currentPrice": 0, "change": 0, "changePercent": 0,
+                "volatility": None, "risk": None, "trendStrength": None,
+                "tradeConfirmation": None, "sentiment": None,
+                "topStocks": _get_precomputed_top_stocks(),
+                "watchlist": [], "marketStatus": "Unknown"
+            })
+            return result
+
+        # 2. Compute indicators ONCE (shared by multiple sub-calculations)
+        with _Timer("calculate_indicators") as t_ind:
+            try:
+                indicators = calculate_indicators(df)
+                result["data"] = indicators
+                df_ind = pd.DataFrame(indicators)
+            except Exception:
+                indicators = []
+                df_ind = pd.DataFrame()
+
+        # 3. Current price
+        current_price = 0.0
+        price_change = 0.0
+        price_change_pct = 0.0
+        try:
+            live = get_latest_price(ticker)
+            if live and live > 0:
+                current_price = live
+                if len(df) >= 2:
+                    prev = float(df["Close"].iloc[-2])
+                    if prev > 0:
+                        price_change = current_price - prev
+                        price_change_pct = (price_change / prev) * 100
+            elif len(df) > 0:
+                last_c = df["Close"].iloc[-1]
+                if isinstance(last_c, pd.DataFrame):
+                    last_c = last_c.iloc[:, 0]
+                current_price = float(last_c)
+                if len(df) >= 2:
+                    prev = df["Close"].iloc[-2]
+                    if isinstance(prev, pd.DataFrame):
+                        prev = prev.iloc[:, 0]
+                    prev = float(prev)
+                    if prev > 0:
+                        price_change = current_price - prev
+                        price_change_pct = (price_change / prev) * 100
+        except Exception:
+            pass
+
+        result["currentPrice"] = current_price
+        result["change"] = price_change
+        result["changePercent"] = price_change_pct
+
+        # 4. Run independent operations IN PARALLEL
+        asset_info = get_asset_info(ticker)
+        has_volume = asset_info["has_volume"]
+
+        def _compute_volatility():
+            try:
+                return ("volatility", get_volatility_summary(df, has_volume))
+            except Exception:
+                return ("volatility", None)
+
+        def _compute_risk():
+            try:
+                if not df_ind.empty:
+                    return ("risk", assess_risk(df_ind, ticker))
             except Exception:
                 pass
+            return ("risk", None)
 
-    # 5. Trade confirmation (depends on volatility + risk + trend + sentiment)
-    try:
-        if not df_ind.empty:
-            latest = df_ind.iloc[-1]
-            sent_data = {"score": 0.0, "label": "Neutral"}
-            if result.get("sentiment"):
-                sent_data = {"score": result["sentiment"]["score"], "label": result["sentiment"]["label"]}
+        def _compute_trend():
+            try:
+                if not df_ind.empty:
+                    score = calculate_trend_strength(df_ind)
+                    return ("trendStrength", {
+                        "ticker": ticker,
+                        "trend_score": round(score, 1),
+                        "trend_label": "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
+                    })
+            except Exception:
+                pass
+            return ("trendStrength", None)
 
-            opp = calculate_opportunity_score(ticker, period)
-            vol_s = result.get("volatility") or {}
-            risk_d = result.get("risk") or {}
+        def _compute_sentiment():
+            try:
+                sent_full = analyze_sentiment(ticker)
+                return ("sentiment", {
+                    "ticker": ticker,
+                    "sentiment_score": sent_full["score"],
+                    "sentiment_label": sent_full["label"],
+                    "positive_count": sent_full.get("positive_count", 0),
+                    "negative_count": sent_full.get("negative_count", 0),
+                    "news": sent_full["news"],
+                    "score": sent_full["score"],
+                    "label": sent_full["label"],
+                    "sentiment_trend_7d": sent_full.get("sentiment_trend_7d", []),
+                    "news_impact_summary": sent_full.get("news_impact_summary", ""),
+                    "market_mood": sent_full.get("market_mood", "Unknown"),
+                })
+            except Exception:
+                return ("sentiment", None)
 
-            result["tradeConfirmation"] = {
-                "ticker": ticker,
-                "name": asset_info["name"],
-                "opportunity_score": opp["score"] if opp else 50.0,
-                "trend": result.get("trendStrength") or {},
-                "technicals": {
-                    "rsi": round(float(latest.get("RSI", 50)), 1),
-                    "macd_signal": "Bullish" if float(latest.get("MACD", 0)) > float(latest.get("Signal", 0)) else "Bearish"
-                },
-                "risk": {
-                    "level": risk_d.get("risk_level", "Unknown"),
-                    "score": risk_d.get("risk_score", 50)
-                },
-                "volatility": {
-                    "level": "High" if vol_s.get("daily_volatility", 0) > 35 else "Low" if vol_s.get("daily_volatility", 0) < 15 else "Medium",
-                    "daily": round(vol_s.get("daily_volatility", 0), 1)
-                },
-                "sentiment": sent_data,
-                "relative_volume": vol_s.get("relative_volume", {"available": False})
-            }
-        else:
-            result["tradeConfirmation"] = None
-    except Exception:
-        result["tradeConfirmation"] = None
+        def _compute_top_stocks():
+            try:
+                # Use precomputed data if fresh, otherwise fetch
+                precomputed = _get_precomputed_top_stocks()
+                if precomputed:
+                    return ("topStocks", precomputed[:6])
+                return ("topStocks", get_top_performing_stocks(limit=6))
+            except Exception:
+                return ("topStocks", [])
 
-    # 6. Watchlist defaults
-    try:
-        result["watchlist"] = get_default_watchlist()
-    except Exception:
-        result["watchlist"] = []
+        # Run all independent computations in parallel
+        with _Timer("parallel_computations") as t_parallel:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {
+                    executor.submit(_compute_volatility): "volatility",
+                    executor.submit(_compute_risk): "risk",
+                    executor.submit(_compute_trend): "trendStrength",
+                    executor.submit(_compute_sentiment): "sentiment",
+                    executor.submit(_compute_top_stocks): "topStocks",
+                }
+                for future in as_completed(futures):
+                    try:
+                        key, value = future.result()
+                        result[key] = value
+                    except Exception:
+                        pass
 
-    # 7. Market status
-    try:
-        from datetime import datetime, timezone, timedelta
-        now = datetime.now(timezone.utc)
-        et = now - timedelta(hours=4)
-        hour, minute = et.hour, et.minute
-        weekday = et.weekday()
-        market_time = hour * 60 + minute
-        market_open = 9 * 60 + 30
-        market_close = 16 * 60
-        is_weekday = weekday < 5
-        is_open = is_weekday and market_open <= market_time < market_close
-        result["marketStatus"] = "Open" if is_open else "Closed"
-    except Exception:
-        result["marketStatus"] = "Unknown"
+        # 5. Trade confirmation (depends on volatility + risk + trend + sentiment)
+        with _Timer("trade_confirmation") as t_tc:
+            try:
+                if not df_ind.empty:
+                    latest = df_ind.iloc[-1]
+                    sent_data = {"score": 0.0, "label": "Neutral"}
+                    if result.get("sentiment"):
+                        sent_data = {"score": result["sentiment"]["score"], "label": result["sentiment"]["label"]}
+
+                    opp = calculate_opportunity_score(ticker, period)
+                    vol_s = result.get("volatility") or {}
+                    risk_d = result.get("risk") or {}
+
+                    result["tradeConfirmation"] = {
+                        "ticker": ticker,
+                        "name": asset_info["name"],
+                        "opportunity_score": opp["score"] if opp else 50.0,
+                        "trend": result.get("trendStrength") or {},
+                        "technicals": {
+                            "rsi": round(float(latest.get("RSI", 50)), 1),
+                            "macd_signal": "Bullish" if float(latest.get("MACD", 0)) > float(latest.get("Signal", 0)) else "Bearish"
+                        },
+                        "risk": {
+                            "level": risk_d.get("risk_level", "Unknown"),
+                            "score": risk_d.get("risk_score", 50)
+                        },
+                        "volatility": {
+                            "level": "High" if vol_s.get("daily_volatility", 0) > 35 else "Low" if vol_s.get("daily_volatility", 0) < 15 else "Medium",
+                            "daily": round(vol_s.get("daily_volatility", 0), 1)
+                        },
+                        "sentiment": sent_data,
+                        "relative_volume": vol_s.get("relative_volume", {"available": False})
+                    }
+                else:
+                    result["tradeConfirmation"] = None
+            except Exception:
+                result["tradeConfirmation"] = None
+
+        # 6. Watchlist defaults
+        try:
+            result["watchlist"] = get_default_watchlist()
+        except Exception:
+            result["watchlist"] = []
+
+        # 7. Market status
+        try:
+            from datetime import datetime, timezone, timedelta
+            now = datetime.now(timezone.utc)
+            et = now - timedelta(hours=4)
+            hour, minute = et.hour, et.minute
+            weekday = et.weekday()
+            market_time = hour * 60 + minute
+            market_open = 9 * 60 + 30
+            market_close = 16 * 60
+            is_weekday = weekday < 5
+            is_open = is_weekday and market_open <= market_time < market_close
+            result["marketStatus"] = "Open" if is_open else "Closed"
+        except Exception:
+            result["marketStatus"] = "Unknown"
 
     return result
 
@@ -559,7 +629,7 @@ def trade_confirmation(req: SingleAssetRequest):
 
 @app.post("/api/forecast/onnx")
 def get_stock_forecast(request: ForecastRequest):
-    """Return stock forecast using ONNX Runtime"""
+    """Return stock forecast using ONNX Runtime. Results cached for 15 minutes."""
     # 5. FIX FORECAST API FAILURE HANDLING
     if MODEL is None or SCALERS is None:
         return {
@@ -569,66 +639,78 @@ def get_stock_forecast(request: ForecastRequest):
             "forecast_dates": []
         }
 
-    try:
-        raw_df = load_data(request.ticker, request.period)
-        close_col = raw_df['Close']
-        if isinstance(close_col, pd.DataFrame):
-            close_col = close_col.iloc[:, 0]
-        df = pd.DataFrame({"Close": close_col}).dropna()
+    # Check forecast cache first
+    forecast_cache_key = f"forecast_{request.ticker}_{request.forecast_days}_{request.period}"
+    cached_forecast = get_cached_forecast(forecast_cache_key)
+    if cached_forecast is not None:
+        return cached_forecast
 
-        if df is None or len(df) < 61:
+    with _Timer(f"forecast({request.ticker},{request.forecast_days}d)") as t_fc:
+        try:
+            raw_df = load_data(request.ticker, request.period)
+            close_col = raw_df['Close']
+            if isinstance(close_col, pd.DataFrame):
+                close_col = close_col.iloc[:, 0]
+            df = pd.DataFrame({"Close": close_col}).dropna()
+
+            if df is None or len(df) < 61:
+                return {
+                    "status": "error",
+                    "message": "Model not available on server",
+                    "forecast_prices": [],
+                    "forecast_dates": []
+                }
+
+            # Use the pre-fitted scaler for this ticker
+            ticker = request.ticker
+            if ticker in SCALERS:
+                scaler = SCALERS[ticker]
+            else:
+                # Fallback if ticker was not in training set
+                from sklearn.preprocessing import MinMaxScaler
+                scaler = MinMaxScaler(feature_range=(0, 1))
+                close_prices = df[["Close"]].values
+                scaler.fit(close_prices)
+
+            actual, predicted, forecast, dates = forecast_stock(
+                df, MODEL, scaler, forecast_days=request.forecast_days
+            )
+
+            forecast_data = {
+                "actual_prices": actual.tolist(),
+                "predicted_historical_prices": predicted.tolist(),
+                "forecast_prices": forecast.tolist(),
+                "forecast_dates": [str(d.date()) for d in dates]
+            }
+
+            if not forecast_data["actual_prices"] or not forecast_data["forecast_prices"]:
+                 return {
+                     "status": "error",
+                     "message": "Model not available on server",
+                     "forecast_prices": [],
+                     "forecast_dates": []
+                 }
+
+            response = {
+                "status": "success",
+                "ticker": request.ticker,
+                "forecast_days": request.forecast_days,
+                "results": forecast_data
+            }
+
+            # Cache the successful result
+            set_cached_forecast(forecast_cache_key, response)
+
+            return response
+
+        except Exception as e:
+            traceback.print_exc()
             return {
                 "status": "error",
                 "message": "Model not available on server",
                 "forecast_prices": [],
                 "forecast_dates": []
             }
-
-        # Use the pre-fitted scaler for this ticker
-        ticker = request.ticker
-        if ticker in SCALERS:
-            scaler = SCALERS[ticker]
-        else:
-            # Fallback if ticker was not in training set
-            from sklearn.preprocessing import MinMaxScaler
-            scaler = MinMaxScaler(feature_range=(0, 1))
-            close_prices = df[["Close"]].values
-            scaler.fit(close_prices)
-
-        actual, predicted, forecast, dates = forecast_stock(
-            df, MODEL, scaler, forecast_days=request.forecast_days
-        )
-
-        forecast_data = {
-            "actual_prices": actual.tolist(),
-            "predicted_historical_prices": predicted.tolist(),
-            "forecast_prices": forecast.tolist(),
-            "forecast_dates": [str(d.date()) for d in dates]
-        }
-
-        if not forecast_data["actual_prices"] or not forecast_data["forecast_prices"]:
-             return {
-                 "status": "error",
-                 "message": "Model not available on server",
-                 "forecast_prices": [],
-                 "forecast_dates": []
-             }
-
-        return {
-            "status": "success",
-            "ticker": request.ticker,
-            "forecast_days": request.forecast_days,
-            "results": forecast_data
-        }
-
-    except Exception as e:
-        traceback.print_exc()
-        return {
-            "status": "error",
-            "message": "Model not available on server",
-            "forecast_prices": [],
-            "forecast_dates": []
-        }
 
 @app.post("/api/data/sentiment")
 def get_sentiment(request: SentimentRequest):

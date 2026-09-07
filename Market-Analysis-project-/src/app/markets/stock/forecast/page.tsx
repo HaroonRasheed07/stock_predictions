@@ -181,6 +181,9 @@ export default function PriceForecasting() {
     refetchInterval: 0, // Don't auto refetch often as it's heavy
     retry: 2,
     enabled: !!ticker,
+    staleTime: 60000, // 1 minute — forecast is expensive, cache it
+    gcTime: 600000, // 10 minutes — keep in memory for fast back/forward
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) return (

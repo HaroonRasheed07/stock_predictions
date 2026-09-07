@@ -109,6 +109,8 @@ export default function StockOverview() {
     queryFn: () => fetchMarketOverview(ticker, timeRange),
     refetchInterval: 30000,
     staleTime: 15000,
+    gcTime: 300000, // 5 minutes — keep in memory for fast back/forward
+    refetchOnWindowFocus: false,
   });
 
   // Separate lightweight queries for data that refreshes differently
@@ -116,12 +118,18 @@ export default function StockOverview() {
     queryKey: ['opportunities', overview?.watchlist || []],
     queryFn: () => import('@/lib/api').then(m => m.fetchOpportunityScan(overview?.watchlist || [])),
     enabled: !!overview?.watchlist?.length,
+    staleTime: 60000, // 1 minute — opportunity scores don't change fast
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: volatilityMonitorData, isLoading: isLoadingVolatilityMonitor, refetch: refetchVolatilityMonitor } = useQuery({
     queryKey: ['volatility-monitor', overview?.watchlist || []],
     queryFn: () => import('@/lib/api').then(m => m.fetchVolatilityMonitor(overview?.watchlist || [])),
     enabled: !!overview?.watchlist?.length,
+    staleTime: 60000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) return (

@@ -112,6 +112,9 @@ export default function SentimentAnalysis() {
     queryKey: ['sentiment-data', ticker],
     queryFn: () => fetchSentiment(ticker),
     refetchInterval: 60000,
+    staleTime: 30000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   // ALWAYS show the search header — never block it behind a skeleton

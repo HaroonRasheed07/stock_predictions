@@ -2,34 +2,91 @@
 """
 Replaces yfinance with yahooquery for 10-50x faster batch data retrieval.
 All function signatures and return types are preserved for zero-cascading changes.
+
+Cache strategy:
+  - Stale-while-revalidate: Serve stale data immediately, refresh in background
+  - Separate TTLs: history (2min), scan (10min), top performers (5min), forecast (15min)
+  - Shared OHLCV cache across all endpoints (eliminates duplicate Yahoo Query calls)
 """
 
 import pandas as pd
 import time
 import logging
+import threading
 from yahooquery_adapter import get_fast_history, get_fast_batch_history, get_fast_live_data
 
 logger = logging.getLogger(__name__)
 
-# --- Simple in-memory cache ---
+# --- Stale-while-revalidate cache ---
 _data_cache: dict = {}  # key -> (timestamp, dataframe_or_list)
-_DATA_CACHE_TTL = 120  # seconds (2 minutes)
+_DATA_CACHE_TTL = 120  # seconds (2 minutes) — fresh data
+_DATA_CACHE_STALE_TTL = 300  # seconds (5 minutes) — serve stale, refresh in bg
+_DATA_CACHE_MAX_ENTRIES = 50  # Max cached DataFrames (memory guard for 512MB)
 
 # --- Separate cache for scan operations (10-minute TTL) ---
 _scan_cache: dict = {}  # key -> (timestamp, result)
 _SCAN_CACHE_TTL = 600  # seconds (10 minutes)
+_SCAN_CACHE_MAX_ENTRIES = 100
 
 # --- Top performers cache with separate key and longer TTL ---
 _TOP_PERFORMERS_CACHE_TTL = 300  # 5 minutes
 
-def _get_cached_df(key: str):
+# --- Forecast cache (ONNX inference is expensive, cache 15 minutes) ---
+_forecast_cache: dict = {}  # key -> (timestamp, result)
+_FORECAST_CACHE_TTL = 900  # 15 minutes
+_FORECAST_CACHE_MAX_ENTRIES = 20
+
+# --- Background refresh locks (prevent thundering herd) ---
+_bg_refresh_locks: dict = {}
+_bg_refresh_lock = threading.Lock()
+
+def _get_cached_df(key: str, allow_stale: bool = True):
+    """
+    Stale-while-revalidate: return fresh data if available.
+    If stale but within stale TTL, return it and schedule background refresh.
+    """
     if key in _data_cache:
         ts, df = _data_cache[key]
-        if time.time() - ts < _DATA_CACHE_TTL:
+        age = time.time() - ts
+        if age < _DATA_CACHE_TTL:
+            return df  # Fresh
+        if allow_stale and age < _DATA_CACHE_STALE_TTL:
+            # Stale but usable — schedule background refresh
+            _schedule_bg_refresh(key)
             return df
     return None
 
+def _schedule_bg_refresh(key: str):
+    """Schedule a background refresh for stale cache entries."""
+    with _bg_refresh_lock:
+        if key in _bg_refresh_locks:
+            return  # Already refreshing
+        _bg_refresh_locks[key] = True
+
+    def _refresh():
+        try:
+            parts = key.split("|")
+            if len(parts) == 3:
+                ticker, period, interval = parts
+                fresh = get_fast_history(ticker, period=period, interval=interval)
+                if fresh is not None and not fresh.empty:
+                    _data_cache[key] = (time.time(), fresh)
+                    logger.debug(f"Background refresh completed for {key}")
+        except Exception as e:
+            logger.debug(f"Background refresh failed for {key}: {e}")
+        finally:
+            with _bg_refresh_lock:
+                _bg_refresh_locks.pop(key, None)
+
+    threading.Thread(target=_refresh, daemon=True).start()
+
 def _set_cached_df(key: str, df):
+    # Evict oldest entries if cache is full (memory guard for 512MB Render)
+    if len(_data_cache) >= _DATA_CACHE_MAX_ENTRIES:
+        # Remove oldest 20% of entries
+        sorted_keys = sorted(_data_cache.keys(), key=lambda k: _data_cache[k][0])
+        for k in sorted_keys[:max(1, len(sorted_keys) // 5)]:
+            del _data_cache[k]
     _data_cache[key] = (time.time(), df)
 
 def _get_cached_scan(key: str):
@@ -40,14 +97,35 @@ def _get_cached_scan(key: str):
     return None
 
 def _set_cached_scan(key: str, result):
+    if len(_scan_cache) >= _SCAN_CACHE_MAX_ENTRIES:
+        sorted_keys = sorted(_scan_cache.keys(), key=lambda k: _scan_cache[k][0])
+        for k in sorted_keys[:max(1, len(sorted_keys) // 5)]:
+            del _scan_cache[k]
     _scan_cache[key] = (time.time(), result)
 
+def get_cached_forecast(key: str):
+    """Get cached forecast result (15-minute TTL)."""
+    if key in _forecast_cache:
+        ts, result = _forecast_cache[key]
+        if time.time() - ts < _FORECAST_CACHE_TTL:
+            return result
+    return None
 
-def load_data(ticker, period="1y", interval=None):
+def set_cached_forecast(key: str, result):
+    """Cache forecast result."""
+    if len(_forecast_cache) >= _FORECAST_CACHE_MAX_ENTRIES:
+        sorted_keys = sorted(_forecast_cache.keys(), key=lambda k: _forecast_cache[k][0])
+        for k in sorted_keys[:max(1, len(sorted_keys) // 5)]:
+            del _forecast_cache[k]
+    _forecast_cache[key] = (time.time(), result)
+
+
+def load_data(ticker, period="1y", interval=None, allow_stale=True):
     """
     Load historical OHLCV data for a single ticker.
     Returns a DataFrame with columns: Open, High, Low, Close, Volume.
     Identical interface to the old yfinance version.
+    Uses stale-while-revalidate: serves stale data immediately, refreshes in background.
     """
     try:
         # Auto-determine interval if not specified
@@ -63,9 +141,9 @@ def load_data(ticker, period="1y", interval=None):
             else:
                 interval = "1d"
 
-        # Check cache first
+        # Check cache first (stale-while-revalidate)
         cache_key = f"{ticker}|{period}|{interval}"
-        cached = _get_cached_df(cache_key)
+        cached = _get_cached_df(cache_key, allow_stale=allow_stale)
         if cached is not None:
             return cached
 

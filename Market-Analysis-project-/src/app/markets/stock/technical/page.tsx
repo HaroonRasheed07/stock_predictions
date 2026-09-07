@@ -105,17 +105,26 @@ export default function TechnicalAnalysis() {
   const { data: apiData, isLoading } = useQuery({
     queryKey: ['technical-data', ticker, timeRange],
     queryFn: () => fetchIndicators(ticker, timeRange),
-    refetchInterval: 30000, // Auto-refresh every 30 seconds for live data
+    refetchInterval: 30000,
+    staleTime: 15000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: trendStrengthData, isLoading: isLoadingTrendStrength } = useQuery({
     queryKey: ['trend-strength', ticker],
     queryFn: () => fetchTrendStrength(ticker),
+    staleTime: 30000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: volatilitySummaryData, isLoading: isLoadingVolatilitySummary } = useQuery({
     queryKey: ['volatility-summary', ticker],
     queryFn: () => fetchVolatilitySummary(ticker),
+    staleTime: 30000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const candleData = apiData?.data?.map((d: any) => ({
