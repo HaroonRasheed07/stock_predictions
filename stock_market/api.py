@@ -217,15 +217,38 @@ def get_stock_data_and_indicators(req: IndicatorRequest):
     }
 
 
+# ─── Endpoint In-Memory Caching ──────────────────────────────────────────────
+_endpoint_cache: Dict[str, tuple[float, Any]] = {}
+_endpoint_cache_lock = threading.Lock()
+
+def _get_cached_endpoint(key: str, ttl_seconds: float = 60.0) -> Optional[Any]:
+    with _endpoint_cache_lock:
+        if key in _endpoint_cache:
+            ts, val = _endpoint_cache[key]
+            if time.time() - ts < ttl_seconds:
+                return val
+    return None
+
+def _set_cached_endpoint(key: str, val: Any) -> None:
+    with _endpoint_cache_lock:
+        _endpoint_cache[key] = (time.time(), val)
+
+
 @app.post("/api/market/overview")
 def get_market_overview(req: IndicatorRequest):
     """
     COMBINED endpoint: returns ALL data needed for the market overview page
     in a single API call. Independent operations run in parallel for speed.
-    Includes timing instrumentation for performance monitoring.
+    Includes timing instrumentation and in-memory TTL caching for performance.
     """
     ticker = req.ticker
     period = req.period
+    cache_key = f"overview_{ticker}_{period}"
+    
+    cached = _get_cached_endpoint(cache_key, ttl_seconds=60.0)
+    if cached is not None:
+        return cached
+
     result = {"ticker": ticker}
 
     with _Timer(f"market_overview({ticker},{period})") as total:
@@ -341,7 +364,6 @@ def get_market_overview(req: IndicatorRequest):
 
         def _compute_top_stocks():
             try:
-                # Use precomputed data if fresh, otherwise fetch
                 precomputed = _get_precomputed_top_stocks()
                 if precomputed:
                     return ("topStocks", precomputed[:6])
@@ -375,7 +397,7 @@ def get_market_overview(req: IndicatorRequest):
                     if result.get("sentiment"):
                         sent_data = {"score": result["sentiment"]["score"], "label": result["sentiment"]["label"]}
 
-                    opp = calculate_opportunity_score(ticker, period)
+                    opp = calculate_opportunity_score(ticker, period, skip_sentiment=True)
                     vol_s = result.get("volatility") or {}
                     risk_d = result.get("risk") or {}
 
@@ -426,6 +448,7 @@ def get_market_overview(req: IndicatorRequest):
         except Exception:
             result["marketStatus"] = "Unknown"
 
+    _set_cached_endpoint(cache_key, result)
     return result
 
 
@@ -459,10 +482,16 @@ def scan_opportunities(req: WatchlistScanRequest):
     if not req.tickers:
         req.tickers = get_default_watchlist()
 
-    # Optional: limit to 20 to avoid timeouts on free tier
     tickers_to_scan = req.tickers[:20]
+    cache_key = f"opp_scan_{','.join(sorted(tickers_to_scan))}_{req.period}"
+    cached = _get_cached_endpoint(cache_key, ttl_seconds=60.0)
+    if cached is not None:
+        return cached
+
     results = scan_watchlist(tickers_to_scan, req.period)
-    return {"scan_results": results}
+    res_payload = {"scan_results": results}
+    _set_cached_endpoint(cache_key, res_payload)
+    return res_payload
 
 @app.post("/api/volatility/summary")
 def volatility_summary(req: SingleAssetRequest):
@@ -481,6 +510,12 @@ def volatility_monitor(req: WatchlistScanRequest):
     """Get volatility metrics for multiple assets for the monitor table"""
     if not req.tickers:
         req.tickers = get_default_watchlist()
+
+    tickers_to_scan = req.tickers[:20]
+    cache_key = f"vol_mon_{','.join(sorted(tickers_to_scan))}_{req.period}"
+    cached = _get_cached_endpoint(cache_key, ttl_seconds=60.0)
+    if cached is not None:
+        return cached
 
     def _compute_single(ticker):
         try:
@@ -502,7 +537,7 @@ def volatility_monitor(req: WatchlistScanRequest):
     # Run all tickers in parallel
     results = []
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(_compute_single, t): t for t in req.tickers[:20]}
+        futures = {executor.submit(_compute_single, t): t for t in tickers_to_scan}
         for future in as_completed(futures):
             r = future.result()
             if r:
@@ -510,7 +545,9 @@ def volatility_monitor(req: WatchlistScanRequest):
 
     # Sort by daily volatility descending
     results.sort(key=lambda x: x["daily_volatility"], reverse=True)
-    return {"volatility_monitor": results}
+    res_payload = {"volatility_monitor": results}
+    _set_cached_endpoint(cache_key, res_payload)
+    return res_payload
 
 @app.post("/api/risk/assess")
 def risk_assessment(req: SingleAssetRequest):

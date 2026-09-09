@@ -15,7 +15,7 @@ from risk import calculate_trend_strength
 from multi_asset import get_asset_info
 
 
-def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool = True) -> Optional[Dict[str, Any]]:
+def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool = True, skip_sentiment: bool = False) -> Optional[Dict[str, Any]]:
     """
     Calculate an opportunity score (0-100) for a given ticker.
     Combines multiple signals into a single score.
@@ -109,27 +109,27 @@ def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool
         })
 
         # 5. Sentiment (Weight: 20%)
-        # For performance, we might skip sentiment for large scans or use a cached version
-        # Let's assume we do a quick fetch
+        # For bulk scans (skip_sentiment=True), skip the slow newsdata.io API call.
+        # Per-ticker overview calls still get real sentiment.
         sentiment_impact = 0.0
         sentiment_val = "Neutral"
         sentiment_score = 0.0
         
-        try:
-            # We wrap this in a try-except to avoid failing the whole scan if news API is down
-            sent_res = analyze_sentiment(ticker)
-            sentiment_score = sent_res["score"]
-            sentiment_impact = sentiment_score * 20.0  # -20 to +20
-            sentiment_val = sent_res["label"]
-        except Exception:
-            pass
+        if not skip_sentiment:
+            try:
+                sent_res = analyze_sentiment(ticker)
+                sentiment_score = sent_res["score"]
+                sentiment_impact = sentiment_score * 20.0  # -20 to +20
+                sentiment_val = sent_res["label"]
+            except Exception:
+                pass
 
         score += sentiment_impact
         factors.append({
             "name": "Sentiment",
             "impact": round(sentiment_impact, 1),
             "value": sentiment_val,
-            "detail": f"Score: {sentiment_score:.2f}"
+            "detail": f"Score: {sentiment_score:.2f}" if not skip_sentiment else "Skipped (bulk scan)"
         })
 
         # 6. Relative Volume (Weight: 15%) - If available
@@ -201,7 +201,7 @@ def scan_watchlist(tickers: List[str], period: str = "1y") -> List[Dict[str, Any
 
     def _score_one(ticker):
         try:
-            return calculate_opportunity_score(ticker, period)
+            return calculate_opportunity_score(ticker, period, skip_sentiment=True)
         except Exception:
             return None
 

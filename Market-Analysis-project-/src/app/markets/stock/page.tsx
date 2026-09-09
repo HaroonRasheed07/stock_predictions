@@ -113,20 +113,20 @@ export default function StockOverview() {
     refetchOnWindowFocus: false,
   });
 
-  // Separate lightweight queries for data that refreshes differently
+  // Separate lightweight queries for data that refreshes differently — run in parallel immediately
+  const watchlistTickers = overview?.watchlist && overview.watchlist.length > 0 ? overview.watchlist : [];
+
   const { data: opportunityData, isLoading: isLoadingOpportunities, refetch: refetchOpportunities } = useQuery({
-    queryKey: ['opportunities', overview?.watchlist || []],
-    queryFn: () => import('@/lib/api').then(m => m.fetchOpportunityScan(overview?.watchlist || [])),
-    enabled: !!overview?.watchlist?.length,
+    queryKey: ['opportunities', watchlistTickers],
+    queryFn: () => import('@/lib/api').then(m => m.fetchOpportunityScan(watchlistTickers)),
     staleTime: 60000, // 1 minute — opportunity scores don't change fast
     gcTime: 300000,
     refetchOnWindowFocus: false,
   });
 
   const { data: volatilityMonitorData, isLoading: isLoadingVolatilityMonitor, refetch: refetchVolatilityMonitor } = useQuery({
-    queryKey: ['volatility-monitor', overview?.watchlist || []],
-    queryFn: () => import('@/lib/api').then(m => m.fetchVolatilityMonitor(overview?.watchlist || [])),
-    enabled: !!overview?.watchlist?.length,
+    queryKey: ['volatility-monitor', watchlistTickers],
+    queryFn: () => import('@/lib/api').then(m => m.fetchVolatilityMonitor(watchlistTickers)),
     staleTime: 60000,
     gcTime: 300000,
     refetchOnWindowFocus: false,
