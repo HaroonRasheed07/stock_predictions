@@ -4,9 +4,9 @@ Replaces yfinance with yahooquery for 10-50x faster batch data retrieval.
 All function signatures and return types are preserved for zero-cascading changes.
 
 Cache strategy:
-  - Stale-while-revalidate: Serve stale data immediately, refresh in background
-  - Separate TTLs: history (2min), scan (10min), top performers (5min), forecast (15min)
-  - Shared OHLCV cache across all endpoints (eliminates duplicate Yahoo Query calls)
+  - Persistent Dual-Layer Stale-while-revalidate: Serve stale data immediately, refresh in background
+  - Persistent SQLite storage survives process restarts & deployments
+  - Single-flight locking prevents cache stampedes
 """
 
 import pandas as pd
@@ -14,121 +14,83 @@ import time
 import logging
 import threading
 from yahooquery_adapter import get_fast_history, get_fast_batch_history, get_fast_live_data
+from cache_manager import cache_manager
 
 logger = logging.getLogger(__name__)
 
-# --- Stale-while-revalidate cache ---
-_data_cache: dict = {}  # key -> (timestamp, dataframe_or_list)
-_DATA_CACHE_TTL = 120  # seconds (2 minutes) — fresh data
-_DATA_CACHE_STALE_TTL = 300  # seconds (5 minutes) — serve stale, refresh in bg
-_DATA_CACHE_MAX_ENTRIES = 50  # Max cached DataFrames (memory guard for 512MB)
+# --- Separate TTL constants ---
+_DATA_CACHE_TTL = 300       # 5 minutes fresh
+_DATA_CACHE_STALE_TTL = 86400  # 24 hours stale
+_SCAN_CACHE_TTL = 600       # 10 minutes fresh
+_TOP_PERFORMERS_CACHE_TTL = 300  # 5 minutes fresh
+_FORECAST_CACHE_TTL = 900   # 15 minutes fresh
 
-# --- Separate cache for scan operations (10-minute TTL) ---
-_scan_cache: dict = {}  # key -> (timestamp, result)
-_SCAN_CACHE_TTL = 600  # seconds (10 minutes)
-_SCAN_CACHE_MAX_ENTRIES = 100
 
-# --- Top performers cache with separate key and longer TTL ---
-_TOP_PERFORMERS_CACHE_TTL = 300  # 5 minutes
+def _df_to_dict(df: pd.DataFrame) -> dict:
+    return {
+        "index": [str(i) for i in df.index],
+        "columns": list(df.columns),
+        "data": df.values.tolist()
+    }
 
-# --- Forecast cache (ONNX inference is expensive, cache 15 minutes) ---
-_forecast_cache: dict = {}  # key -> (timestamp, result)
-_FORECAST_CACHE_TTL = 900  # 15 minutes
-_FORECAST_CACHE_MAX_ENTRIES = 20
 
-# --- Background refresh locks (prevent thundering herd) ---
-_bg_refresh_locks: dict = {}
-_bg_refresh_lock = threading.Lock()
+def _dict_to_df(data: dict) -> pd.DataFrame:
+    try:
+        return pd.DataFrame(data["data"], columns=data["columns"], index=pd.to_datetime(data["index"]))
+    except Exception as e:
+        logger.error(f"Failed to reconstruct DataFrame from cache dict: {e}")
+        return pd.DataFrame()
 
-def _get_cached_df(key: str, allow_stale: bool = True):
-    """
-    Stale-while-revalidate: return fresh data if available.
-    If stale but within stale TTL, return it and schedule background refresh.
-    """
-    if key in _data_cache:
-        ts, df = _data_cache[key]
-        age = time.time() - ts
-        if age < _DATA_CACHE_TTL:
-            return df  # Fresh
-        if allow_stale and age < _DATA_CACHE_STALE_TTL:
-            # Stale but usable — schedule background refresh
-            _schedule_bg_refresh(key)
-            return df
-    return None
-
-def _schedule_bg_refresh(key: str):
-    """Schedule a background refresh for stale cache entries."""
-    with _bg_refresh_lock:
-        if key in _bg_refresh_locks:
-            return  # Already refreshing
-        _bg_refresh_locks[key] = True
-
-    def _refresh():
-        try:
-            parts = key.split("|")
-            if len(parts) == 3:
-                ticker, period, interval = parts
-                fresh = get_fast_history(ticker, period=period, interval=interval)
-                if fresh is not None and not fresh.empty:
-                    _data_cache[key] = (time.time(), fresh)
-                    logger.debug(f"Background refresh completed for {key}")
-        except Exception as e:
-            logger.debug(f"Background refresh failed for {key}: {e}")
-        finally:
-            with _bg_refresh_lock:
-                _bg_refresh_locks.pop(key, None)
-
-    threading.Thread(target=_refresh, daemon=True).start()
-
-def _set_cached_df(key: str, df):
-    # Evict oldest entries if cache is full (memory guard for 512MB Render)
-    if len(_data_cache) >= _DATA_CACHE_MAX_ENTRIES:
-        # Remove oldest 20% of entries
-        sorted_keys = sorted(_data_cache.keys(), key=lambda k: _data_cache[k][0])
-        for k in sorted_keys[:max(1, len(sorted_keys) // 5)]:
-            del _data_cache[k]
-    _data_cache[key] = (time.time(), df)
 
 def _get_cached_scan(key: str):
-    if key in _scan_cache:
-        ts, result = _scan_cache[key]
-        if time.time() - ts < _SCAN_CACHE_TTL:
-            return result
-    return None
+    payload, meta = cache_manager.get_swr(
+        key,
+        fresh_ttl_seconds=_SCAN_CACHE_TTL,
+        stale_ttl_seconds=86400.0,
+        category="scan"
+    )
+    return payload
+
 
 def _set_cached_scan(key: str, result):
-    if len(_scan_cache) >= _SCAN_CACHE_MAX_ENTRIES:
-        sorted_keys = sorted(_scan_cache.keys(), key=lambda k: _scan_cache[k][0])
-        for k in sorted_keys[:max(1, len(sorted_keys) // 5)]:
-            del _scan_cache[k]
-    _scan_cache[key] = (time.time(), result)
+    cache_manager.set(
+        key,
+        result,
+        fresh_ttl_seconds=_SCAN_CACHE_TTL,
+        stale_ttl_seconds=86400.0,
+        category="scan"
+    )
+
 
 def get_cached_forecast(key: str):
     """Get cached forecast result (15-minute TTL)."""
-    if key in _forecast_cache:
-        ts, result = _forecast_cache[key]
-        if time.time() - ts < _FORECAST_CACHE_TTL:
-            return result
-    return None
+    payload, meta = cache_manager.get_swr(
+        key,
+        fresh_ttl_seconds=_FORECAST_CACHE_TTL,
+        stale_ttl_seconds=172800.0,  # 48 hours stale
+        category="forecast"
+    )
+    return payload
+
 
 def set_cached_forecast(key: str, result):
     """Cache forecast result."""
-    if len(_forecast_cache) >= _FORECAST_CACHE_MAX_ENTRIES:
-        sorted_keys = sorted(_forecast_cache.keys(), key=lambda k: _forecast_cache[k][0])
-        for k in sorted_keys[:max(1, len(sorted_keys) // 5)]:
-            del _forecast_cache[k]
-    _forecast_cache[key] = (time.time(), result)
+    cache_manager.set(
+        key,
+        result,
+        fresh_ttl_seconds=_FORECAST_CACHE_TTL,
+        stale_ttl_seconds=172800.0,
+        category="forecast"
+    )
 
 
 def load_data(ticker, period="1y", interval=None, allow_stale=True):
     """
     Load historical OHLCV data for a single ticker.
     Returns a DataFrame with columns: Open, High, Low, Close, Volume.
-    Identical interface to the old yfinance version.
-    Uses stale-while-revalidate: serves stale data immediately, refreshes in background.
+    Uses persistent dual-layer SWR cache with single-flight refresh protection.
     """
     try:
-        # Auto-determine interval if not specified
         if interval is None:
             if period == "1d":
                 interval = "5m"
@@ -141,30 +103,56 @@ def load_data(ticker, period="1y", interval=None, allow_stale=True):
             else:
                 interval = "1d"
 
-        # Check cache first (stale-while-revalidate)
-        cache_key = f"{ticker}|{period}|{interval}"
-        cached = _get_cached_df(cache_key, allow_stale=allow_stale)
-        if cached is not None:
-            return cached
+        cache_key = f"ohlcv:{ticker}:{period}:{interval}"
 
-        # Fetch via yahooquery adapter (single-symbol, batch-capable)
-        data = get_fast_history(ticker, period=period, interval=interval)
+        def _fetch_fresh():
+            df = get_fast_history(ticker, period=period, interval=interval)
+            if df is not None and not df.empty:
+                for col in ['Close', 'High', 'Low', 'Open', 'Volume']:
+                    if col in df.columns:
+                        val = df[col]
+                        if isinstance(val, pd.DataFrame):
+                            df[col] = val.iloc[:, 0]
+                return _df_to_dict(df)
+            return None
 
-        # Extra safety: ensure OHLCV columns are Series, not single-column DataFrames
-        for col in ['Close', 'High', 'Low', 'Open', 'Volume']:
-            if col in data.columns:
-                val = data[col]
-                if isinstance(val, pd.DataFrame):
-                    data[col] = val.iloc[:, 0]
+        # SWR lookup
+        payload, meta = cache_manager.get_swr(
+            key=cache_key,
+            refresh_func=_fetch_fresh,
+            fresh_ttl_seconds=_DATA_CACHE_TTL,
+            stale_ttl_seconds=_DATA_CACHE_STALE_TTL if allow_stale else _DATA_CACHE_TTL,
+            category="ohlcv",
+            ticker=ticker,
+            period=period
+        )
 
-        if data.empty:
+        if payload is not None:
+            df = _dict_to_df(payload)
+            if not df.empty:
+                return df
+
+        # If cache MISS, perform synchronous fetch under single-flight lock
+        dict_data = _fetch_fresh()
+        if dict_data is None:
             raise ValueError(f"No data found for the ticker: {ticker}")
 
-        # Store in cache
-        _set_cached_df(cache_key, data)
-        return data
+        cache_manager.set(
+            key=cache_key,
+            payload=dict_data,
+            fresh_ttl_seconds=_DATA_CACHE_TTL,
+            stale_ttl_seconds=_DATA_CACHE_STALE_TTL,
+            category="ohlcv",
+            ticker=ticker,
+            period=period
+        )
+
+        df = _dict_to_df(dict_data)
+        if df.empty:
+            raise ValueError(f"Failed to load data for ticker: {ticker}")
+        return df
+
     except Exception as e:
-        # Re-raise the exception to be caught by FastAPI
         raise RuntimeError(f"Error loading data for {ticker}: {str(e)}")
 
 
@@ -224,61 +212,71 @@ STOCK_NAMES = {
 TOP_WATCHLIST = ['NVDA', 'TSLA', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'AMD', 'GC=F', 'EURUSD=X', '^GSPC']
 
 
-def get_top_performing_stocks(limit=6):
-    """
-    Fetches a watchlist of popular stocks and returns the top performers
-    based on the last day's change.
-    Uses batch download for speed (single yahooquery call instead of N sequential).
-    Results are cached for 5 minutes.
-    """
-    try:
-        # Check cache (separate key, 5-minute TTL)
-        cache_key = "__top_performers__"
-        if cache_key in _scan_cache:
-            ts, cached = _scan_cache[cache_key]
-            if time.time() - ts < _TOP_PERFORMERS_CACHE_TTL:
-                return cached[:limit]
-
-        # Batch download for all watchlist stocks (parallel threads)
-        batch = get_fast_batch_history(TOP_WATCHLIST, period="5d", interval="1d")
-
-        results = []
-        for ticker in TOP_WATCHLIST:
-            try:
-                df = batch.get(ticker)
-                if df is None or df.empty or len(df) < 2:
-                    continue
-
-                closes = df["Close"]
-                if isinstance(closes, pd.DataFrame):
-                    closes = closes.iloc[:, 0]
-
-                price = float(closes.iloc[-1])
-                prev = float(closes.iloc[-2])
-
-                if pd.isna(price) or pd.isna(prev) or prev == 0:
-                    continue
-
-                change = price - prev
-                change_percent = (change / prev) * 100
-
-                results.append({
-                    "symbol": ticker,
-                    "name": STOCK_NAMES.get(ticker, ticker),
-                    "price": price,
-                    "change": change,
-                    "changePercent": change_percent
-                })
-            except Exception:
+def _compute_top_performers_raw():
+    batch = get_fast_batch_history(TOP_WATCHLIST, period="5d", interval="1d")
+    results = []
+    for ticker in TOP_WATCHLIST:
+        try:
+            df = batch.get(ticker)
+            if df is None or df.empty or len(df) < 2:
                 continue
 
-        # Sort by change percent descending (Top Gainers)
-        results.sort(key=lambda x: x['changePercent'], reverse=True)
+            closes = df["Close"]
+            if isinstance(closes, pd.DataFrame):
+                closes = closes.iloc[:, 0]
 
-        # Cache for 5 minutes
-        _scan_cache[cache_key] = (time.time(), results)
+            price = float(closes.iloc[-1])
+            prev = float(closes.iloc[-2])
 
+            if pd.isna(price) or pd.isna(prev) or prev == 0:
+                continue
+
+            change = price - prev
+            change_percent = (change / prev) * 100
+
+            results.append({
+                "symbol": ticker,
+                "name": STOCK_NAMES.get(ticker, ticker),
+                "price": price,
+                "change": change,
+                "changePercent": change_percent
+            })
+        except Exception:
+            continue
+
+    results.sort(key=lambda x: x['changePercent'], reverse=True)
+    return results
+
+
+def get_top_performing_stocks(limit=6):
+    """
+    Fetches top performers using SWR persistent caching.
+    """
+    try:
+        cache_key = "market:top-performers"
+        payload, meta = cache_manager.get_swr(
+            key=cache_key,
+            refresh_func=_compute_top_performers_raw,
+            fresh_ttl_seconds=_TOP_PERFORMERS_CACHE_TTL,
+            stale_ttl_seconds=86400.0,
+            category="top_performers"
+        )
+
+        if payload is not None:
+            return payload[:limit]
+
+        # MISS
+        results = _compute_top_performers_raw()
+        if results:
+            cache_manager.set(
+                key=cache_key,
+                payload=results,
+                fresh_ttl_seconds=_TOP_PERFORMERS_CACHE_TTL,
+                stale_ttl_seconds=86400.0,
+                category="top_performers"
+            )
         return results[:limit]
     except Exception as e:
         logger.error(f"Error fetching top performers: {e}")
         return []
+

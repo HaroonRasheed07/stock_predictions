@@ -21,6 +21,9 @@ from opportunity import scan_watchlist, calculate_opportunity_score
 from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
 from risk import assess_risk, calculate_trend_strength
 
+# Import cache manager and persistent dual-layer SWR engine
+from cache_manager import cache_manager
+
 # 2. MODEL + SCALER GLOBAL SINGLETON LOADING
 MODEL = None
 SCALERS = None
@@ -55,38 +58,43 @@ class _Timer:
         logger.info(f"[PERF] {self.label}: {self.elapsed:.0f}ms")
 
 
-# ─── Background Precomputation ─────────────────────────────────────────────
-# Precomputed market-wide data that many endpoints share.
-# Refreshed in background every 2 minutes to avoid request-time latency.
-_precomputed = {
-    "top_stocks": [],
-    "top_stocks_ts": 0.0,
-    "market_overview_cache": {},  # ticker -> (ts, result)
-}
-_precomputed_lock = threading.Lock()
-_TOP_STOCKS_PRECOMP_TTL = 120  # 2 minutes
-
+# ─── Background Market Precomputation Daemon ─────────────────────────────
+_PRECOMPUTE_INTERVAL = 180  # 3 minutes
 
 def _precompute_top_stocks():
-    """Background: refresh top performing stocks every 2 minutes."""
-    while True:
-        try:
-            result = get_top_performing_stocks(limit=10)
-            with _precomputed_lock:
-                _precomputed["top_stocks"] = result
-                _precomputed["top_stocks_ts"] = time.time()
-        except Exception as e:
-            logger.debug(f"Precompute top stocks failed: {e}")
-        time.sleep(_TOP_STOCKS_PRECOMP_TTL)
-
+    """Background thread to refresh top performers."""
+    try:
+        get_top_performing_stocks(limit=10)
+    except Exception as e:
+        logger.debug(f"Precompute top stocks failed: {e}")
 
 def _get_precomputed_top_stocks():
-    """Get precomputed top stocks. Returns cached if fresh, else empty list."""
-    with _precomputed_lock:
-        ts = _precomputed.get("top_stocks_ts", 0)
-        if time.time() - ts < _TOP_STOCKS_PRECOMP_TTL and _precomputed["top_stocks"]:
-            return _precomputed["top_stocks"]
-    return []
+    """Returns top performing stocks from persistent SWR cache."""
+    return get_top_performing_stocks(limit=6)
+
+def _background_precompute_daemon():
+    """Periodically precomputes market-wide analytics out of the hot user request path."""
+    time.sleep(5)  # Wait for startup to complete
+    while True:
+        try:
+            logger.info("[PERF] Daemon: precomputing market-wide snapshots...")
+            # 1. Top performers
+            get_top_performing_stocks(limit=10)
+            # 2. Overview snapshot for default stock (AAPL)
+            try:
+                _compute_market_overview_raw("AAPL", "1y")
+            except Exception:
+                pass
+            # 3. Opportunity scan for default watchlist
+            try:
+                wl = get_default_watchlist()[:15]
+                scan_watchlist(wl, "1y")
+            except Exception:
+                pass
+            logger.info("[PERF] Daemon: market-wide precomputation finished successfully.")
+        except Exception as e:
+            logger.warning(f"Daemon precomputation error: {e}")
+        time.sleep(_PRECOMPUTE_INTERVAL)
 
 app = FastAPI(title="AI Driven Market Analysis API")
 
@@ -115,9 +123,9 @@ def load_models_at_startup():
 
     threading.Thread(target=_warm_session, daemon=True).start()
 
-    # Start background precomputation for market-wide rankings
-    threading.Thread(target=_precompute_top_stocks, daemon=True).start()
-    print("Background precomputation started.")
+    # Start background market precomputation daemon
+    threading.Thread(target=_background_precompute_daemon, daemon=True).start()
+    print("Background market-wide precomputation daemon started.")
 
 app.add_middleware(
     CORSMiddleware,
@@ -161,60 +169,93 @@ def health_check():
 def get_stock_data_and_indicators(req: IndicatorRequest):
     """
     Return stock indicators, overview data, current price, and top performers.
-    Frontend expects: ticker, data, topStocks, currentPrice, change, changePercent
+    Uses Dual-Layer Persistent SWR cache.
     """
-    df = load_data(req.ticker, req.period)
-    if df is None:
-        raise HTTPException(status_code=404, detail="Data not found for ticker")
+    start_t = time.perf_counter()
+    cache_key = f"indicators:{req.ticker}:{req.period}"
 
-    indicators = calculate_indicators(df)
+    def _compute_indicators_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None or df.empty:
+            raise HTTPException(status_code=404, detail="Data not found for ticker")
 
-    # Get current price from live data or last close
-    current_price = 0.0
-    price_change = 0.0
-    price_change_pct = 0.0
-    try:
-        live = get_latest_price(req.ticker)
-        if live is not None and live > 0:
-            current_price = live
-            # Calculate change from previous close using history
-            if len(df) >= 2:
-                prev_close = float(df["Close"].iloc[-2]) if not isinstance(df["Close"].iloc[-2], pd.DataFrame) else float(df["Close"].iloc[-2].iloc[0])
-                if prev_close > 0:
-                    price_change = current_price - prev_close
-                    price_change_pct = (price_change / prev_close) * 100
-        elif len(df) > 0:
-            # Fallback: use last close from history
-            last_close = df["Close"].iloc[-1]
-            if isinstance(last_close, pd.DataFrame):
-                last_close = last_close.iloc[:, 0]
-            current_price = float(last_close)
-            if len(df) >= 2:
-                prev_close = df["Close"].iloc[-2]
-                if isinstance(prev_close, pd.DataFrame):
-                    prev_close = prev_close.iloc[:, 0]
-                prev_close = float(prev_close)
-                if prev_close > 0:
-                    price_change = current_price - prev_close
-                    price_change_pct = (price_change / prev_close) * 100
-    except Exception:
-        pass
+        indicators = calculate_indicators(df)
+        current_price = 0.0
+        price_change = 0.0
+        price_change_pct = 0.0
+        try:
+            live = get_latest_price(req.ticker)
+            if live is not None and live > 0:
+                current_price = live
+                if len(df) >= 2:
+                    prev_close = float(df["Close"].iloc[-2]) if not isinstance(df["Close"].iloc[-2], pd.DataFrame) else float(df["Close"].iloc[-2].iloc[0])
+                    if prev_close > 0:
+                        price_change = current_price - prev_close
+                        price_change_pct = (price_change / prev_close) * 100
+            elif len(df) > 0:
+                last_close = df["Close"].iloc[-1]
+                if isinstance(last_close, pd.DataFrame):
+                    last_close = last_close.iloc[:, 0]
+                current_price = float(last_close)
+                if len(df) >= 2:
+                    prev_close = df["Close"].iloc[-2]
+                    if isinstance(prev_close, pd.DataFrame):
+                        prev_close = prev_close.iloc[:, 0]
+                    prev_close = float(prev_close)
+                    if prev_close > 0:
+                        price_change = current_price - prev_close
+                        price_change_pct = (price_change / prev_close) * 100
+        except Exception:
+            pass
 
-    # Get top performing stocks (cached, fast)
-    top_stocks = []
-    try:
-        top_stocks = get_top_performing_stocks(limit=6)
-    except Exception:
-        pass
+        top_stocks = []
+        try:
+            top_stocks = get_top_performing_stocks(limit=6)
+        except Exception:
+            pass
 
-    return {
-        "ticker": req.ticker,
-        "data": indicators,
-        "currentPrice": current_price,
-        "change": price_change,
-        "changePercent": price_change_pct,
-        "topStocks": top_stocks,
-    }
+        return {
+            "ticker": req.ticker,
+            "data": indicators,
+            "currentPrice": current_price,
+            "change": price_change,
+            "changePercent": price_change_pct,
+            "topStocks": top_stocks,
+        }
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_indicators_raw,
+        fresh_ttl_seconds=120.0,
+        stale_ttl_seconds=86400.0,
+        category="indicators",
+        ticker=req.ticker,
+        period=req.period
+    )
+
+    if payload is not None:
+        elapsed = (time.perf_counter() - start_t) * 1000
+        logger.info(f"[PERF] endpoint=/api/data/indicators ticker={req.ticker} status={meta['status']} latency={elapsed:.1f}ms")
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    res_raw = _compute_indicators_raw()
+    cache_manager.set(
+        key=cache_key,
+        payload=res_raw,
+        fresh_ttl_seconds=120.0,
+        stale_ttl_seconds=86400.0,
+        category="indicators",
+        ticker=req.ticker,
+        period=req.period
+    )
+    elapsed = (time.perf_counter() - start_t) * 1000
+    logger.info(f"[PERF] endpoint=/api/data/indicators ticker={req.ticker} status=MISS latency={elapsed:.1f}ms")
+    meta["status"] = "MISS"
+    res = dict(res_raw)
+    res["_cache_meta"] = meta
+    return res
 
 
 # ─── Endpoint In-Memory Caching ──────────────────────────────────────────────
@@ -234,30 +275,15 @@ def _set_cached_endpoint(key: str, val: Any) -> None:
         _endpoint_cache[key] = (time.time(), val)
 
 
-@app.post("/api/market/overview")
-def get_market_overview(req: IndicatorRequest):
-    """
-    COMBINED endpoint: returns ALL data needed for the market overview page
-    in a single API call. Independent operations run in parallel for speed.
-    Includes timing instrumentation and in-memory TTL caching for performance.
-    """
-    ticker = req.ticker
-    period = req.period
-    cache_key = f"overview_{ticker}_{period}"
-    
-    cached = _get_cached_endpoint(cache_key, ttl_seconds=60.0)
-    if cached is not None:
-        return cached
-
+def _compute_market_overview_raw(ticker: str, period: str) -> Dict[str, Any]:
+    """Raw computation for market overview payload."""
     result = {"ticker": ticker}
 
-    with _Timer(f"market_overview({ticker},{period})") as total:
-        # 1. Load data first (everything else depends on this)
-        with _Timer("load_data") as t_load:
-            try:
-                df = load_data(ticker, period)
-            except Exception:
-                df = None
+    with _Timer(f"market_overview_calc({ticker},{period})"):
+        try:
+            df = load_data(ticker, period)
+        except Exception:
+            df = None
 
         if df is None or df.empty:
             result.update({
@@ -269,17 +295,14 @@ def get_market_overview(req: IndicatorRequest):
             })
             return result
 
-        # 2. Compute indicators ONCE (shared by multiple sub-calculations)
-        with _Timer("calculate_indicators") as t_ind:
-            try:
-                indicators = calculate_indicators(df)
-                result["data"] = indicators
-                df_ind = pd.DataFrame(indicators)
-            except Exception:
-                indicators = []
-                df_ind = pd.DataFrame()
+        try:
+            indicators = calculate_indicators(df)
+            result["data"] = indicators
+            df_ind = pd.DataFrame(indicators)
+        except Exception:
+            indicators = []
+            df_ind = pd.DataFrame()
 
-        # 3. Current price
         current_price = 0.0
         price_change = 0.0
         price_change_pct = 0.0
@@ -312,7 +335,6 @@ def get_market_overview(req: IndicatorRequest):
         result["change"] = price_change
         result["changePercent"] = price_change_pct
 
-        # 4. Run independent operations IN PARALLEL
         asset_info = get_asset_info(ticker)
         has_volume = asset_info["has_volume"]
 
@@ -371,68 +393,62 @@ def get_market_overview(req: IndicatorRequest):
             except Exception:
                 return ("topStocks", [])
 
-        # Run all independent computations in parallel
-        with _Timer("parallel_computations") as t_parallel:
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {
-                    executor.submit(_compute_volatility): "volatility",
-                    executor.submit(_compute_risk): "risk",
-                    executor.submit(_compute_trend): "trendStrength",
-                    executor.submit(_compute_sentiment): "sentiment",
-                    executor.submit(_compute_top_stocks): "topStocks",
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                executor.submit(_compute_volatility): "volatility",
+                executor.submit(_compute_risk): "risk",
+                executor.submit(_compute_trend): "trendStrength",
+                executor.submit(_compute_sentiment): "sentiment",
+                executor.submit(_compute_top_stocks): "topStocks",
+            }
+            for future in as_completed(futures):
+                try:
+                    key, value = future.result()
+                    result[key] = value
+                except Exception:
+                    pass
+
+        try:
+            if not df_ind.empty:
+                latest = df_ind.iloc[-1]
+                sent_data = {"score": 0.0, "label": "Neutral"}
+                if result.get("sentiment"):
+                    sent_data = {"score": result["sentiment"]["score"], "label": result["sentiment"]["label"]}
+
+                opp = calculate_opportunity_score(ticker, period, skip_sentiment=True)
+                vol_s = result.get("volatility") or {}
+                risk_d = result.get("risk") or {}
+
+                result["tradeConfirmation"] = {
+                    "ticker": ticker,
+                    "name": asset_info["name"],
+                    "opportunity_score": opp["score"] if opp else 50.0,
+                    "trend": result.get("trendStrength") or {},
+                    "technicals": {
+                        "rsi": round(float(latest.get("RSI", 50)), 1),
+                        "macd_signal": "Bullish" if float(latest.get("MACD", 0)) > float(latest.get("Signal", 0)) else "Bearish"
+                    },
+                    "risk": {
+                        "level": risk_d.get("risk_level", "Unknown"),
+                        "score": risk_d.get("risk_score", 50)
+                    },
+                    "volatility": {
+                        "level": "High" if vol_s.get("daily_volatility", 0) > 35 else "Low" if vol_s.get("daily_volatility", 0) < 15 else "Medium",
+                        "daily": round(vol_s.get("daily_volatility", 0), 1)
+                    },
+                    "sentiment": sent_data,
+                    "relative_volume": vol_s.get("relative_volume", {"available": False})
                 }
-                for future in as_completed(futures):
-                    try:
-                        key, value = future.result()
-                        result[key] = value
-                    except Exception:
-                        pass
-
-        # 5. Trade confirmation (depends on volatility + risk + trend + sentiment)
-        with _Timer("trade_confirmation") as t_tc:
-            try:
-                if not df_ind.empty:
-                    latest = df_ind.iloc[-1]
-                    sent_data = {"score": 0.0, "label": "Neutral"}
-                    if result.get("sentiment"):
-                        sent_data = {"score": result["sentiment"]["score"], "label": result["sentiment"]["label"]}
-
-                    opp = calculate_opportunity_score(ticker, period, skip_sentiment=True)
-                    vol_s = result.get("volatility") or {}
-                    risk_d = result.get("risk") or {}
-
-                    result["tradeConfirmation"] = {
-                        "ticker": ticker,
-                        "name": asset_info["name"],
-                        "opportunity_score": opp["score"] if opp else 50.0,
-                        "trend": result.get("trendStrength") or {},
-                        "technicals": {
-                            "rsi": round(float(latest.get("RSI", 50)), 1),
-                            "macd_signal": "Bullish" if float(latest.get("MACD", 0)) > float(latest.get("Signal", 0)) else "Bearish"
-                        },
-                        "risk": {
-                            "level": risk_d.get("risk_level", "Unknown"),
-                            "score": risk_d.get("risk_score", 50)
-                        },
-                        "volatility": {
-                            "level": "High" if vol_s.get("daily_volatility", 0) > 35 else "Low" if vol_s.get("daily_volatility", 0) < 15 else "Medium",
-                            "daily": round(vol_s.get("daily_volatility", 0), 1)
-                        },
-                        "sentiment": sent_data,
-                        "relative_volume": vol_s.get("relative_volume", {"available": False})
-                    }
-                else:
-                    result["tradeConfirmation"] = None
-            except Exception:
+            else:
                 result["tradeConfirmation"] = None
+        except Exception:
+            result["tradeConfirmation"] = None
 
-        # 6. Watchlist defaults
         try:
             result["watchlist"] = get_default_watchlist()
         except Exception:
             result["watchlist"] = []
 
-        # 7. Market status
         try:
             from datetime import datetime, timezone, timedelta
             now = datetime.now(timezone.utc)
@@ -448,8 +464,54 @@ def get_market_overview(req: IndicatorRequest):
         except Exception:
             result["marketStatus"] = "Unknown"
 
-    _set_cached_endpoint(cache_key, result)
     return result
+
+
+@app.post("/api/market/overview")
+def get_market_overview(req: IndicatorRequest):
+    """
+    COMBINED endpoint: returns ALL data needed for the market overview page.
+    Uses Dual-Layer Persistent SWR cache with single-flight request coalescing.
+    """
+    start_t = time.perf_counter()
+    ticker = req.ticker
+    period = req.period
+    cache_key = f"overview:{ticker}:{period}"
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=lambda: _compute_market_overview_raw(ticker, period),
+        fresh_ttl_seconds=120.0,
+        stale_ttl_seconds=86400.0,
+        category="overview",
+        ticker=ticker,
+        period=period
+    )
+
+    if payload is not None:
+        elapsed = (time.perf_counter() - start_t) * 1000
+        logger.info(f"[PERF] endpoint=/api/market/overview ticker={ticker} status={meta['status']} latency={elapsed:.1f}ms")
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    # Cache MISS: calculate synchronously under single-flight lock
+    result = _compute_market_overview_raw(ticker, period)
+    cache_manager.set(
+        key=cache_key,
+        payload=result,
+        fresh_ttl_seconds=120.0,
+        stale_ttl_seconds=86400.0,
+        category="overview",
+        ticker=ticker,
+        period=period
+    )
+    elapsed = (time.perf_counter() - start_t) * 1000
+    logger.info(f"[PERF] endpoint=/api/market/overview ticker={ticker} status=MISS latency={elapsed:.1f}ms")
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
 
 
 # ─── New Multi-Asset Endpoints ──────────────────────────────────────────────
@@ -478,20 +540,49 @@ def get_watchlist_defaults(category: Optional[str] = None):
 
 @app.post("/api/opportunities/scan")
 def scan_opportunities(req: WatchlistScanRequest):
-    """Scan a list of tickers and rank them by opportunity score"""
+    """Scan a list of tickers and rank them by opportunity score using SWR cache."""
+    start_t = time.perf_counter()
     if not req.tickers:
         req.tickers = get_default_watchlist()
 
     tickers_to_scan = req.tickers[:20]
-    cache_key = f"opp_scan_{','.join(sorted(tickers_to_scan))}_{req.period}"
-    cached = _get_cached_endpoint(cache_key, ttl_seconds=60.0)
-    if cached is not None:
-        return cached
+    cache_key = f"opportunities:{req.period}:{','.join(sorted(tickers_to_scan))}"
 
-    results = scan_watchlist(tickers_to_scan, req.period)
-    res_payload = {"scan_results": results}
-    _set_cached_endpoint(cache_key, res_payload)
-    return res_payload
+    def _compute_scan():
+        results = scan_watchlist(tickers_to_scan, req.period)
+        return {"scan_results": results}
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_scan,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="opportunity_scan"
+    )
+
+    if payload is not None:
+        elapsed = (time.perf_counter() - start_t) * 1000
+        logger.info(f"[PERF] endpoint=/api/opportunities/scan status={meta['status']} latency={elapsed:.1f}ms")
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    # MISS
+    res_payload = _compute_scan()
+    cache_manager.set(
+        key=cache_key,
+        payload=res_payload,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="opportunity_scan"
+    )
+    elapsed = (time.perf_counter() - start_t) * 1000
+    logger.info(f"[PERF] endpoint=/api/opportunities/scan status=MISS latency={elapsed:.1f}ms")
+    meta["status"] = "MISS"
+    res = dict(res_payload)
+    res["_cache_meta"] = meta
+    return res
+
 
 @app.post("/api/volatility/summary")
 def volatility_summary(req: SingleAssetRequest):
@@ -505,21 +596,11 @@ def volatility_summary(req: SingleAssetRequest):
 
     return get_volatility_summary(df, has_volume, req.ticker, req.period)
 
-@app.post("/api/volatility/monitor")
-def volatility_monitor(req: WatchlistScanRequest):
-    """Get volatility metrics for multiple assets for the monitor table"""
-    if not req.tickers:
-        req.tickers = get_default_watchlist()
 
-    tickers_to_scan = req.tickers[:20]
-    cache_key = f"vol_mon_{','.join(sorted(tickers_to_scan))}_{req.period}"
-    cached = _get_cached_endpoint(cache_key, ttl_seconds=60.0)
-    if cached is not None:
-        return cached
-
+def _compute_volatility_monitor_raw(tickers_to_scan, period):
     def _compute_single(ticker):
         try:
-            df = load_data(ticker, req.period)
+            df = load_data(ticker, period)
             if df is not None:
                 asset_info = get_asset_info(ticker)
                 summary = get_volatility_summary(df, asset_info["has_volume"])
@@ -534,7 +615,6 @@ def volatility_monitor(req: WatchlistScanRequest):
             pass
         return None
 
-    # Run all tickers in parallel
     results = []
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(_compute_single, t): t for t in tickers_to_scan}
@@ -543,11 +623,49 @@ def volatility_monitor(req: WatchlistScanRequest):
             if r:
                 results.append(r)
 
-    # Sort by daily volatility descending
     results.sort(key=lambda x: x["daily_volatility"], reverse=True)
-    res_payload = {"volatility_monitor": results}
-    _set_cached_endpoint(cache_key, res_payload)
-    return res_payload
+    return {"volatility_monitor": results}
+
+
+@app.post("/api/volatility/monitor")
+def volatility_monitor(req: WatchlistScanRequest):
+    """Get volatility metrics for multiple assets using SWR cache."""
+    start_t = time.perf_counter()
+    if not req.tickers:
+        req.tickers = get_default_watchlist()
+
+    tickers_to_scan = req.tickers[:20]
+    cache_key = f"volatility_monitor:{req.period}:{','.join(sorted(tickers_to_scan))}"
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=lambda: _compute_volatility_monitor_raw(tickers_to_scan, req.period),
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="volatility_monitor"
+    )
+
+    if payload is not None:
+        elapsed = (time.perf_counter() - start_t) * 1000
+        logger.info(f"[PERF] endpoint=/api/volatility/monitor status={meta['status']} latency={elapsed:.1f}ms")
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    res_payload = _compute_volatility_monitor_raw(tickers_to_scan, req.period)
+    cache_manager.set(
+        key=cache_key,
+        payload=res_payload,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="volatility_monitor"
+    )
+    elapsed = (time.perf_counter() - start_t) * 1000
+    logger.info(f"[PERF] endpoint=/api/volatility/monitor status=MISS latency={elapsed:.1f}ms")
+    meta["status"] = "MISS"
+    res = dict(res_payload)
+    res["_cache_meta"] = meta
+    return res
 
 @app.post("/api/risk/assess")
 def risk_assessment(req: SingleAssetRequest):
@@ -751,24 +869,51 @@ def get_stock_forecast(request: ForecastRequest):
 
 @app.post("/api/data/sentiment")
 def get_sentiment(request: SentimentRequest):
-    """Return market sentiment for a stock — all fields for frontend components."""
-    try:
+    """Return market sentiment for a stock — all fields for frontend components using SWR cache."""
+    cache_key = f"sentiment:{request.ticker}"
+
+    def _compute_sentiment_raw():
         result = analyze_sentiment(request.ticker)
         return {
             "ticker": request.ticker,
-            # Fields used by sentiment page & chart
             "sentiment_score": result["score"],
             "sentiment_label": result["label"],
             "positive_count": result.get("positive_count", 0),
             "negative_count": result.get("negative_count", 0),
             "news": result["news"],
-            # Fields used by SentimentTrend component (expects 'score', not 'sentiment_score')
             "score": result["score"],
             "label": result["label"],
             "sentiment_trend_7d": result.get("sentiment_trend_7d", []),
             "news_impact_summary": result.get("news_impact_summary", ""),
             "market_mood": result.get("market_mood", "Unknown"),
         }
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_sentiment_raw,
+        fresh_ttl_seconds=600.0,  # 10 minutes fresh
+        stale_ttl_seconds=86400.0,
+        category="sentiment",
+        ticker=request.ticker
+    )
+
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    try:
+        raw_res = _compute_sentiment_raw()
+        cache_manager.set(
+            key=cache_key,
+            payload=raw_res,
+            fresh_ttl_seconds=600.0,
+            stale_ttl_seconds=86400.0,
+            category="sentiment",
+            ticker=request.ticker
+        )
+        raw_res["_cache_meta"] = meta
+        return raw_res
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Server error: {e}")
