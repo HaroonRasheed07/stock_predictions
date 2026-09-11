@@ -122,6 +122,19 @@ export interface TrendStrength {
 export interface TradeConfirmation {
   ticker: string;
   name: string;
+  signal: string;
+  score: number;
+  confidence: number;
+  components: Array<{
+    name: string;
+    score: number;
+    weight: number;
+    contribution: number;
+    signal: string;
+    detail: string;
+    rationale: string;
+  }>;
+  rationale: string;
   opportunity_score: number;
   trend: { score: number; label: string };
   technicals: { rsi: number; macd_signal: string };
@@ -129,6 +142,85 @@ export interface TradeConfirmation {
   volatility: { level: string; daily: number };
   sentiment: { score: number; label: string } | null;
   relative_volume: { available: boolean; relative_volume?: number; classification?: string };
+}
+
+export interface CatalystResponse {
+  ticker: string;
+  catalysts: Array<{
+    type: string;
+    title: string;
+    source: string;
+    url: string;
+    published_at: string;
+    impact: string;
+    confidence: number;
+    matched_keywords: string[];
+  }>;
+  summary: {
+    total: number;
+    by_type: Record<string, number>;
+    sentiment_breakdown: { positive: number; negative: number; neutral: number };
+    top_catalyst: any;
+    summary_text: string;
+  };
+}
+
+export interface TimeframeResponse {
+  ticker: string;
+  timeframes: Record<string, {
+    timeframe: string;
+    label: string;
+    description: string;
+    signal: string;
+    score: number;
+    confidence: number;
+    components: Array<{
+      name: string;
+      signal: string;
+      strength: number;
+      weight: number;
+      contribution: number;
+      detail: string;
+    }>;
+    rationale: string;
+  }>;
+  consensus: string;
+  avg_confidence: number;
+  summary: string;
+}
+
+export interface SignalEvidenceResponse {
+  ticker: string;
+  overall_accuracy: number;
+  evidence_label: string;
+  indicators: Record<string, {
+    accuracy: number;
+    sample_size: number;
+    avg_return?: number;
+    signals: Array<any>;
+  }>;
+  summary: string;
+}
+
+export interface WatchlistMonitorResponse {
+  alerts: Array<{
+    type: string;
+    ticker: string;
+    severity: string;
+    message: string;
+    value: number;
+    direction: string;
+  }>;
+  ticker_summaries: Record<string, {
+    ticker: string;
+    price: number;
+    change_pct: number;
+    alert_count: number;
+  }>;
+  total_alerts: number;
+  high_severity: number;
+  medium_severity: number;
+  summary_text: string;
 }
 
 export interface EnhancedSentiment {
@@ -367,6 +459,54 @@ export async function fetchTradeConfirmation(ticker: string, period = "1y"): Pro
     body: JSON.stringify({ ticker, period }),
   });
   if (!res.ok) throw new Error("Failed to fetch trade confirmation");
+  return res.json();
+}
+
+// ─── New Intelligence Endpoints ─────────────────────────────────────────────
+
+export async function fetchCatalysts(ticker: string): Promise<CatalystResponse> {
+  const res = await fetch(`${API_BASE}/api/data/catalysts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch catalysts");
+  return res.json();
+}
+
+export async function fetchTimeframeDecision(ticker: string, period = "1y"): Promise<TimeframeResponse> {
+  const res = await fetch(`${API_BASE}/api/data/timeframe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch timeframe decision");
+  return res.json();
+}
+
+export async function fetchSignalEvidence(ticker: string, period = "1y"): Promise<SignalEvidenceResponse> {
+  const res = await fetch(`${API_BASE}/api/data/signal-evidence`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch signal evidence");
+  return res.json();
+}
+
+export async function fetchWatchlistMonitor(tickers: string[], period = "1y"): Promise<WatchlistMonitorResponse> {
+  const res = await fetch(`${API_BASE}/api/watchlist/monitor`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers, period }),
+  });
+  if (!res.ok) throw new Error("Failed to fetch watchlist monitor");
+  return res.json();
+}
+
+export async function fetchNewsProviderStatus(): Promise<Record<string, any>> {
+  const res = await fetch(`${API_BASE}/api/news/providers`);
+  if (!res.ok) throw new Error("Failed to fetch news provider status");
   return res.json();
 }
 

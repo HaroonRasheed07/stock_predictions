@@ -2,6 +2,12 @@ import math
 import time
 import threading
 import traceback
+import os
+from dotenv import load_dotenv
+
+# Load .env from stock_market directory
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -23,6 +29,9 @@ from risk import assess_risk, calculate_trend_strength
 
 # Import cache manager and persistent dual-layer SWR engine
 from cache_manager import cache_manager
+
+# Import news provider aggregator for status endpoint
+from news_providers import news_aggregator
 
 # 2. MODEL + SCALER GLOBAL SINGLETON LOADING
 MODEL = None
@@ -164,6 +173,212 @@ def home():
 @app.get("/healthz")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/api/news/providers")
+def get_news_providers_status():
+    """Return health status and circuit breaker state of all news providers."""
+    return news_aggregator.get_provider_status()
+
+
+@app.post("/api/data/catalysts")
+def get_catalysts(req: SentimentRequest):
+    """
+    Detect market-moving catalysts from recent news for a ticker.
+    Returns categorized events with impact direction and confidence.
+    """
+    from catalyst import detect_catalysts, get_catalyst_summary
+
+    cache_key = f"catalysts:{req.ticker}"
+
+    def _compute_catalysts_raw():
+        articles = news_aggregator.fetch_news(req.ticker, max_results=15)
+        article_dicts = [a.__dict__ for a in articles]
+        catalysts = detect_catalysts(article_dicts)
+        summary = get_catalyst_summary(catalysts)
+        return {
+            "ticker": req.ticker,
+            "catalysts": catalysts,
+            "summary": summary,
+        }
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_catalysts_raw,
+        fresh_ttl_seconds=300.0,   # 5 min fresh
+        stale_ttl_seconds=86400.0, # 24h stale
+        category="catalysts",
+        ticker=req.ticker,
+    )
+
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    result = _compute_catalysts_raw()
+    cache_manager.set(
+        key=cache_key,
+        payload=result,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="catalysts",
+        ticker=req.ticker,
+    )
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
+
+@app.post("/api/data/timeframe")
+def get_timeframe_decision(req: IndicatorRequest):
+    """
+    Compute timeframe-based trading decisions (Short-Term, Swing, Position).
+    Returns signal, confidence, component breakdown for each timeframe.
+    """
+    from timeframe_engine import compute_all_timeframes
+
+    cache_key = f"timeframe:{req.ticker}:{req.period}"
+
+    def _compute_timeframe_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None or df.empty:
+            return {"ticker": req.ticker, "error": "No data available"}
+
+        df_ind_records = calculate_indicators(df)
+        df_ind = pd.DataFrame(df_ind_records)
+
+        result = compute_all_timeframes(df_ind)
+        result["ticker"] = req.ticker
+        return result
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_timeframe_raw,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="timeframe",
+        ticker=req.ticker,
+        period=req.period,
+    )
+
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    result = _compute_timeframe_raw()
+    cache_manager.set(
+        key=cache_key,
+        payload=result,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="timeframe",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
+
+@app.post("/api/data/signal-evidence")
+def get_signal_evidence(req: IndicatorRequest):
+    """
+    Backtest historical signal accuracy for a ticker.
+    Returns accuracy metrics and recent signal history for RSI, MACD, trend, Bollinger.
+    """
+    from signal_history import compute_signal_evidence
+
+    cache_key = f"signal_evidence:{req.ticker}:{req.period}"
+
+    def _compute_evidence_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None or df.empty:
+            return {"ticker": req.ticker, "error": "No data available"}
+
+        df_ind_records = calculate_indicators(df)
+        df_ind = pd.DataFrame(df_ind_records)
+
+        result = compute_signal_evidence(df_ind)
+        result["ticker"] = req.ticker
+        return result
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_evidence_raw,
+        fresh_ttl_seconds=600.0,
+        stale_ttl_seconds=86400.0,
+        category="signal_evidence",
+        ticker=req.ticker,
+        period=req.period,
+    )
+
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    result = _compute_evidence_raw()
+    cache_manager.set(
+        key=cache_key,
+        payload=result,
+        fresh_ttl_seconds=600.0,
+        stale_ttl_seconds=86400.0,
+        category="signal_evidence",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
+
+@app.post("/api/watchlist/monitor")
+def watchlist_monitor(req: WatchlistScanRequest):
+    """
+    Intelligent watchlist monitoring: detects meaningful price moves,
+    volume spikes, RSI extremes, and trend changes across watchlist tickers.
+    """
+    from watchlist_monitor import scan_watchlist_intelligent
+
+    if not req.tickers:
+        req.tickers = get_default_watchlist()
+
+    tickers_to_scan = req.tickers[:20]
+    cache_key = f"watchlist_monitor:{req.period}:{','.join(sorted(tickers_to_scan))}"
+
+    def _compute_monitor():
+        return scan_watchlist_intelligent(tickers_to_scan, req.period)
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_monitor,
+        fresh_ttl_seconds=120.0,   # 2 min fresh
+        stale_ttl_seconds=86400.0,
+        category="watchlist_monitor",
+    )
+
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+
+    result = _compute_monitor()
+    cache_manager.set(
+        key=cache_key,
+        payload=result,
+        fresh_ttl_seconds=120.0,
+        stale_ttl_seconds=86400.0,
+        category="watchlist_monitor",
+    )
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
 
 @app.post("/api/data/indicators")
 def get_stock_data_and_indicators(req: IndicatorRequest):
@@ -726,57 +941,190 @@ def expected_range(req: SingleAssetRequest):
 
 @app.post("/api/data/trade-confirmation")
 def trade_confirmation(req: SingleAssetRequest):
-    """Get a consolidated trade confirmation summary"""
+    """
+    Get an explainable trade confirmation with component-level breakdown.
+    Each signal source contributes a score, weight, and rationale.
+    """
     df = load_data(req.ticker, req.period)
     if df is None:
         raise HTTPException(status_code=404, detail="Data not found")
 
-    # Gather all necessary data
     df_ind_records = calculate_indicators(df)
     df_ind = pd.DataFrame(df_ind_records)
 
     trend_score = calculate_trend_strength(df_ind)
     risk_data = assess_risk(df_ind, req.ticker)
-
     asset_info = get_asset_info(req.ticker)
     vol_summary = get_volatility_summary(df, asset_info["has_volume"])
-
-    # Get latest technicals
     latest = df_ind.iloc[-1]
 
-    # Try quick sentiment
-    sentiment_data = None
+    # Sentiment
+    sentiment_data = {"score": 0.0, "label": "Neutral"}
     try:
         sent_res = analyze_sentiment(req.ticker)
         sentiment_data = {"score": sent_res["score"], "label": sent_res["label"]}
     except Exception:
-        sentiment_data = {"score": 0.0, "label": "Neutral"}
+        pass
 
-    # Opportunity score runs it all together nicely
-    opp_data = calculate_opportunity_score(req.ticker, req.period)
+    # Opportunity
+    opp_data = calculate_opportunity_score(req.ticker, req.period, skip_sentiment=True)
+
+    # --- Explainable Components ---
+    components = []
+
+    # 1. Trend (weight: 0.25)
+    trend_label = "Bullish" if trend_score > 60 else "Bearish" if trend_score < 40 else "Neutral"
+    trend_val = (trend_score - 50) / 50  # normalize to -1..+1
+    components.append({
+        "name": "Trend Strength",
+        "score": round(trend_val, 3),
+        "weight": 0.25,
+        "contribution": round(trend_val * 0.25, 4),
+        "signal": "buy" if trend_val > 0.1 else "sell" if trend_val < -0.1 else "neutral",
+        "detail": f"{trend_label} ({trend_score:.1f}/100)",
+        "rationale": (
+            f"Price {'above' if float(latest.get('Close', 0)) > float(latest.get('SMA50', 0)) else 'below'} SMA50. "
+            f"{'Golden' if float(latest.get('SMA20', 0)) > float(latest.get('SMA50', 0)) else 'Death'} cross."
+        ),
+    })
+
+    # 2. RSI (weight: 0.15)
+    rsi_val = float(latest.get("RSI", 50))
+    if rsi_val < 30:
+        rsi_signal, rsi_detail = "buy", f"Oversold at {rsi_val:.1f}"
+    elif rsi_val > 70:
+        rsi_signal, rsi_detail = "sell", f"Overbought at {rsi_val:.1f}"
+    else:
+        rsi_signal, rsi_detail = "neutral", f"Neutral at {rsi_val:.1f}"
+    rsi_norm = (rsi_val - 50) / 50
+    components.append({
+        "name": "RSI",
+        "score": round(-rsi_norm, 3),  # inverted: high RSI = sell signal
+        "weight": 0.15,
+        "contribution": round({"buy": 0.15, "sell": -0.15, "neutral": 0.0}[rsi_signal] * min(abs(rsi_norm), 1.0), 4),
+        "signal": rsi_signal,
+        "detail": rsi_detail,
+        "rationale": f"14-period RSI: {rsi_val:.1f}. {'Consider taking profits.' if rsi_val > 70 else 'Potential bounce opportunity.' if rsi_val < 30 else 'No extreme reading.'}",
+    })
+
+    # 3. MACD (weight: 0.15)
+    macd_val = float(latest.get("MACD", 0))
+    signal_val = float(latest.get("Signal", 0))
+    macd_signal = "buy" if macd_val > signal_val else "sell"
+    macd_diff = macd_val - signal_val
+    macd_norm = macd_diff / (abs(macd_val) + 1e-10)
+    components.append({
+        "name": "MACD",
+        "score": round(macd_norm, 3),
+        "weight": 0.15,
+        "contribution": round(macd_norm * 0.15, 4),
+        "signal": macd_signal,
+        "detail": f"MACD {'above' if macd_signal == 'buy' else 'below'} signal line",
+        "rationale": f"MACD: {macd_val:.4f}, Signal: {signal_val:.4f}. {'Bullish momentum building.' if macd_signal == 'buy' else 'Bearish momentum building.'}",
+    })
+
+    # 4. Volatility (weight: 0.15)
+    daily_vol = vol_summary.get("daily_volatility", 20)
+    vol_level = "High" if daily_vol > 35 else "Low" if daily_vol < 15 else "Medium"
+    vol_signal = "neutral"
+    vol_detail = f"{vol_level} volatility ({daily_vol:.1f}%)"
+    components.append({
+        "name": "Volatility",
+        "score": 0.0,
+        "weight": 0.15,
+        "contribution": 0.0,
+        "signal": vol_signal,
+        "detail": vol_detail,
+        "rationale": f"Daily volatility: {daily_vol:.1f}%. {'Tight stops recommended.' if daily_vol > 35 else 'Normal position sizing appropriate.' if daily_vol > 15 else 'Low risk of large swings.'}",
+    })
+
+    # 5. Risk (weight: 0.15)
+    risk_score = risk_data.get("risk_score", 50)
+    risk_level = risk_data.get("risk_level", "Unknown")
+    risk_norm = (risk_score - 50) / 50  # higher = riskier = negative for buy
+    components.append({
+        "name": "Risk Assessment",
+        "score": round(-risk_norm, 3),
+        "weight": 0.15,
+        "contribution": round(-risk_norm * 0.15, 4),
+        "signal": "sell" if risk_norm > 0.3 else "buy" if risk_norm < -0.3 else "neutral",
+        "detail": f"{risk_level} risk ({risk_score:.1f}/100)",
+        "rationale": risk_data.get("message", "Risk assessment complete."),
+    })
+
+    # 6. Sentiment (weight: 0.15)
+    sent_score = sentiment_data.get("score", 0.0)
+    sent_signal = "buy" if sent_score > 0.1 else "sell" if sent_score < -0.1 else "neutral"
+    components.append({
+        "name": "News Sentiment",
+        "score": round(sent_score, 3),
+        "weight": 0.15,
+        "contribution": round(sent_score * 0.15, 4),
+        "signal": sent_signal,
+        "detail": f"{sentiment_data.get('label', 'Neutral')} ({sent_score:.2f})",
+        "rationale": f"Sentiment score: {sent_score:.2f}. Market mood: {sentiment_data.get('label', 'Neutral')}.",
+    })
+
+    # 7. Opportunity (weight: 0.15)
+    opp_score = (opp_data["score"] if opp_data else 50.0) / 100.0
+    opp_norm = (opp_score - 0.5) * 2  # normalize to -1..+1
+    components.append({
+        "name": "Opportunity Score",
+        "score": round(opp_norm, 3),
+        "weight": 0.15,
+        "contribution": round(opp_norm * 0.15, 4),
+        "signal": "buy" if opp_norm > 0.2 else "sell" if opp_norm < -0.2 else "neutral",
+        "detail": f"Score: {opp_data['score'] if opp_data else 50:.0f}/100",
+        "rationale": f"Composite opportunity score: {opp_data['score'] if opp_data else 50:.0f}/100.",
+    })
+
+    # --- Aggregate ---
+    total_score = sum(c["contribution"] for c in components)
+    if total_score > 0.1:
+        overall_signal = "Buy"
+    elif total_score < -0.1:
+        overall_signal = "Sell"
+    else:
+        overall_signal = "Hold"
+
+    confidence = min(abs(total_score) / 0.4, 1.0)
+
+    # Build rationale summary
+    bullish = [c["name"] for c in components if c["signal"] == "buy"]
+    bearish = [c["name"] for c in components if c["signal"] == "sell"]
+    rationale_parts = []
+    if bullish:
+        rationale_parts.append(f"Bullish: {', '.join(bullish)}")
+    if bearish:
+        rationale_parts.append(f"Bearish: {', '.join(bearish)}")
 
     return {
         "ticker": req.ticker,
         "name": asset_info["name"],
+        "signal": overall_signal,
+        "score": round(total_score, 4),
+        "confidence": round(confidence, 3),
+        "components": components,
+        "rationale": " | ".join(rationale_parts) if rationale_parts else "Mixed signals across indicators.",
         "opportunity_score": opp_data["score"] if opp_data else 50.0,
         "trend": {
             "score": round(trend_score, 1),
-            "label": "Bullish" if trend_score > 60 else "Bearish" if trend_score < 40 else "Neutral"
+            "label": trend_label,
         },
         "technicals": {
-            "rsi": round(latest["RSI"], 1),
-            "macd_signal": "Bullish" if latest["MACD"] > latest["Signal"] else "Bearish"
+            "rsi": round(rsi_val, 1),
+            "macd_signal": "Bullish" if macd_signal == "buy" else "Bearish",
         },
         "risk": {
-            "level": risk_data["risk_level"],
-            "score": risk_data["risk_score"]
+            "level": risk_level,
+            "score": risk_score,
         },
         "volatility": {
-            "level": "High" if vol_summary["daily_volatility"] > 35 else "Low" if vol_summary["daily_volatility"] < 15 else "Medium",
-            "daily": round(vol_summary["daily_volatility"], 1)
+            "level": vol_level,
+            "daily": round(daily_vol, 1),
         },
         "sentiment": sentiment_data,
-        "relative_volume": vol_summary["relative_volume"] if asset_info["has_volume"] else {"available": False}
+        "relative_volume": vol_summary.get("relative_volume", {"available": False}),
     }
 
 
