@@ -3,7 +3,7 @@ import requests
 for ticker in ['NVDA', 'AAPL', 'MSFT']:
     print(f"=== {ticker} ===")
     try:
-        r = requests.post('http://127.0.0.1:8000/api/data/forecast', 
+        r = requests.post('http://127.0.0.1:8000/api/forecast/onnx', 
             json={'ticker': ticker, 'forecast_days': 10, 'period': '1y'}, 
             timeout=60)
         data = r.json()

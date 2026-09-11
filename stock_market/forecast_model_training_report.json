@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-09-11 09:31:02",
+  "mode": "eval",
+  "aggregate_metrics": {
+    "MAE": 0.029361,
+    "RMSE": 0.038003,
+    "MSE": 0.001444,
+    "R2": 0.943318,
+    "DirectionalAccuracy": 0.571429,
+    "DirectionalBias": -0.025248
+  },
+  "per_ticker_metrics": {
+    "AAPL": {
+      "MAE": 0.039879,
+      "RMSE": 0.047876,
+      "MSE": 0.002292,
+      "R2": -1.690118,
+      "DirectionalAccuracy": 0.5,
+      "DirectionalBias": -0.039879
+    },
+    "MSFT": {
+      "MAE": 0.018843,
+      "RMSE": 0.02442,
+      "MSE": 0.000596,
+      "R2": -0.380125,
+      "DirectionalAccuracy": 0.6,
+      "DirectionalBias": -0.010616
+    }
+  },
+  "smoke_test": {
+    "pass": true,
+    "details": {
+      "AAPL": {
+        "status": "PASS",
+        "checks": {
+          "length": true,
+          "dates_length": true,
+          "no_nan": true,
+          "no_inf": true,
+          "reasonable_range": true,
+          "dtype": true
+        },
+        "forecast_min": 311.67864990234375,
+        "forecast_max": 315.8672180175781,
+        "last_actual": 326.57000732421875
+      },
+      "MSFT": {
+        "status": "PASS",
+        "checks": {
+          "length": true,
+          "dates_length": true,
+          "no_nan": true,
+          "no_inf": true,
+          "reasonable_range": true,
+          "dtype": true
+        },
+        "forecast_min": 464.7621765136719,
+        "forecast_max": 489.6232604980469,
+        "last_actual": 492.44000244140625
+      },
+      "NVDA": {
+        "status": "SKIP",
+        "reason": "missing data or scaler"
+      },
+      "TSLA": {
+        "status": "SKIP",
+        "reason": "missing data or scaler"
+      }
+    }
+  },
+  "dataset_summary": {
+    "train_samples": 92,
+    "val_samples": 20,
+    "test_samples": 22
+  },
+  "elapsed_seconds": 2.64
+}

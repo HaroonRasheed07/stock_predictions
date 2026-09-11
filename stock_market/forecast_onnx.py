@@ -5,13 +5,41 @@ import os
 import onnxruntime as ort
 import logging
 
+
+def validate_forecast_inputs(df, session, scaler, forecast_days=10, window_size=60):
+    """
+    Pre-flight validation before running forecast.
+    Returns list of issues (empty = OK).
+    """
+    issues = []
+
+    if df is None or (hasattr(df, 'empty') and df.empty):
+        issues.append("DataFrame is None or empty")
+    elif "Close" not in df.columns:
+        issues.append("DataFrame missing 'Close' column")
+
+    if df is not None and hasattr(df, '__len__') and len(df) < window_size + 1:
+        issues.append(f"Insufficient data: {len(df)} rows, need {window_size + 1}")
+
+    if session is None:
+        issues.append("ONNX session is None")
+
+    if scaler is None:
+        issues.append("Scaler is None")
+
+    if not isinstance(forecast_days, int) or forecast_days < 1 or forecast_days > 30:
+        issues.append(f"forecast_days={forecast_days} out of reasonable range [1, 30]")
+
+    return issues
+
+
 def load_forecast_model(model_path="lstm_attention_final.onnx", scalers_path="scalers_multi.pkl"):
     """
     Load the ONNX model and scalers once.
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    model_full_path = os.path.join(base_dir, model_path)
-    scalers_full_path = os.path.join(base_dir, scalers_path)
+    model_full_path = model_path if os.path.isabs(model_path) else os.path.join(base_dir, model_path)
+    scalers_full_path = scalers_path if os.path.isabs(scalers_path) else os.path.join(base_dir, scalers_path)
 
     if not os.path.exists(model_full_path):
         raise FileNotFoundError(f"Model not found: {model_full_path}")

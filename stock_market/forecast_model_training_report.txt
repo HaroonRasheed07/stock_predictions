@@ -1,0 +1,30 @@
+MODEL TRAINING REPORT - 2026-09-11 09:30:59
+============================================================
+Mode: fine_tune | Strategy: Strategy A | Scaler: reuse
+LR: 0.5 | Epochs: 1 | Batch: 8
+
+CURRENT METRICS:
+  MAE                 : 0.039879
+  RMSE                : 0.047876
+  MSE                 : 0.002292
+  R2                  : -1.690118
+  DirectionalAccuracy : 0.5
+  DirectionalBias     : -0.039879
+
+CANDIDATE METRICS:
+  MAE                 : 2.056784
+  RMSE                : 2.056991
+  MSE                 : 4.231211
+  R2                  : -4964.987554
+  DirectionalAccuracy : 0.5
+  DirectionalBias     : -2.056784
+
+DECISION:
+  Candidate: REJECTED
+  Reason:    RMSE degraded: Candidate (2.056991) > Current threshold (0.048834) ; MAE degraded: Candidate (2.056784) > Current threshold (0.040677) ; R2 dropped: Candidate (-4964.987554) < Current threshold (-1.740118)
+
+ONNX & PRODUCTION VERIFICATION:
+  ONNX Export Success: False
+  ONNX Parity Pass:    False
+  Smoke Test Pass:     False
+  Production Replaced: False
