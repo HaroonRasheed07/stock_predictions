@@ -8,11 +8,11 @@
 
 @layer base {
   :root {
-    /* ─── Background ─── */
-    --background: 210 20% 98%;
+    /* ─── Background — Premium Light (soft neutral, not pure white) ─── */
+    --background: 220 16% 97%;
     --foreground: 222 30% 14%;
 
-    /* ─── Cards ─── */
+    /* ─── Cards — Clean white with subtle warmth ─── */
     --card: 0 0% 100%;
     --card-foreground: 222 30% 14%;
 
@@ -24,17 +24,17 @@
     --primary: 224 76% 48%;
     --primary-foreground: 0 0% 100%;
 
-    /* ─── Secondary — Slate ─── */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 30% 14%;
+    /* ─── Secondary — Cool Slate ─── */
+    --secondary: 220 14% 95%;
+    --secondary-foreground: 222 24% 22%;
 
-    /* ─── Muted ─── */
-    --muted: 220 14% 96%;
+    /* ─── Muted — Subtle gray ─── */
+    --muted: 220 14% 95%;
     --muted-foreground: 220 9% 46%;
 
     /* ─── Accent ─── */
-    --accent: 220 14% 96%;
-    --accent-foreground: 222 30% 14%;
+    --accent: 220 14% 95%;
+    --accent-foreground: 222 24% 22%;
 
     /* ─── Success — Financial Green ─── */
     --success: 152 58% 40%;
@@ -48,9 +48,9 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    /* ─── Borders ─── */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    /* ─── Borders — Subtle, not harsh ─── */
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
     --ring: 224 76% 48%;
 
     /* ─── Radius ─── */
@@ -63,27 +63,30 @@
     --chart-4: 38 92% 50%;
     --chart-5: 220 9% 46%;
 
-    /* ─── Shadows ─── */
-    --shadow-xs: 0 1px 2px hsl(222 30% 14% / 0.04);
-    --shadow-sm: 0 1px 3px hsl(222 30% 14% / 0.06), 0 1px 2px hsl(222 30% 14% / 0.04);
-    --shadow-md: 0 4px 6px -1px hsl(222 30% 14% / 0.06), 0 2px 4px -2px hsl(222 30% 14% / 0.04);
-    --shadow-lg: 0 10px 15px -3px hsl(222 30% 14% / 0.08), 0 4px 6px -4px hsl(222 30% 14% / 0.04);
-    --shadow-xl: 0 20px 25px -5px hsl(222 30% 14% / 0.08), 0 8px 10px -6px hsl(222 30% 14% / 0.04);
+    /* ─── Shadows — Premium soft shadows ─── */
+    --shadow-xs: 0 1px 2px hsl(222 30% 14% / 0.03);
+    --shadow-sm: 0 1px 3px hsl(222 30% 14% / 0.04), 0 1px 2px hsl(222 30% 14% / 0.03);
+    --shadow-md: 0 4px 6px -1px hsl(222 30% 14% / 0.04), 0 2px 4px -2px hsl(222 30% 14% / 0.03);
+    --shadow-lg: 0 10px 15px -3px hsl(222 30% 14% / 0.06), 0 4px 6px -4px hsl(222 30% 14% / 0.03);
+    --shadow-xl: 0 20px 25px -5px hsl(222 30% 14% / 0.06), 0 8px 10px -6px hsl(222 30% 14% / 0.03);
 
     /* ─── Financial Signal Colors ─── */
     --signal-buy: 152 58% 40%;
     --signal-sell: 4 72% 51%;
     --signal-hold: 38 92% 50%;
     --signal-neutral: 220 9% 46%;
+
+    /* ─── Chart Grid ─── */
+    --chart-grid: 220 13% 94%;
   }
 
   .dark {
-    /* ─── Background — Premium Dark ─── */
-    --background: 224 25% 9%;
+    /* ─── Background — Premium Dark (not pure black, subtle blue tint) ─── */
+    --background: 224 25% 8%;
     --foreground: 210 20% 94%;
 
-    /* ─── Cards ─── */
-    --card: 224 20% 12%;
+    /* ─── Cards — Slightly lighter than background ─── */
+    --card: 224 22% 11%;
     --card-foreground: 210 20% 94%;
 
     /* ─── Popover ─── */
@@ -95,16 +98,16 @@
     --primary-foreground: 0 0% 100%;
 
     /* ─── Secondary ─── */
-    --secondary: 224 18% 16%;
-    --secondary-foreground: 210 20% 94%;
+    --secondary: 224 18% 15%;
+    --secondary-foreground: 210 20% 90%;
 
     /* ─── Muted ─── */
-    --muted: 224 18% 16%;
-    --muted-foreground: 215 16% 62%;
+    --muted: 224 18% 15%;
+    --muted-foreground: 215 16% 60%;
 
     /* ─── Accent ─── */
-    --accent: 224 18% 16%;
-    --accent-foreground: 210 20% 94%;
+    --accent: 224 18% 15%;
+    --accent-foreground: 210 20% 90%;
 
     /* ─── Success ─── */
     --success: 152 58% 48%;
@@ -118,9 +121,9 @@
     --warning: 38 80% 52%;
     --warning-foreground: 0 0% 100%;
 
-    /* ─── Borders ─── */
-    --border: 224 16% 18%;
-    --input: 224 16% 18%;
+    /* ─── Borders — Subtle on dark ─── */
+    --border: 224 16% 17%;
+    --input: 224 16% 17%;
     --ring: 217 91% 60%;
 
     /* ─── Charts ─── */
@@ -128,14 +131,17 @@
     --chart-2: 152 58% 48%;
     --chart-3: 4 62% 48%;
     --chart-4: 38 80% 52%;
-    --chart-5: 215 16% 62%;
+    --chart-5: 215 16% 60%;
 
-    /* ─── Shadows — Dark mode uses darker shadows ─── */
-    --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.2);
-    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.25), 0 1px 2px hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.35), 0 4px 6px -4px hsl(0 0% 0% / 0.2);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 8px 10px -6px hsl(0 0% 0% / 0.25);
+    /* ─── Shadows — Dark mode uses deeper shadows ─── */
+    --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.3);
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.35), 0 1px 2px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.45), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.5), 0 8px 10px -6px hsl(0 0% 0% / 0.35);
+
+    /* ─── Chart Grid ─── */
+    --chart-grid: 224 16% 16%;
   }
 }
 
@@ -214,6 +220,15 @@
     @apply rounded-xl border border-border/60 bg-card shadow-sm
            transition-all duration-100 ease-out
            active:shadow-xs active:scale-[0.99];
+  }
+
+  /* ─── Premium Glass Effect ─── */
+  .glass-premium {
+    @apply rounded-xl border border-border/40 bg-card/80 backdrop-blur-sm shadow-sm;
+  }
+
+  .dark .glass-premium {
+    @apply bg-card/60 backdrop-blur-md;
   }
 
   /* ─── Financial Signal Badges ─── */
@@ -305,6 +320,41 @@
   .stagger-item:nth-child(4) { animation-delay: 150ms; }
   .stagger-item:nth-child(5) { animation-delay: 200ms; }
   .stagger-item:nth-child(6) { animation-delay: 250ms; }
+
+  /* ─── Premium Border Styles ─── */
+  .border-premium {
+    @apply border border-border/50;
+  }
+
+  .dark .border-premium {
+    @apply border-border/30;
+  }
+
+  /* ─── Premium Card Hover ─── */
+  .hover-premium {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .hover-premium:hover {
+    @apply shadow-md;
+  }
+
+  .dark .hover-premium:hover {
+    @apply border-border/40;
+  }
+
+  /* ─── Price Change Indicator ─── */
+  .price-up {
+    @apply text-success;
+  }
+
+  .price-down {
+    @apply text-destructive;
+  }
+
+  .price-neutral {
+    @apply text-muted-foreground;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

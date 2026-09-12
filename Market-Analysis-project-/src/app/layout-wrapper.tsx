@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useThemeStore } from '@/store/themeStore';
 import { useStockStore } from '@/store/stockStore';
-import { fetchForecast, fetchIndicators, fetchSentiment } from '@/lib/api';
+import { fetchMarketOverview, fetchDiscoverScan } from '@/lib/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 let queryClientInstance: QueryClient | null = null;
@@ -54,19 +54,18 @@ export function LayoutWrapper({ children }: { children: ReactNode }) {
     if (!ticker) return;
 
     const defaultPeriod = '1y';
-    const defaultForecastDays = 10;
 
+    // Prefetch the market overview (used by Brief, Overview pages)
     queryClient.prefetchQuery({
-      queryKey: ['stock-indicators', ticker, defaultPeriod],
-      queryFn: () => fetchIndicators(ticker, defaultPeriod),
+      queryKey: ['market-overview', ticker, defaultPeriod],
+      queryFn: () => fetchMarketOverview(ticker, defaultPeriod),
     });
+
+    // Prefetch discover data (used by Discover page)
+    const defaultTickers = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'JPM', 'V', 'JNJ'];
     queryClient.prefetchQuery({
-      queryKey: ['stock-sentiment', ticker],
-      queryFn: () => fetchSentiment(ticker),
-    });
-    queryClient.prefetchQuery({
-      queryKey: ['price-forecast', ticker, defaultPeriod],
-      queryFn: () => fetchForecast(ticker, defaultForecastDays, defaultPeriod),
+      queryKey: ['discover-scan', defaultPeriod, ...defaultTickers],
+      queryFn: () => fetchDiscoverScan(defaultTickers, defaultPeriod),
     });
   }, [mounted, queryClient, selectedTicker]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useStockStore } from '@/store/stockStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
@@ -140,16 +140,20 @@ function StockSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AssetInfo[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSearch = async (q: string) => {
+  const handleSearch = useCallback((q: string) => {
     setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (q.length < 1) { setResults([]); setShowResults(false); return; }
-    try {
-      const data = await fetchAssetSearch(q);
-      setResults(data.slice(0, 8));
-      setShowResults(true);
-    } catch { setResults([]); }
-  };
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await fetchAssetSearch(q);
+        setResults(data.slice(0, 8));
+        setShowResults(true);
+      } catch { setResults([]); }
+    }, 300);
+  }, []);
 
   return (
     <div className="relative">

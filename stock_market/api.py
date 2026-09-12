@@ -26,6 +26,7 @@ from multi_asset import get_asset_info, search_assets, get_default_watchlist, ge
 from opportunity import scan_watchlist, calculate_opportunity_score
 from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
 from risk import assess_risk, calculate_trend_strength
+from watchlist_monitor import scan_watchlist_intelligent
 
 # Import cache manager and persistent dual-layer SWR engine
 from cache_manager import cache_manager
@@ -729,6 +730,379 @@ def get_market_overview(req: IndicatorRequest):
     return res
 
 
+class DiscoverScanRequest(BaseModel):
+    tickers: List[str]
+    period: str = "1y"
+
+
+@app.get("/api/home/intelligence")
+def get_home_intelligence():
+    """
+    Fast aggregated endpoint for the Home intelligence center.
+    Returns: market snapshot, top opportunities, selected stock brief, watchlist alerts.
+    All data is precomputed or SWR-cached — never blocks on fresh computation.
+    """
+    cache_key = "home_intelligence"
+
+    def _compute_raw():
+        result = {}
+
+        # 1. Market status
+        try:
+            from datetime import datetime, timezone, timedelta
+            now = datetime.now(timezone.utc)
+            et = now - timedelta(hours=4)
+            hour, minute = et.hour, et.minute
+            weekday = et.weekday()
+            market_time = hour * 60 + minute
+            market_open = 9 * 60 + 30
+            market_close = 16 * 60
+            is_weekday = weekday < 5
+            is_open = is_weekday and market_open <= market_time < market_close
+            result["marketStatus"] = "Open" if is_open else "Closed"
+        except Exception:
+            result["marketStatus"] = "Unknown"
+
+        # 2. Top performing stocks (precomputed by daemon)
+        try:
+            top = get_top_performing_stocks(limit=8)
+            result["topStocks"] = top
+        except Exception:
+            result["topStocks"] = []
+
+        # 3. Selected stock brief (use AAPL default or first top stock)
+        try:
+            default_ticker = "AAPL"
+            if result["topStocks"]:
+                default_ticker = result["topStocks"][0].get("symbol", "AAPL")
+
+            brief_key = f"overview:{default_ticker}:1y"
+            brief_payload, _ = cache_manager.get_swr(
+                key=brief_key,
+                refresh_func=lambda: _compute_market_overview_raw(default_ticker, "1y"),
+                fresh_ttl_seconds=120.0,
+                stale_ttl_seconds=86400.0,
+                category="overview",
+                ticker=default_ticker,
+                period="1y",
+            )
+            if brief_payload:
+                result["selectedStock"] = {
+                    "ticker": brief_payload.get("ticker", default_ticker),
+                    "price": brief_payload.get("currentPrice", 0),
+                    "change": brief_payload.get("change", 0),
+                    "changePercent": brief_payload.get("changePercent", 0),
+                    "signal": (brief_payload.get("tradeConfirmation") or {}).get("signal", "Hold"),
+                    "score": (brief_payload.get("tradeConfirmation") or {}).get("opportunity_score", 50),
+                    "risk": (brief_payload.get("risk") or {}).get("risk_level", "Unknown"),
+                    "sentiment": (brief_payload.get("sentiment") or {}).get("sentiment_label", "Neutral"),
+                    "market_mood": (brief_payload.get("sentiment") or {}).get("market_mood", "Unknown"),
+                    "volatility": (brief_payload.get("volatility") or {}).get("daily_volatility", 0),
+                    "marketStatus": brief_payload.get("marketStatus", "Unknown"),
+                }
+            else:
+                result["selectedStock"] = None
+        except Exception:
+            result["selectedStock"] = None
+
+        # 4. Discover scan (top 6 watchlist stocks — fast)
+        try:
+            default_tickers = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']
+            discover_key = f"discover:1y:{','.join(sorted(default_tickers))}"
+            discover_payload, _ = cache_manager.get_swr(
+                key=discover_key,
+                refresh_func=lambda: _discover_scan_raw(default_tickers, "1y"),
+                fresh_ttl_seconds=120.0,
+                stale_ttl_seconds=86400.0,
+                category="discover",
+            )
+            if discover_payload:
+                result["discover"] = list((discover_payload.get("stocks") or {}).values())[:6]
+            else:
+                result["discover"] = []
+        except Exception:
+            result["discover"] = []
+
+        # 5. Watchlist alerts
+        try:
+            wl = get_default_watchlist()[:8]
+            monitor_key = f"watchlist_monitor:1y:{','.join(sorted(wl))}"
+            monitor_payload, _ = cache_manager.get_swr(
+                key=monitor_key,
+                refresh_func=lambda: scan_watchlist_intelligent(wl, "1y"),
+                fresh_ttl_seconds=120.0,
+                stale_ttl_seconds=86400.0,
+                category="watchlist_monitor",
+            )
+            if monitor_payload:
+                result["alerts"] = (monitor_payload.get("alerts") or [])[:5]
+                result["alertSummary"] = {
+                    "total": monitor_payload.get("total_alerts", 0),
+                    "high": monitor_payload.get("high_severity", 0),
+                    "medium": monitor_payload.get("medium_severity", 0),
+                    "text": monitor_payload.get("summary_text", ""),
+                }
+            else:
+                result["alerts"] = []
+                result["alertSummary"] = None
+        except Exception:
+            result["alerts"] = []
+            result["alertSummary"] = None
+
+        return result
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_raw,
+        fresh_ttl_seconds=60.0,   # 1 min fresh
+        stale_ttl_seconds=86400.0,
+        category="home_intelligence",
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_raw()
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=60.0, stale_ttl_seconds=86400.0, category="home_intelligence")
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
+
+def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
+    """Lightweight scan for discover section."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    results: Dict[str, Any] = {}
+
+    def _scan_single(ticker: str):
+        try:
+            df = load_data(ticker, period)
+            if df is None or df.empty:
+                return (ticker, None)
+            asset_info = get_asset_info(ticker)
+            current_price = 0.0
+            price_change_pct = 0.0
+            try:
+                live = get_latest_price(ticker)
+                if live and live > 0:
+                    current_price = live
+                    if len(df) >= 2:
+                        prev = float(df["Close"].iloc[-2])
+                        if prev > 0:
+                            price_change_pct = ((current_price - prev) / prev) * 100
+                elif len(df) > 0:
+                    last_c = df["Close"].iloc[-1]
+                    if isinstance(last_c, pd.DataFrame):
+                        last_c = last_c.iloc[:, 0]
+                    current_price = float(last_c)
+            except Exception:
+                pass
+
+            signal = "Hold"
+            opp_score = 50.0
+            risk_level = "Unknown"
+            try:
+                indicators = calculate_indicators(df)
+                df_ind = pd.DataFrame(indicators)
+                if not df_ind.empty:
+                    ts = calculate_trend_strength(df_ind)
+                    latest = df_ind.iloc[-1]
+                    rsi_val = float(latest.get("RSI", 50))
+                    macd_val = float(latest.get("MACD", 0))
+                    sig_val = float(latest.get("Signal", 0))
+                    buy_s = sum([ts > 60, rsi_val < 30, macd_val > sig_val])
+                    sell_s = sum([ts < 40, rsi_val > 70, macd_val <= sig_val])
+                    if buy_s >= 2: signal = "Buy"
+                    elif sell_s >= 2: signal = "Sell"
+                    rd = assess_risk(df_ind, ticker)
+                    risk_level = rd.get("risk_level", "Unknown")
+                    opp = calculate_opportunity_score(ticker, period, skip_sentiment=True)
+                    opp_score = opp["score"] if opp else 50.0
+            except Exception:
+                pass
+
+            return (ticker, {
+                "ticker": ticker,
+                "name": asset_info.get("name", ticker),
+                "price": round(current_price, 2),
+                "changePercent": round(price_change_pct, 2),
+                "signal": signal,
+                "risk": risk_level,
+                "score": round(opp_score, 0),
+            })
+        except Exception:
+            return (ticker, None)
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {executor.submit(_scan_single, t): t for t in tickers[:6]}
+        for future in as_completed(futures):
+            ticker, data = future.result()
+            if data:
+                results[ticker] = data
+
+    return {"stocks": results, "count": len(results)}
+
+@app.post("/api/discover/scan")
+def discover_scan(req: DiscoverScanRequest):
+    """
+    Lightweight bulk scan for Discover page.
+    Returns price, change, signal, risk, sentiment, score for each ticker.
+    Much faster than calling /api/market/overview N times.
+    """
+    cache_key = f"discover:{req.period}:{','.join(sorted(req.tickers[:10]))}"
+
+    def _compute_raw():
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        results: Dict[str, Any] = {}
+
+        def _scan_single(ticker: str):
+            try:
+                df = load_data(ticker, req.period)
+                if df is None or df.empty:
+                    return (ticker, None)
+
+                asset_info = get_asset_info(ticker)
+                has_volume = asset_info["has_volume"]
+
+                # Price
+                current_price = 0.0
+                price_change = 0.0
+                price_change_pct = 0.0
+                try:
+                    live = get_latest_price(ticker)
+                    if live and live > 0:
+                        current_price = live
+                        if len(df) >= 2:
+                            prev = float(df["Close"].iloc[-2])
+                            if prev > 0:
+                                price_change = current_price - prev
+                                price_change_pct = (price_change / prev) * 100
+                    elif len(df) > 0:
+                        last_c = df["Close"].iloc[-1]
+                        if isinstance(last_c, pd.DataFrame):
+                            last_c = last_c.iloc[:, 0]
+                        current_price = float(last_c)
+                        if len(df) >= 2:
+                            prev = df["Close"].iloc[-2]
+                            if isinstance(prev, pd.DataFrame):
+                                prev = prev.iloc[:, 0]
+                            prev = float(prev)
+                            if prev > 0:
+                                price_change = current_price - prev
+                                price_change_pct = (price_change / prev) * 100
+                except Exception:
+                    pass
+
+                # Indicators
+                try:
+                    indicators = calculate_indicators(df)
+                    df_ind = pd.DataFrame(indicators)
+                except Exception:
+                    df_ind = pd.DataFrame()
+
+                # Risk
+                risk_level = "Unknown"
+                risk_score = 50.0
+                try:
+                    if not df_ind.empty:
+                        rd = assess_risk(df_ind, ticker)
+                        risk_level = rd.get("risk_level", "Unknown")
+                        risk_score = rd.get("risk_score", 50.0)
+                except Exception:
+                    pass
+
+                # Trend + Signal
+                signal = "Hold"
+                opp_score = 50.0
+                try:
+                    if not df_ind.empty:
+                        ts = calculate_trend_strength(df_ind)
+                        trend_label = "Bullish" if ts > 60 else "Bearish" if ts < 40 else "Neutral"
+                        latest = df_ind.iloc[-1]
+                        rsi_val = float(latest.get("RSI", 50))
+                        macd_val = float(latest.get("MACD", 0))
+                        sig_val = float(latest.get("Signal", 0))
+
+                        # Simple signal heuristic
+                        buy_signals = 0
+                        sell_signals = 0
+                        if ts > 60: buy_signals += 1
+                        elif ts < 40: sell_signals += 1
+                        if rsi_val < 30: buy_signals += 1
+                        elif rsi_val > 70: sell_signals += 1
+                        if macd_val > sig_val: buy_signals += 1
+                        else: sell_signals += 1
+
+                        if buy_signals >= 2: signal = "Buy"
+                        elif sell_signals >= 2: signal = "Sell"
+                        else: signal = "Hold"
+
+                        opp = calculate_opportunity_score(ticker, req.period, skip_sentiment=True)
+                        opp_score = opp["score"] if opp else 50.0
+                except Exception:
+                    pass
+
+                # Sentiment (use cached, never block)
+                sentiment_label = "Neutral"
+                try:
+                    sent_key = f"sentiment:{ticker}"
+                    sent_payload, _ = cache_manager.get_swr(
+                        key=sent_key,
+                        refresh_func=lambda t=ticker: analyze_sentiment(t),
+                        fresh_ttl_seconds=600.0,
+                        stale_ttl_seconds=86400.0,
+                        category="sentiment",
+                        ticker=ticker,
+                    )
+                    if sent_payload:
+                        sentiment_label = sent_payload.get("label", "Neutral")
+                except Exception:
+                    pass
+
+                return (ticker, {
+                    "ticker": ticker,
+                    "name": asset_info.get("name", ticker),
+                    "price": round(current_price, 2),
+                    "change": round(price_change, 2),
+                    "changePercent": round(price_change_pct, 2),
+                    "signal": signal,
+                    "risk": risk_level,
+                    "sentiment": sentiment_label,
+                    "score": round(opp_score, 0),
+                })
+            except Exception as e:
+                return (ticker, None)
+
+        tickers_to_scan = req.tickers[:10]
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(_scan_single, t): t for t in tickers_to_scan}
+            for future in as_completed(futures):
+                ticker, data = future.result()
+                if data:
+                    results[ticker] = data
+
+        return {"stocks": results, "count": len(results)}
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_raw,
+        fresh_ttl_seconds=120.0,  # 2 min fresh
+        stale_ttl_seconds=86400.0,
+        category="discover",
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_raw()
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=120.0, stale_ttl_seconds=86400.0, category="discover")
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
+
 # ─── New Multi-Asset Endpoints ──────────────────────────────────────────────
 
 @app.get("/api/multi-asset/info/{ticker}")
@@ -801,15 +1175,36 @@ def scan_opportunities(req: WatchlistScanRequest):
 
 @app.post("/api/volatility/summary")
 def volatility_summary(req: SingleAssetRequest):
-    """Get comprehensive volatility metrics for a ticker"""
-    df = load_data(req.ticker, req.period)
-    if df is None:
-        raise HTTPException(status_code=404, detail="Data not found")
+    """Get comprehensive volatility metrics for a ticker — cached via SWR."""
+    cache_key = f"vol_summary:{req.ticker}:{req.period}"
 
-    asset_info = get_asset_info(req.ticker)
-    has_volume = asset_info["has_volume"]
+    def _compute_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None:
+            return {"error": "Data not found"}
+        asset_info = get_asset_info(req.ticker)
+        has_volume = asset_info["has_volume"]
+        return get_volatility_summary(df, has_volume, req.ticker, req.period)
 
-    return get_volatility_summary(df, has_volume, req.ticker, req.period)
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_raw,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="volatility_summary",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_raw()
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=300.0, stale_ttl_seconds=86400.0, category="volatility_summary", ticker=req.ticker, period=req.period)
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
 
 
 def _compute_volatility_monitor_raw(tickers_to_scan, period):
@@ -884,90 +1279,171 @@ def volatility_monitor(req: WatchlistScanRequest):
 
 @app.post("/api/risk/assess")
 def risk_assessment(req: SingleAssetRequest):
-    """Get comprehensive risk assessment for an asset"""
-    df = load_data(req.ticker, req.period)
-    if df is None:
-        raise HTTPException(status_code=404, detail="Data not found")
+    """Get comprehensive risk assessment for an asset — cached via SWR."""
+    cache_key = f"risk:{req.ticker}:{req.period}"
 
-    # We need indicators for trend strength
-    df_ind_records = calculate_indicators(df)
-    df_ind = pd.DataFrame(df_ind_records)
+    def _compute_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None:
+            return {"error": "Data not found"}
+        df_ind_records = calculate_indicators(df)
+        df_ind = pd.DataFrame(df_ind_records)
+        return assess_risk(df_ind, req.ticker)
 
-    return assess_risk(df_ind, req.ticker)
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_raw,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="risk",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_raw()
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=300.0, stale_ttl_seconds=86400.0, category="risk", ticker=req.ticker, period=req.period)
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
 
 @app.post("/api/data/trend-strength")
 def trend_strength(req: SingleAssetRequest):
-    """Get trend strength score for a ticker"""
-    df = load_data(req.ticker, req.period)
-    if df is None:
-        raise HTTPException(status_code=404, detail="Data not found")
+    """Get trend strength score for a ticker — cached via SWR."""
+    cache_key = f"trend:{req.ticker}:{req.period}"
 
-    df_ind_records = calculate_indicators(df)
-    df_ind = pd.DataFrame(df_ind_records)
+    def _compute_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None:
+            return {"error": "Data not found"}
+        df_ind_records = calculate_indicators(df)
+        df_ind = pd.DataFrame(df_ind_records)
+        score = calculate_trend_strength(df_ind)
+        label = "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
+        return {"ticker": req.ticker, "trend_score": round(score, 1), "trend_label": label}
 
-    score = calculate_trend_strength(df_ind)
-    label = "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
-
-    return {
-        "ticker": req.ticker,
-        "trend_score": round(score, 1),
-        "trend_label": label
-    }
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_raw,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="trend",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_raw()
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=300.0, stale_ttl_seconds=86400.0, category="trend", ticker=req.ticker, period=req.period)
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
 
 @app.post("/api/data/relative-volume")
 def relative_volume(req: SingleAssetRequest):
-    """Get relative volume analysis"""
-    df = load_data(req.ticker, req.period)
-    if df is None:
-        raise HTTPException(status_code=404, detail="Data not found")
+    """Get relative volume analysis — cached via SWR."""
+    cache_key = f"rel_vol:{req.ticker}:{req.period}"
 
-    asset_info = get_asset_info(req.ticker)
-    if not asset_info["has_volume"]:
-        return {
-            "available": False,
-            "message": "Asset class does not support volume data"
-        }
+    def _compute_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None:
+            return {"error": "Data not found"}
+        asset_info = get_asset_info(req.ticker)
+        if not asset_info["has_volume"]:
+            return {"available": False, "message": "Asset class does not support volume data"}
+        return calculate_relative_volume(df)
 
-    return calculate_relative_volume(df)
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_raw,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="relative_volume",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_raw()
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=300.0, stale_ttl_seconds=86400.0, category="relative_volume", ticker=req.ticker, period=req.period)
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
 
 @app.post("/api/data/expected-range")
 def expected_range(req: SingleAssetRequest):
-    """Get expected daily trading range based on ATR"""
-    df = load_data(req.ticker, req.period)
-    if df is None:
-        raise HTTPException(status_code=404, detail="Data not found")
+    """Get expected daily trading range based on ATR — cached via SWR."""
+    cache_key = f"exp_range:{req.ticker}:{req.period}"
 
-    return calculate_expected_range(df)
+    def _compute_raw():
+        df = load_data(req.ticker, req.period)
+        if df is None:
+            return {"error": "Data not found"}
+        return calculate_expected_range(df)
 
-@app.post("/api/data/trade-confirmation")
-def trade_confirmation(req: SingleAssetRequest):
-    """
-    Get an explainable trade confirmation with component-level breakdown.
-    Each signal source contributes a score, weight, and rationale.
-    """
-    df = load_data(req.ticker, req.period)
-    if df is None:
-        raise HTTPException(status_code=404, detail="Data not found")
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_raw,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="expected_range",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_raw()
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=300.0, stale_ttl_seconds=86400.0, category="expected_range", ticker=req.ticker, period=req.period)
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
+def _compute_trade_confirmation_raw(ticker: str, period: str) -> Dict[str, Any]:
+    """Raw computation for trade confirmation."""
+    df = load_data(ticker, period)
+    if df is None or df.empty:
+        return {"ticker": ticker, "error": "No data available"}
 
     df_ind_records = calculate_indicators(df)
     df_ind = pd.DataFrame(df_ind_records)
 
     trend_score = calculate_trend_strength(df_ind)
-    risk_data = assess_risk(df_ind, req.ticker)
-    asset_info = get_asset_info(req.ticker)
+    risk_data = assess_risk(df_ind, ticker)
+    asset_info = get_asset_info(ticker)
     vol_summary = get_volatility_summary(df, asset_info["has_volume"])
     latest = df_ind.iloc[-1]
 
-    # Sentiment
+    # Sentiment — use SWR-cached version, never block
     sentiment_data = {"score": 0.0, "label": "Neutral"}
     try:
-        sent_res = analyze_sentiment(req.ticker)
-        sentiment_data = {"score": sent_res["score"], "label": sent_res["label"]}
+        sent_cache_key = f"sentiment:{ticker}"
+        sent_payload, _ = cache_manager.get_swr(
+            key=sent_cache_key,
+            refresh_func=lambda: analyze_sentiment(ticker),
+            fresh_ttl_seconds=600.0,
+            stale_ttl_seconds=86400.0,
+            category="sentiment",
+            ticker=ticker,
+        )
+        if sent_payload:
+            sentiment_data = {"score": sent_payload.get("score", 0.0), "label": sent_payload.get("label", "Neutral")}
     except Exception:
         pass
 
     # Opportunity
-    opp_data = calculate_opportunity_score(req.ticker, req.period, skip_sentiment=True)
+    opp_data = calculate_opportunity_score(ticker, period, skip_sentiment=True)
 
     # --- Explainable Components ---
     components = []
@@ -999,7 +1475,7 @@ def trade_confirmation(req: SingleAssetRequest):
     rsi_norm = (rsi_val - 50) / 50
     components.append({
         "name": "RSI",
-        "score": round(-rsi_norm, 3),  # inverted: high RSI = sell signal
+        "score": round(-rsi_norm, 3),
         "weight": 0.15,
         "contribution": round({"buy": 0.15, "sell": -0.15, "neutral": 0.0}[rsi_signal] * min(abs(rsi_norm), 1.0), 4),
         "signal": rsi_signal,
@@ -1089,7 +1565,6 @@ def trade_confirmation(req: SingleAssetRequest):
 
     confidence = min(abs(total_score) / 0.4, 1.0)
 
-    # Build rationale summary
     bullish = [c["name"] for c in components if c["signal"] == "buy"]
     bearish = [c["name"] for c in components if c["signal"] == "sell"]
     rationale_parts = []
@@ -1099,7 +1574,7 @@ def trade_confirmation(req: SingleAssetRequest):
         rationale_parts.append(f"Bearish: {', '.join(bearish)}")
 
     return {
-        "ticker": req.ticker,
+        "ticker": ticker,
         "name": asset_info["name"],
         "signal": overall_signal,
         "score": round(total_score, 4),
@@ -1126,6 +1601,31 @@ def trade_confirmation(req: SingleAssetRequest):
         "sentiment": sentiment_data,
         "relative_volume": vol_summary.get("relative_volume", {"available": False}),
     }
+
+
+@app.post("/api/data/trade-confirmation")
+def trade_confirmation(req: SingleAssetRequest):
+    """Explainable trade confirmation — cached via SWR."""
+    cache_key = f"trade_conf:{req.ticker}:{req.period}"
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=lambda: _compute_trade_confirmation_raw(req.ticker, req.period),
+        fresh_ttl_seconds=300.0,  # 5 min fresh
+        stale_ttl_seconds=86400.0,
+        category="trade_confirmation",
+        ticker=req.ticker,
+        period=req.period,
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_trade_confirmation_raw(req.ticker, req.period)
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=300.0, stale_ttl_seconds=86400.0, category="trade_confirmation", ticker=req.ticker, period=req.period)
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
 
 
 # ─── Forecast Endpoint ────────────────────────────────────────────────────────

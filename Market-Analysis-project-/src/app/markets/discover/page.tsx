@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useStockStore } from '@/store/stockStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import {
-  fetchMarketOverview,
-  fetchOpportunityScan,
-  fetchCatalysts,
+  fetchAssetSearch,
+  fetchDiscoverScan,
+  type AssetInfo,
+  type DiscoverStock,
 } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,27 +30,16 @@ import {
   BarChart3,
   Filter,
 } from 'lucide-react';
-import {
-  fetchAssetSearch,
-  type AssetInfo,
-  type MarketOverviewResponse,
-} from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 
 // ─── Stock Card ────────────────────────────────────────────────────────────
-function DiscoverStockCard({ ticker, overview, onTap }: {
-  ticker: string;
-  overview?: any;
+function DiscoverStockCard({ data, onTap }: {
+  data: DiscoverStock;
   onTap: () => void;
 }) {
-  const price = overview?.currentPrice;
-  const change = overview?.changePercent;
-  const signal = overview?.tradeConfirmation?.signal;
-  const score = overview?.tradeConfirmation?.opportunity_score;
-  const risk = overview?.risk?.risk_level;
-  const sentiment = overview?.sentiment?.sentiment_label;
+  const { ticker, name, price, change, changePercent, signal, risk, sentiment, score } = data;
 
   return (
     <button
@@ -61,18 +51,18 @@ function DiscoverStockCard({ ticker, overview, onTap }: {
           <TickerLogo ticker={ticker} size="md" />
           <div>
             <p className="text-sm font-semibold">{ticker}</p>
-            {price !== undefined && (
+            {price !== undefined && price > 0 && (
               <p className="text-lg font-bold">${price.toFixed(2)}</p>
             )}
           </div>
         </div>
         <div className="text-right">
-          {change !== undefined && (
+          {changePercent !== undefined && (
             <p className={cn(
               'text-sm font-semibold',
-              change > 0 ? 'text-success' : change < 0 ? 'text-destructive' : 'text-muted-foreground'
+              changePercent > 0 ? 'text-success' : changePercent < 0 ? 'text-destructive' : 'text-muted-foreground'
             )}>
-              {change > 0 ? '+' : ''}{change.toFixed(2)}%
+              {changePercent > 0 ? '+' : ''}{changePercent.toFixed(2)}%
             </p>
           )}
           {signal && (
@@ -144,54 +134,50 @@ export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AssetInfo[]>([]);
   const [showSearch, setShowSearch] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const watchlistTickers = watchlist.length > 0 ? watchlist : ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'JPM', 'V', 'JNJ'];
 
-  const { data: overviewData, isLoading } = useQuery({
-    queryKey: ['discover-overview', ...watchlistTickers.slice(0, 10)],
-    queryFn: async () => {
-      const results: Record<string, any> = {};
-      const tickers = watchlistTickers.slice(0, 10);
-      await Promise.allSettled(
-        tickers.map(async (t) => {
-          try {
-            const data = await fetchMarketOverview(t, '1y');
-            results[t] = data;
-          } catch { /* skip */ }
-        })
-      );
-      return results;
-    },
+  // Single bulk endpoint instead of 10 parallel overview calls
+  const { data: discoverData, isLoading } = useQuery({
+    queryKey: ['discover-scan', '1y', ...watchlistTickers.slice(0, 10)],
+    queryFn: () => fetchDiscoverScan(watchlistTickers.slice(0, 10), '1y'),
     staleTime: 60000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
+  const stocks = discoverData?.stocks || {};
+
   const filteredTickers = useMemo(() => {
-    if (!overviewData) return watchlistTickers.slice(0, 10);
-    let tickers = Object.keys(overviewData);
+    let tickers = Object.keys(stocks);
 
     if (filter === 'buy') {
-      tickers = tickers.filter(t => ['Buy', 'Strong Buy'].includes(overviewData[t]?.tradeConfirmation?.signal));
+      tickers = tickers.filter(t => ['Buy', 'Strong Buy'].includes(stocks[t]?.signal || ''));
     } else if (filter === 'sell') {
-      tickers = tickers.filter(t => ['Sell', 'Strong Sell'].includes(overviewData[t]?.tradeConfirmation?.signal));
+      tickers = tickers.filter(t => ['Sell', 'Strong Sell'].includes(stocks[t]?.signal || ''));
     } else if (filter === 'strong_buy') {
-      tickers = tickers.filter(t => overviewData[t]?.tradeConfirmation?.signal === 'Strong Buy');
+      tickers = tickers.filter(t => stocks[t]?.signal === 'Strong Buy');
     } else if (filter === 'high_momentum') {
-      tickers = tickers.filter(t => Math.abs(overviewData[t]?.changePercent || 0) > 2);
+      tickers = tickers.filter(t => Math.abs(stocks[t]?.changePercent || 0) > 2);
     } else if (filter === 'low_risk') {
-      tickers = tickers.filter(t => overviewData[t]?.risk?.risk_level === 'Low');
+      tickers = tickers.filter(t => stocks[t]?.risk === 'Low');
     }
 
     return tickers;
-  }, [overviewData, filter, watchlistTickers]);
+  }, [stocks, filter]);
 
-  const handleSearch = async (q: string) => {
+  const handleSearch = (q: string) => {
     setSearchQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (q.length < 1) { setSearchResults([]); setShowSearch(false); return; }
-    try {
-      const data = await fetchAssetSearch(q);
-      setSearchResults(data.slice(0, 8));
-      setShowSearch(true);
-    } catch { setSearchResults([]); }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await fetchAssetSearch(q);
+        setSearchResults(data.slice(0, 8));
+        setShowSearch(true);
+      } catch { setSearchResults([]); }
+    }, 300);
   };
 
   const openStock = (ticker: string) => {
@@ -267,8 +253,7 @@ export default function DiscoverPage() {
           {filteredTickers.map((ticker) => (
             <DiscoverStockCard
               key={ticker}
-              ticker={ticker}
-              overview={overviewData?.[ticker]}
+              data={stocks[ticker]}
               onTap={() => openStock(ticker)}
             />
           ))}

@@ -510,3 +510,79 @@ export async function fetchNewsProviderStatus(): Promise<Record<string, any>> {
   return res.json();
 }
 
+// ─── Discover Bulk Scan ─────────────────────────────────────────────────────
+
+export interface DiscoverStock {
+  ticker: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  signal: string;
+  risk: string;
+  sentiment: string;
+  score: number;
+}
+
+export interface DiscoverScanResponse {
+  stocks: Record<string, DiscoverStock>;
+  count: number;
+}
+
+export async function fetchDiscoverScan(tickers: string[], period = "1y"): Promise<DiscoverScanResponse> {
+  const res = await fetch(`${API_BASE}/api/discover/scan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers, period }),
+  });
+  if (!res.ok) throw new Error("Failed to scan discover tickers");
+  return res.json();
+}
+
+// ─── Home Intelligence ──────────────────────────────────────────────────────
+
+export interface HomeIntelligence {
+  marketStatus: string;
+  topStocks: Array<{
+    symbol: string;
+    name: string;
+    price: number;
+    change: number;
+    changePercent: number;
+  }>;
+  selectedStock: {
+    ticker: string;
+    price: number;
+    change: number;
+    changePercent: number;
+    signal: string;
+    score: number;
+    risk: string;
+    sentiment: string;
+    market_mood: string;
+    volatility: number;
+    marketStatus: string;
+  } | null;
+  discover: DiscoverStock[];
+  alerts: Array<{
+    type: string;
+    ticker: string;
+    severity: string;
+    message: string;
+    value: number;
+    direction: string;
+  }>;
+  alertSummary: {
+    total: number;
+    high: number;
+    medium: number;
+    text: string;
+  } | null;
+}
+
+export async function fetchHomeIntelligence(): Promise<HomeIntelligence> {
+  const res = await fetch(`${API_BASE}/api/home/intelligence`);
+  if (!res.ok) throw new Error("Failed to fetch home intelligence");
+  return res.json();
+}
+

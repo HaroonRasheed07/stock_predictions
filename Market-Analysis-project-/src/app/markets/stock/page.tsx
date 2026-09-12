@@ -119,7 +119,8 @@ export default function StockOverview() {
   const { data: opportunityData, isLoading: isLoadingOpportunities, refetch: refetchOpportunities } = useQuery({
     queryKey: ['opportunities', watchlistTickers],
     queryFn: () => import('@/lib/api').then(m => m.fetchOpportunityScan(watchlistTickers)),
-    staleTime: 60000, // 1 minute — opportunity scores don't change fast
+    enabled: watchlistTickers.length > 0,
+    staleTime: 60000,
     gcTime: 300000,
     refetchOnWindowFocus: false,
   });
@@ -127,6 +128,7 @@ export default function StockOverview() {
   const { data: volatilityMonitorData, isLoading: isLoadingVolatilityMonitor, refetch: refetchVolatilityMonitor } = useQuery({
     queryKey: ['volatility-monitor', watchlistTickers],
     queryFn: () => import('@/lib/api').then(m => m.fetchVolatilityMonitor(watchlistTickers)),
+    enabled: watchlistTickers.length > 0,
     staleTime: 60000,
     gcTime: 300000,
     refetchOnWindowFocus: false,
