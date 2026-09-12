@@ -8,76 +8,76 @@
 
 @layer base {
   :root {
-    /* ─── Background — Premium Light (soft neutral, not pure white) ─── */
-    --background: 220 16% 97%;
-    --foreground: 222 30% 14%;
+    /* ─── Background — Premium Light (layered, not pure white) ─── */
+    --background: 220 14% 94%;
+    --foreground: 222 30% 12%;
 
-    /* ─── Cards — Clean white with subtle warmth ─── */
+    /* ─── Cards — White surface on tinted background ─── */
     --card: 0 0% 100%;
-    --card-foreground: 222 30% 14%;
+    --card-foreground: 222 30% 12%;
 
     /* ─── Popover ─── */
     --popover: 0 0% 100%;
-    --popover-foreground: 222 30% 14%;
+    --popover-foreground: 222 30% 12%;
 
     /* ─── Primary — Deep Blue (trust, intelligence) ─── */
-    --primary: 224 76% 48%;
+    --primary: 222 70% 42%;
     --primary-foreground: 0 0% 100%;
 
-    /* ─── Secondary — Cool Slate ─── */
-    --secondary: 220 14% 95%;
-    --secondary-foreground: 222 24% 22%;
+    /* ─── Secondary — Visible cool slate surface ─── */
+    --secondary: 220 12% 91%;
+    --secondary-foreground: 222 20% 20%;
 
-    /* ─── Muted — Subtle gray ─── */
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 9% 46%;
+    /* ─── Muted — Subtle gray surface ─── */
+    --muted: 220 12% 91%;
+    --muted-foreground: 220 8% 38%;
 
     /* ─── Accent ─── */
-    --accent: 220 14% 95%;
-    --accent-foreground: 222 24% 22%;
+    --accent: 220 12% 91%;
+    --accent-foreground: 222 20% 20%;
 
-    /* ─── Success — Financial Green ─── */
-    --success: 152 58% 40%;
+    /* ─── Success — Financial Green (deeper for contrast) ─── */
+    --success: 152 56% 34%;
     --success-foreground: 0 0% 100%;
 
     /* ─── Destructive — Financial Red ─── */
-    --destructive: 4 72% 51%;
+    --destructive: 4 68% 46%;
     --destructive-foreground: 0 0% 100%;
 
     /* ─── Warning ─── */
-    --warning: 38 92% 50%;
+    --warning: 34 85% 42%;
     --warning-foreground: 0 0% 100%;
 
-    /* ─── Borders — Subtle, not harsh ─── */
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 224 76% 48%;
+    /* ─── Borders — Clearly visible on light surfaces ─── */
+    --border: 220 11% 82%;
+    --input: 220 11% 82%;
+    --ring: 222 70% 42%;
 
     /* ─── Radius ─── */
     --radius: 0.625rem;
 
     /* ─── Charts ─── */
-    --chart-1: 224 76% 48%;
-    --chart-2: 152 58% 40%;
-    --chart-3: 4 72% 51%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 220 9% 46%;
+    --chart-1: 222 70% 42%;
+    --chart-2: 152 56% 34%;
+    --chart-3: 4 68% 46%;
+    --chart-4: 34 85% 42%;
+    --chart-5: 220 8% 38%;
 
-    /* ─── Shadows — Premium soft shadows ─── */
-    --shadow-xs: 0 1px 2px hsl(222 30% 14% / 0.03);
-    --shadow-sm: 0 1px 3px hsl(222 30% 14% / 0.04), 0 1px 2px hsl(222 30% 14% / 0.03);
-    --shadow-md: 0 4px 6px -1px hsl(222 30% 14% / 0.04), 0 2px 4px -2px hsl(222 30% 14% / 0.03);
-    --shadow-lg: 0 10px 15px -3px hsl(222 30% 14% / 0.06), 0 4px 6px -4px hsl(222 30% 14% / 0.03);
-    --shadow-xl: 0 20px 25px -5px hsl(222 30% 14% / 0.06), 0 8px 10px -6px hsl(222 30% 14% / 0.03);
+    /* ─── Shadows — Premium layered shadows ─── */
+    --shadow-xs: 0 1px 2px hsl(222 30% 12% / 0.04);
+    --shadow-sm: 0 1px 3px hsl(222 30% 12% / 0.06), 0 1px 2px hsl(222 30% 12% / 0.04);
+    --shadow-md: 0 4px 6px -1px hsl(222 30% 12% / 0.06), 0 2px 4px -2px hsl(222 30% 12% / 0.04);
+    --shadow-lg: 0 10px 15px -3px hsl(222 30% 12% / 0.08), 0 4px 6px -4px hsl(222 30% 12% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(222 30% 12% / 0.10), 0 8px 10px -6px hsl(222 30% 12% / 0.04);
 
     /* ─── Financial Signal Colors ─── */
-    --signal-buy: 152 58% 40%;
-    --signal-sell: 4 72% 51%;
-    --signal-hold: 38 92% 50%;
-    --signal-neutral: 220 9% 46%;
+    --signal-buy: 152 56% 34%;
+    --signal-sell: 4 68% 46%;
+    --signal-hold: 34 85% 42%;
+    --signal-neutral: 220 8% 38%;
 
     /* ─── Chart Grid ─── */
-    --chart-grid: 220 13% 94%;
+    --chart-grid: 220 11% 88%;
   }
 
   .dark {

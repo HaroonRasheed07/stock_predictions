@@ -303,7 +303,8 @@ export default function WatchlistPage() {
                         onClick={() => handleAssetClick(item.ticker)}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
+                          {/* Desktop: single row */}
+                          <div className="hidden sm:flex items-center gap-4">
                             <div className="text-lg font-bold text-muted-foreground w-8">#{index + 1}</div>
                             <div>
                               <div className="flex items-center gap-2">
@@ -315,20 +316,34 @@ export default function WatchlistPage() {
                               <p className="text-sm text-muted-foreground">{item.name}</p>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-6">
+
+                          {/* Mobile: compact */}
+                          <div className="sm:hidden flex items-center gap-2">
+                            <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold">{item.ticker}</span>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {item.asset_class}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate max-w-[120px]">{item.name}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 sm:gap-6">
                             <div className="text-right">
-                              <p className="text-lg font-bold">${item.price.toFixed(2)}</p>
-                              <p className={`text-sm font-medium ${item.change_percent >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              <p className="font-bold text-sm sm:text-lg">${item.price.toFixed(2)}</p>
+                              <p className={`text-xs sm:text-sm font-medium ${item.change_percent >= 0 ? 'text-success' : 'text-destructive'}`}>
                                 {item.change_percent >= 0 ? '+' : ''}{item.change_percent.toFixed(2)}%
                               </p>
                             </div>
-                            
-                            <div className={`px-4 py-2 rounded-lg border-2 text-center min-w-[90px] ${scoreColorClass}`}>
-                              <p className="text-xl font-bold">{item.score.toFixed(0)}</p>
-                              <p className="text-xs font-medium uppercase tracking-wider">{getScoreLabel(item.score)}</p>
+
+                            <div className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg border-2 text-center ${scoreColorClass}`}>
+                              <p className="text-base sm:text-xl font-bold">{item.score.toFixed(0)}</p>
+                              <p className="text-[9px] sm:text-xs font-medium uppercase tracking-wider">{getScoreLabel(item.score)}</p>
                             </div>
-                            
+
                             <Button
                               variant="ghost"
                               size="icon"
@@ -336,7 +351,7 @@ export default function WatchlistPage() {
                                 e.stopPropagation();
                                 handleRemoveTicker(item.ticker);
                               }}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="h-8 w-8 sm:h-9 sm:w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

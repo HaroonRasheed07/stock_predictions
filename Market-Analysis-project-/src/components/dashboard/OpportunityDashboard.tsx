@@ -115,15 +115,16 @@ export function OpportunityDashboard({ data, isLoading, onRefresh, onAssetClick 
                 transition={{ delay: index * 0.05 }}
               >
                 <div
-                  className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                  className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
                     isExpanded ? 'bg-primary/5 border-primary/30' : 'bg-card/50 border-border/50'
                   }`}
                   onClick={() => toggleRow(item.ticker)}
                 >
-                  <div className="flex items-center justify-between">
+                  {/* ─── Desktop: single row ──────────────────────────── */}
+                  <div className="hidden sm:flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold text-muted-foreground w-6">#{index + 1}</span>
-                      <span className="text-xl">{getAssetClassIcon(item.asset_class)}</span>
+                      <span className="text-lg">{getAssetClassIcon(item.asset_class)}</span>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">{item.ticker}</span>
@@ -134,7 +135,7 @@ export function OpportunityDashboard({ data, isLoading, onRefresh, onAssetClick 
                         <p className="text-sm text-muted-foreground">{item.name}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-lg font-bold">${item.price.toFixed(2)}</p>
@@ -142,16 +143,51 @@ export function OpportunityDashboard({ data, isLoading, onRefresh, onAssetClick 
                           {item.change_percent >= 0 ? '+' : ''}{item.change_percent.toFixed(2)}%
                         </p>
                       </div>
-                      
+
                       <div className={`px-4 py-2 rounded-lg border-2 text-center min-w-[100px] ${scoreColorClass}`}>
                         <p className="text-2xl font-bold">{item.score.toFixed(0)}</p>
                         <p className="text-xs font-medium uppercase tracking-wider">{getScoreLabel(item.score)}</p>
                       </div>
-                      
+
                       {isExpanded ? (
                         <ChevronUp className="h-5 w-5 text-muted-foreground" />
                       ) : (
                         <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ─── Mobile: stacked layout ───────────────────────── */}
+                  <div className="sm:hidden">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-base">{item.ticker}</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {item.asset_class}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate max-w-[140px]">{item.name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">${item.price.toFixed(2)}</p>
+                        <p className={`text-xs font-medium ${item.change_percent >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {item.change_percent >= 0 ? '+' : ''}{item.change_percent.toFixed(2)}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2.5">
+                      <div className={`px-3 py-1.5 rounded-lg border-2 text-center ${scoreColorClass}`}>
+                        <p className="text-lg font-bold">{item.score.toFixed(0)}</p>
+                        <p className="text-[10px] font-medium uppercase tracking-wider">{getScoreLabel(item.score)}</p>
+                      </div>
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
                       )}
                     </div>
                   </div>

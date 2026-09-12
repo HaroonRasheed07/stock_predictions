@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -12,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp, TrendingDown, BarChart3, Brain, Shield, Zap,
   Activity, ArrowUpRight, ArrowDownRight, Minus, Clock,
-  Search, ChevronRight, AlertTriangle, Target, Sparkles, Globe, FileText,
+  Search, ChevronRight, AlertTriangle, Target, Sparkles, FileText,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
 import { fetchHomeIntelligence } from '@/lib/api';
@@ -109,7 +108,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* ─── Hero Section ─────────────────────────────────────────────── */}
+      {/* ─── Hero Section (renders instantly, no data dependency) ──────── */}
       <section className="relative overflow-hidden gradient-hero py-16 md:py-24">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="container mx-auto px-4 relative z-10">
@@ -125,10 +124,12 @@ export default function Home() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
               </span>
               <span className="text-sm font-medium">Live Market Data</span>
-              <Badge variant={marketStatus === 'Open' ? 'default' : 'secondary'} className="text-xs ml-1">
-                <Clock className="h-3 w-3 mr-1" />
-                Market {marketStatus}
-              </Badge>
+              {!isLoading && (
+                <Badge variant={marketStatus === 'Open' ? 'default' : 'secondary'} className="text-xs ml-1">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Market {marketStatus}
+                </Badge>
+              )}
             </div>
 
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
@@ -160,7 +161,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Live Ticker ────────────────────────────────────────────────── */}
+      {/* ─── Live Ticker (loads progressively) ─────────────────────────── */}
       {topStocks.length > 0 && (
         <div className="bg-card/50 border-y border-border/40 backdrop-blur-sm py-4 overflow-hidden">
           <motion.div
@@ -186,8 +187,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Features Grid ────────────────────────────────────────────── */}
-      <section className="py-20">
+      {/* ─── Features Grid (static, renders instantly) ────────────────── */}
+      <section className="py-16 md:py-20">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0 }}
@@ -211,7 +212,7 @@ export default function Home() {
                 transition={{ delay: idx * 0.1 }}
               >
                 <Link href={feature.link}>
-                  <Card className="glass hover:glow-primary transition-all duration-300 cursor-pointer h-full group">
+                  <Card className="card-interactive h-full group">
                     <CardContent className="p-6">
                       <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                         <feature.icon className="h-6 w-6 text-white" />
@@ -227,12 +228,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Main Content Container ─────────────────────────────────────── */}
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      {/* ─── Data Sections (progressive loading with section dividers) ── */}
+      <div className="container mx-auto px-4 pb-8">
+
         {/* ─── Market Snapshot ────────────────────────────────────────── */}
-        <section>
+        <section className="py-6 border-t border-border/60">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Snapshot</h2>
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Snapshot</h2>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">What is happening across markets</p>
+            </div>
             <Link href="/markets/stock" className="text-xs text-primary hover:underline flex items-center gap-1">
               View All <ChevronRight className="h-3 w-3" />
             </Link>
@@ -279,11 +284,14 @@ export default function Home() {
           )}
         </section>
 
-        {/* ─── Selected Stock Brief ───────────────────────────────────── */}
+        {/* ─── Quick Brief ────────────────────────────────────────────── */}
         {selected && (
-          <section>
+          <section className="py-6 border-t border-border/60">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Quick Brief</h2>
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Quick Brief</h2>
+                <p className="text-xs text-muted-foreground/80 mt-0.5">What needs your attention</p>
+              </div>
               <button
                 onClick={() => goToStock(selected.ticker)}
                 className="text-xs text-primary hover:underline flex items-center gap-1"
@@ -367,9 +375,12 @@ export default function Home() {
         )}
 
         {/* ─── Discover Preview ───────────────────────────────────────── */}
-        <section>
+        <section className="py-6 border-t border-border/60">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Discover</h2>
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Discover</h2>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">Stocks worth investigating</p>
+            </div>
             <Link href="/markets/discover" className="text-xs text-primary hover:underline flex items-center gap-1">
               See All <ChevronRight className="h-3 w-3" />
             </Link>
@@ -378,7 +389,7 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
             </div>
-          ) : (
+          ) : discover.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {discover.slice(0, 6).map((stock, idx) => (
                 <motion.div
@@ -433,12 +444,18 @@ export default function Home() {
                 </motion.div>
               ))}
             </div>
+          ) : (
+            <div className="rounded-xl border border-border/40 bg-card/50 p-8 text-center">
+              <Search className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Discovery universe is refreshing</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Check back in a moment for fresh opportunities</p>
+            </div>
           )}
         </section>
 
         {/* ─── Watchlist Alerts ───────────────────────────────────────── */}
         {alerts.length > 0 && (
-          <section>
+          <section className="py-6 border-t border-border/60">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Alerts</h2>
@@ -497,8 +514,8 @@ export default function Home() {
           </section>
         )}
 
-        {/* ─── Capabilities ────────────────────────────────────────────── */}
-        <section className="py-12">
+        {/* ─── Capabilities (static, renders instantly) ────────────────── */}
+        <section className="py-12 border-t border-border/60">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -531,13 +548,13 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ─── CTA Section ────────────────────────────────────────────── */}
-        <section className="py-12">
+        {/* ─── CTA Section (static) ─────────────────────────────────── */}
+        <section className="py-12 border-t border-border/60">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="glass rounded-3xl p-12 text-center max-w-4xl mx-auto glow-primary"
+            className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto glow-primary"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Ready to Transform Your Trading Strategy?

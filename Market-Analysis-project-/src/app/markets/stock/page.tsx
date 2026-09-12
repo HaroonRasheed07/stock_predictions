@@ -349,9 +349,9 @@ export default function StockOverview() {
         transition={{ delay: 0.3 }}
       >
         <Card className="glass">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Price History - {ticker}</CardTitle>
-            <div className="flex space-x-2">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg">Price History - {ticker}</CardTitle>
+            <div className="flex space-x-1.5 sm:space-x-2">
               {['1d', '1m', '6m', '1y'].map((range) => (
                 <Button
                   key={range}
