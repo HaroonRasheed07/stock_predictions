@@ -2,99 +2,146 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Premium Financial Intelligence Platform
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    /* ─── Background ─── */
+    --background: 210 20% 98%;
+    --foreground: 222 30% 14%;
 
+    /* ─── Cards ─── */
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 30% 14%;
 
+    /* ─── Popover ─── */
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 222 30% 14%;
 
-    --primary: 239 84% 67%;
+    /* ─── Primary — Deep Blue (trust, intelligence) ─── */
+    --primary: 224 76% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 258 90% 66%;
-    --secondary-foreground: 0 0% 100%;
+    /* ─── Secondary — Slate ─── */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 30% 14%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* ─── Muted ─── */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 239 84% 67%;
-    --accent-foreground: 0 0% 100%;
+    /* ─── Accent ─── */
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 30% 14%;
 
-    --success: 142 71% 45%;
+    /* ─── Success — Financial Green ─── */
+    --success: 152 58% 40%;
     --success-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    /* ─── Destructive — Financial Red ─── */
+    --destructive: 4 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 239 84% 67%;
+    /* ─── Warning ─── */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
-    --radius: 0.75rem;
+    /* ─── Borders ─── */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 76% 48%;
 
-    --chart-1: 239 84% 67%;
-    --chart-2: 258 90% 66%;
-    --chart-3: 173 58% 39%;
-    --chart-4: 43 96% 56%;
-    --chart-5: 27 87% 67%;
+    /* ─── Radius ─── */
+    --radius: 0.625rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(239, 84%, 67%), hsl(258, 90%, 66%));
-    --gradient-hero: linear-gradient(180deg, hsl(222, 47%, 11%) 0%, hsl(239, 84%, 20%) 100%);
-    --glow-primary: 0 0 40px hsl(239 84% 67% / 0.3);
+    /* ─── Charts ─── */
+    --chart-1: 224 76% 48%;
+    --chart-2: 152 58% 40%;
+    --chart-3: 4 72% 51%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 220 9% 46%;
+
+    /* ─── Shadows ─── */
+    --shadow-xs: 0 1px 2px hsl(222 30% 14% / 0.04);
+    --shadow-sm: 0 1px 3px hsl(222 30% 14% / 0.06), 0 1px 2px hsl(222 30% 14% / 0.04);
+    --shadow-md: 0 4px 6px -1px hsl(222 30% 14% / 0.06), 0 2px 4px -2px hsl(222 30% 14% / 0.04);
+    --shadow-lg: 0 10px 15px -3px hsl(222 30% 14% / 0.08), 0 4px 6px -4px hsl(222 30% 14% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(222 30% 14% / 0.08), 0 8px 10px -6px hsl(222 30% 14% / 0.04);
+
+    /* ─── Financial Signal Colors ─── */
+    --signal-buy: 152 58% 40%;
+    --signal-sell: 4 72% 51%;
+    --signal-hold: 38 92% 50%;
+    --signal-neutral: 220 9% 46%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    /* ─── Background — Premium Dark ─── */
+    --background: 224 25% 9%;
+    --foreground: 210 20% 94%;
 
-    --card: 222 47% 15%;
-    --card-foreground: 210 40% 98%;
+    /* ─── Cards ─── */
+    --card: 224 20% 12%;
+    --card-foreground: 210 20% 94%;
 
-    --popover: 222 47% 13%;
-    --popover-foreground: 210 40% 98%;
+    /* ─── Popover ─── */
+    --popover: 224 22% 11%;
+    --popover-foreground: 210 20% 94%;
 
-    --primary: 239 84% 67%;
+    /* ─── Primary — Brighter blue for dark ─── */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 258 90% 66%;
-    --secondary-foreground: 0 0% 100%;
+    /* ─── Secondary ─── */
+    --secondary: 224 18% 16%;
+    --secondary-foreground: 210 20% 94%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    /* ─── Muted ─── */
+    --muted: 224 18% 16%;
+    --muted-foreground: 215 16% 62%;
 
-    --accent: 239 84% 67%;
-    --accent-foreground: 0 0% 100%;
+    /* ─── Accent ─── */
+    --accent: 224 18% 16%;
+    --accent-foreground: 210 20% 94%;
 
-    --success: 142 71% 45%;
+    /* ─── Success ─── */
+    --success: 152 58% 48%;
     --success-foreground: 0 0% 100%;
 
-    --destructive: 0 63% 31%;
+    /* ─── Destructive ─── */
+    --destructive: 4 62% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 239 84% 67%;
+    /* ─── Warning ─── */
+    --warning: 38 80% 52%;
+    --warning-foreground: 0 0% 100%;
 
-    --chart-1: 239 84% 67%;
-    --chart-2: 258 90% 66%;
-    --chart-3: 173 58% 39%;
-    --chart-4: 43 96% 56%;
-    --chart-5: 27 87% 67%;
+    /* ─── Borders ─── */
+    --border: 224 16% 18%;
+    --input: 224 16% 18%;
+    --ring: 217 91% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(239, 84%, 67%), hsl(258, 90%, 66%));
-    --gradient-hero: linear-gradient(180deg, hsl(222, 47%, 8%) 0%, hsl(239, 84%, 15%) 100%);
-    --glow-primary: 0 0 40px hsl(239 84% 67% / 0.4);
+    /* ─── Charts ─── */
+    --chart-1: 217 91% 60%;
+    --chart-2: 152 58% 48%;
+    --chart-3: 4 62% 48%;
+    --chart-4: 38 80% 52%;
+    --chart-5: 215 16% 62%;
+
+    /* ─── Shadows — Dark mode uses darker shadows ─── */
+    --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.2);
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.25), 0 1px 2px hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.35), 0 4px 6px -4px hsl(0 0% 0% / 0.2);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 8px 10px -6px hsl(0 0% 0% / 0.25);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
   * {
@@ -102,56 +149,218 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight;
+  h1 {
+    @apply text-2xl font-bold tracking-tight md:text-3xl;
+  }
+
+  h2 {
+    @apply text-xl font-semibold tracking-tight md:text-2xl;
+  }
+
+  h3 {
+    @apply text-lg font-semibold tracking-tight;
+  }
+
+  h4 {
+    @apply text-base font-semibold;
+  }
+
+  /* Better scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/20;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENT UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer utilities {
-  .glass {
-    @apply bg-card/40 backdrop-blur-xl border border-border/50;
+  /* ─── Card Variants ─── */
+  .card-surface {
+    @apply rounded-xl border border-border/60 bg-card shadow-sm;
   }
 
-  .gradient-primary {
-    background: var(--gradient-primary);
+  .card-elevated {
+    @apply rounded-xl border border-border/40 bg-card shadow-md;
   }
 
-  .gradient-hero {
-    background: var(--gradient-hero);
+  .card-interactive {
+    @apply rounded-xl border border-border/60 bg-card shadow-sm
+           transition-all duration-200 ease-out
+           hover:shadow-md hover:border-border/80;
   }
 
-  .glow-primary {
-    box-shadow: var(--glow-primary);
+  .card-pressed {
+    @apply rounded-xl border border-border/60 bg-card shadow-sm
+           transition-all duration-100 ease-out
+           active:shadow-xs active:scale-[0.99];
   }
 
-  .animate-fade-in {
-    animation: fade-in 0.5s ease-out;
+  /* ─── Financial Signal Badges ─── */
+  .badge-buy {
+    @apply bg-success/10 text-success border-success/20;
   }
 
-  .animate-slide-up {
-    animation: slide-up 0.6s ease-out;
+  .badge-sell {
+    @apply bg-destructive/10 text-destructive border-destructive/20;
   }
+
+  .badge-hold {
+    @apply bg-warning/10 text-warning border-warning/20;
+  }
+
+  .badge-neutral {
+    @apply bg-muted text-muted-foreground border-border;
+  }
+
+  /* ─── Financial Text Colors ─── */
+  .text-positive {
+    @apply text-success;
+  }
+
+  .text-negative {
+    @apply text-destructive;
+  }
+
+  .text-up {
+    @apply text-success;
+  }
+
+  .text-down {
+    @apply text-destructive;
+  }
+
+  /* ─── Section Styling ─── */
+  .section-header {
+    @apply flex items-center justify-between gap-2 mb-3;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
+  /* ─── Mobile-First Container ─── */
+  .page-container {
+    @apply px-4 pb-24 pt-4 md:px-6 md:pb-8 md:pt-6 lg:px-8;
+  }
+
+  /* ─── Bottom Navigation Safe Area ─── */
+  .bottom-nav-spacer {
+    @apply h-20 md:h-0;
+  }
+
+  /* ─── Touch Target ─── */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* ─── Focus Ring ─── */
+  .focus-ring {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
+  }
+
+  /* ─── Skeleton Loading ─── */
+  .skeleton {
+    @apply animate-pulse rounded-md bg-muted;
+  }
+
+  /* ─── Gradient Overlay for Hero ─── */
+  .hero-gradient {
+    @apply relative overflow-hidden;
+  }
+
+  .hero-gradient::before {
+    content: "";
+    @apply absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none;
+  }
+
+  /* ─── Stagger Animation ─── */
+  .stagger-item {
+    animation: stagger-fade-in 0.3s ease-out both;
+  }
+
+  .stagger-item:nth-child(1) { animation-delay: 0ms; }
+  .stagger-item:nth-child(2) { animation-delay: 50ms; }
+  .stagger-item:nth-child(3) { animation-delay: 100ms; }
+  .stagger-item:nth-child(4) { animation-delay: 150ms; }
+  .stagger-item:nth-child(5) { animation-delay: 200ms; }
+  .stagger-item:nth-child(6) { animation-delay: 250ms; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stagger-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Hide on mobile, show on desktop */
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+}
+
+/* Hide on desktop, show on mobile */
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .stagger-item {
+    animation: none !important;
   }
 }

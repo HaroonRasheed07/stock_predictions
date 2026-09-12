@@ -140,7 +140,7 @@ export default function PriceForecasting() {
           value={inputTicker}
           onChange={(e) => handleSearchInput(e.target.value)}
           onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-          className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
+          className="w-28 md:w-56 h-9 text-sm bg-background border-border/60"
         />
         <Button type="submit" size="icon" variant="secondary">
           <Search className="h-4 w-4" />

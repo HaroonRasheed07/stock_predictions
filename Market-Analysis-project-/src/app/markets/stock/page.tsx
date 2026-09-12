@@ -137,18 +137,18 @@ export default function StockOverview() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold">Stock Market Overview</h1>
-            <p className="text-muted-foreground">Real-time market data and analytics</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Stock Market Overview</h1>
+            <p className="text-sm text-muted-foreground">Real-time market data and analytics</p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <WatchlistButton ticker={ticker} />
             <div ref={searchRef} className="relative">
-              <form onSubmit={handleSearch} className="flex items-center space-x-2">
-                <Input type="text" placeholder="Search stocks, forex, futures..." value={inputTicker}
+              <form onSubmit={handleSearch} className="flex items-center gap-1.5">
+                <Input type="text" placeholder="Search..." value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                  className="w-48 md:w-64 bg-background/50 backdrop-blur-sm" />
-                <Button type="submit" size="icon" variant="secondary"><Search className="h-4 w-4" /></Button>
+                  className="w-28 md:w-56 h-9 text-sm bg-background border-border/60" />
+                <Button type="submit" size="icon" variant="secondary" className="h-9 w-9"><Search className="h-4 w-4" /></Button>
               </form>
             </div>
           </div>
@@ -232,30 +232,30 @@ export default function StockOverview() {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-2"
       >
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl md:text-4xl font-bold">Stock Market Overview</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl md:text-3xl font-bold">Stock Market Overview</h1>
               <Badge variant={marketStatus === 'Open' ? 'default' : 'secondary'} className="text-xs">
                 <Clock className="h-3 w-3 mr-1" />
                 Market {marketStatus}
               </Badge>
             </div>
-            <p className="text-muted-foreground">Real-time market data and analytics</p>
+            <p className="text-sm text-muted-foreground">Real-time market data and analytics</p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <WatchlistButton ticker={ticker} />
             <div ref={searchRef} className="relative">
-              <form onSubmit={handleSearch} className="flex items-center space-x-2">
+              <form onSubmit={handleSearch} className="flex items-center gap-1.5">
                 <Input
                   type="text"
-                  placeholder="Search stocks, forex, futures..."
+                  placeholder="Search..."
                   value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                  className="w-48 md:w-64 bg-background/50 backdrop-blur-sm"
+                  className="w-28 md:w-56 h-9 text-sm bg-background border-border/60"
                 />
-                <Button type="submit" size="icon" variant="secondary">
+                <Button type="submit" size="icon" variant="secondary" className="h-9 w-9">
                   <Search className="h-4 w-4" />
                 </Button>
               </form>
