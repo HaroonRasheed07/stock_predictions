@@ -17,6 +17,7 @@ import {
   Shield,
   Moon,
   Sun,
+  Mail,
 } from 'lucide-react';
 import { useThemeStore } from '@/store/themeStore';
 import { cn } from '@/lib/utils';
@@ -42,6 +43,7 @@ const MENU_ITEMS = [
     section: 'Settings',
     items: [
       { label: 'About', desc: 'About MarketPulse', icon: Info, href: '/about' },
+      { label: 'Contact Us', desc: 'Get in touch', icon: Mail, href: '/contact' },
     ],
   },
 ];

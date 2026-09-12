@@ -567,8 +567,8 @@ export default function PriceForecasting() {
                 <Line
                   type="monotone"
                   dataKey="actual"
-                  stroke="hsl(var(--secondary))"
-                  strokeWidth={2}
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
                   dot={false}
                   name="Actual Price"
                   connectNulls
@@ -578,9 +578,9 @@ export default function PriceForecasting() {
                 <Line
                   type="monotone"
                   dataKey="predicted"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
+                  stroke="#f59e0b"
+                  strokeWidth={2.5}
+                  strokeDasharray="8 4"
                   dot={false}
                   name="Predicted Price"
                   connectNulls

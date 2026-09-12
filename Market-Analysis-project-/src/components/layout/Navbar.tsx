@@ -11,8 +11,11 @@ import { cn } from '@/lib/utils';
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/markets/stock', label: 'Markets' },
+  { href: '/markets/brief', label: 'Stock Brief' },
   { href: '/markets/discover', label: 'Discover' },
   { href: '/markets/stock/watchlist', label: 'Watchlist' },
+  { href: '/about', label: 'About' },
+  { href: '/contact', label: 'Contact Us' },
 ];
 
 export const Navbar = () => {
