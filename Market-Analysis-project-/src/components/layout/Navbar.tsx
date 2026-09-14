@@ -38,13 +38,17 @@ export const Navbar = () => {
       <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between md:h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="relative h-8 w-8 rounded-lg overflow-hidden transition-transform duration-200 group-hover:scale-105">
-              <Image src="/logo.png" alt="Stock Vanta" fill className="object-contain" sizes="32px" />
+          <Link href="/" className="flex items-center group" aria-label="Stock Vanta Home">
+            <div className="relative h-9 w-auto md:h-10">
+              <Image
+                src="/logo.png"
+                alt="Stock Vanta"
+                width={140}
+                height={40}
+                className="object-contain h-full w-auto"
+                priority
+              />
             </div>
-            <span className="text-lg font-bold tracking-tight text-foreground hidden sm:block">
-              Stock Vanta
-            </span>
           </Link>
 
           {/* Desktop Navigation */}
