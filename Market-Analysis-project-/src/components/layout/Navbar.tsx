@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Moon, Sun, ChartNoAxesCombined } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
+import Image from 'next/image';
 import { useThemeStore } from '@/store/themeStore';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -38,11 +39,11 @@ export const Navbar = () => {
         <div className="flex h-14 items-center justify-between md:h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary text-primary-foreground transition-transform duration-200 group-hover:scale-105">
-              <ChartNoAxesCombined className="h-4 w-4" />
+            <div className="relative h-8 w-8 rounded-lg overflow-hidden transition-transform duration-200 group-hover:scale-105">
+              <Image src="/logo.png" alt="Stock Vanta" fill className="object-contain" sizes="32px" />
             </div>
             <span className="text-lg font-bold tracking-tight text-foreground hidden sm:block">
-              MarketPulse
+              Stock Vanta
             </span>
           </Link>
 

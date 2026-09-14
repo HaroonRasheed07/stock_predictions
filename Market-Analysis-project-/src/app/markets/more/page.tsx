@@ -42,7 +42,7 @@ const MENU_ITEMS = [
   {
     section: 'Settings',
     items: [
-      { label: 'About', desc: 'About MarketPulse', icon: Info, href: '/about' },
+      { label: 'About', desc: 'About Stock Vanta', icon: Info, href: '/about' },
       { label: 'Contact Us', desc: 'Get in touch', icon: Mail, href: '/contact' },
     ],
   },
@@ -109,7 +109,7 @@ export default function MorePage() {
 
       {/* Footer */}
       <div className="text-center pt-4">
-        <p className="text-xs text-muted-foreground">MarketPulse v1.0</p>
+        <p className="text-xs text-muted-foreground">Stock Vanta v1.0</p>
         <p className="text-xs text-muted-foreground">AI-Powered Stock Intelligence</p>
       </div>
 

@@ -56,7 +56,7 @@ export default function About() {
             className="text-center max-w-3xl mx-auto"
           >
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              About <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">AI Driven Market Analysis</span>
+              About <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Stock Vanta</span>
             </h1>
             <p className="text-xl text-foreground/70">
               We're building the future of financial analytics with cutting-edge AI and real-time data processing.
@@ -97,7 +97,7 @@ export default function About() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose AI Driven Market Analysis?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose Stock Vanta?</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Professional-grade tools trusted by traders,investors and analysts worldwide
             </p>
@@ -138,7 +138,7 @@ export default function About() {
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-6">Our Mission</h2>
             <p className="text-lg text-foreground/80 mb-6">
-              AI Driven Market Analysis democratizes access to institutional-grade market intelligence. We believe that powerful analytics
+              Stock Vanta democratizes access to institutional-grade market intelligence. We believe that powerful analytics
               should be accessible to everyone, not just Wall Street insiders.
             </p>
             <p className="text-lg text-foreground/80">

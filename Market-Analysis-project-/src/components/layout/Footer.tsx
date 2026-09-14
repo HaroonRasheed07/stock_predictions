@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ChartNoAxesCombined, Github, Twitter, Linkedin } from 'lucide-react';
+import { Github, Linkedin } from 'lucide-react';
+import Image from 'next/image';
 
 export const Footer = () => {
   return (
@@ -9,10 +10,10 @@ export const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="p-2 rounded-lg bg-gradient-primary">
-                <ChartNoAxesCombined className="h-5 w-5 text-white" />
+              <div className="relative h-8 w-8 rounded-lg overflow-hidden">
+                <Image src="/logo.png" alt="Stock Vanta" fill className="object-contain" sizes="32px" />
               </div>
-              <span className="text-lg font-bold">AI Driven Market Analysis</span>
+              <span className="text-lg font-bold">Stock Vanta</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Real-time market intelligence and predictive analytics for modern traders & investors.
@@ -85,7 +86,7 @@ export const Footer = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
-          <p>© 2026 AI Driven Market Analysis. All rights reserved.</p>
+          <p>&copy; 2026 Stock Vanta. All rights reserved.</p>
         </div>
       </div>
     </footer>
