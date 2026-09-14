@@ -275,7 +275,7 @@ export default function SentimentAnalysis() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card className="glass relative overflow-hidden h-full min-h-[460px]">
+          <Card className="glass relative overflow-hidden h-full">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
             <CardHeader className="relative">
               <div className="flex items-start justify-between gap-4">
@@ -305,7 +305,7 @@ export default function SentimentAnalysis() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card className="glass relative overflow-hidden h-full min-h-[460px]">
+          <Card className="glass relative overflow-hidden h-full">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-secondary/12 via-transparent to-transparent" />
             <CardHeader className="relative">
               <div className="flex items-start justify-between gap-4">
