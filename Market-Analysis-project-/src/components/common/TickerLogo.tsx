@@ -18,12 +18,12 @@ export function TickerLogo({ ticker, logoUrl, size = 'md', className = '' }: Tic
   const showLogo = logoUrl && !imgError;
 
   return (
-    <div className={`rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold overflow-hidden ${sizeMap[size]} ${className}`}>
+    <div className={`rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-bold overflow-hidden ${sizeMap[size]} ${className}`}>
       {showLogo ? (
         <img
           src={logoUrl}
           alt={`${ticker} logo`}
-          className="w-full h-full object-contain bg-white"
+          className="w-full h-full object-contain bg-background"
           onError={() => setImgError(true)}
         />
       ) : (

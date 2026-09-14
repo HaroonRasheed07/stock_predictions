@@ -28,7 +28,7 @@ export function RelativeVolume({ data, isLoading }: RelativeVolumeProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center h-[140px] text-muted-foreground">
-          <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
+          <AlertCircle className="h-8 w-8 mb-2 opacity-70" />
           <p className="text-sm">Volume data not available for this asset class</p>
         </CardContent>
       </Card>

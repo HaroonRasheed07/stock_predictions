@@ -123,30 +123,45 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
-          <Button
-            variant={viewMode === 'daily' ? 'default' : 'outline'}
-            size="sm"
+          <button
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3 ${
+              viewMode === 'daily'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+            }`}
             onClick={() => setViewMode('daily')}
           >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Daily Vol
-          </Button>
-          <Button
-            variant={viewMode === 'weekly' ? 'default' : 'outline'}
-            size="sm"
+            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
+              <TrendingUp className="h-4 w-4" />
+            </span>
+            <span>Daily Vol</span>
+          </button>
+          <button
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3 ${
+              viewMode === 'weekly'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+            }`}
             onClick={() => setViewMode('weekly')}
           >
-            <Activity className="h-4 w-4 mr-2" />
-            Weekly Vol
-          </Button>
-          <Button
-            variant={viewMode === 'atr' ? 'default' : 'outline'}
-            size="sm"
+            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
+              <Activity className="h-4 w-4" />
+            </span>
+            <span>Weekly Vol</span>
+          </button>
+          <button
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3 ${
+              viewMode === 'atr'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+            }`}
             onClick={() => setViewMode('atr')}
           >
-            <ArrowUpDown className="h-4 w-4 mr-2" />
-            ATR
-          </Button>
+            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
+              <ArrowUpDown className="h-4 w-4" />
+            </span>
+            <span>ATR</span>
+          </button>
         </div>
 
         <div className="rounded-md border overflow-x-auto">

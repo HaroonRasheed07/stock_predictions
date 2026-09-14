@@ -66,7 +66,7 @@ export const Footer = () => {
                 href="https://www.linkedin.com/in/haroon-rasheed-55022427a"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                className="p-2 rounded-lg border border-border/60 bg-card hover:bg-primary hover:text-primary-foreground transition-colors"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="h-4 w-4" />
@@ -75,7 +75,7 @@ export const Footer = () => {
                 href="https://github.com/HaroonRasheed07"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                className="p-2 rounded-lg border border-border/60 bg-card hover:bg-primary hover:text-primary-foreground transition-colors"
                 aria-label="GitHub"
               >
                 <Github className="h-4 w-4" />

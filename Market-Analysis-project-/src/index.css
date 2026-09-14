@@ -10,74 +10,74 @@
   :root {
     /* ─── Background — Premium Light (layered, not pure white) ─── */
     --background: 220 14% 94%;
-    --foreground: 222 30% 12%;
+    --foreground: 222 30% 11%;
 
     /* ─── Cards — White surface on tinted background ─── */
     --card: 0 0% 100%;
-    --card-foreground: 222 30% 12%;
+    --card-foreground: 222 30% 11%;
 
     /* ─── Popover ─── */
     --popover: 0 0% 100%;
-    --popover-foreground: 222 30% 12%;
+    --popover-foreground: 222 30% 11%;
 
     /* ─── Primary — Deep Blue (trust, intelligence) ─── */
-    --primary: 222 70% 42%;
+    --primary: 222 70% 40%;
     --primary-foreground: 0 0% 100%;
 
     /* ─── Secondary — Visible cool slate surface ─── */
-    --secondary: 220 12% 91%;
-    --secondary-foreground: 222 20% 20%;
+    --secondary: 220 12% 90%;
+    --secondary-foreground: 222 20% 18%;
 
     /* ─── Muted — Subtle gray surface ─── */
-    --muted: 220 12% 91%;
-    --muted-foreground: 220 8% 38%;
+    --muted: 220 12% 90%;
+    --muted-foreground: 220 8% 35%;
 
     /* ─── Accent ─── */
-    --accent: 220 12% 91%;
-    --accent-foreground: 222 20% 20%;
+    --accent: 220 12% 90%;
+    --accent-foreground: 222 20% 18%;
 
     /* ─── Success — Financial Green (deeper for contrast) ─── */
-    --success: 152 56% 34%;
+    --success: 152 56% 32%;
     --success-foreground: 0 0% 100%;
 
     /* ─── Destructive — Financial Red ─── */
-    --destructive: 4 68% 46%;
+    --destructive: 4 68% 44%;
     --destructive-foreground: 0 0% 100%;
 
     /* ─── Warning ─── */
-    --warning: 34 85% 42%;
+    --warning: 34 85% 38%;
     --warning-foreground: 0 0% 100%;
 
     /* ─── Borders — Clearly visible on light surfaces ─── */
-    --border: 220 11% 82%;
-    --input: 220 11% 82%;
-    --ring: 222 70% 42%;
+    --border: 220 11% 78%;
+    --input: 220 11% 78%;
+    --ring: 222 70% 40%;
 
     /* ─── Radius ─── */
     --radius: 0.625rem;
 
     /* ─── Charts ─── */
-    --chart-1: 222 70% 42%;
-    --chart-2: 152 56% 34%;
-    --chart-3: 4 68% 46%;
-    --chart-4: 34 85% 42%;
-    --chart-5: 220 8% 38%;
+    --chart-1: 222 70% 40%;
+    --chart-2: 152 56% 32%;
+    --chart-3: 4 68% 44%;
+    --chart-4: 34 85% 38%;
+    --chart-5: 220 8% 35%;
 
     /* ─── Shadows — Premium layered shadows ─── */
-    --shadow-xs: 0 1px 2px hsl(222 30% 12% / 0.04);
-    --shadow-sm: 0 1px 3px hsl(222 30% 12% / 0.06), 0 1px 2px hsl(222 30% 12% / 0.04);
-    --shadow-md: 0 4px 6px -1px hsl(222 30% 12% / 0.06), 0 2px 4px -2px hsl(222 30% 12% / 0.04);
-    --shadow-lg: 0 10px 15px -3px hsl(222 30% 12% / 0.08), 0 4px 6px -4px hsl(222 30% 12% / 0.04);
-    --shadow-xl: 0 20px 25px -5px hsl(222 30% 12% / 0.10), 0 8px 10px -6px hsl(222 30% 12% / 0.04);
+    --shadow-xs: 0 1px 2px hsl(222 30% 11% / 0.05);
+    --shadow-sm: 0 1px 3px hsl(222 30% 11% / 0.07), 0 1px 2px hsl(222 30% 11% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(222 30% 11% / 0.08), 0 2px 4px -2px hsl(222 30% 11% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(222 30% 11% / 0.10), 0 4px 6px -4px hsl(222 30% 11% / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(222 30% 11% / 0.12), 0 8px 10px -6px hsl(222 30% 11% / 0.05);
 
     /* ─── Financial Signal Colors ─── */
-    --signal-buy: 152 56% 34%;
-    --signal-sell: 4 68% 46%;
-    --signal-hold: 34 85% 42%;
-    --signal-neutral: 220 8% 38%;
+    --signal-buy: 152 56% 32%;
+    --signal-sell: 4 68% 44%;
+    --signal-hold: 34 85% 38%;
+    --signal-neutral: 220 8% 35%;
 
     /* ─── Chart Grid ─── */
-    --chart-grid: 220 11% 88%;
+    --chart-grid: 220 11% 84%;
   }
 
   .dark {
@@ -223,6 +223,14 @@
   }
 
   /* ─── Premium Glass Effect ─── */
+  .glass {
+    @apply rounded-xl border border-border/60 bg-card shadow-sm;
+  }
+
+  .dark .glass {
+    @apply bg-card/80 backdrop-blur-sm;
+  }
+
   .glass-premium {
     @apply rounded-xl border border-border/40 bg-card/80 backdrop-blur-sm shadow-sm;
   }
@@ -354,6 +362,28 @@
 
   .price-neutral {
     @apply text-muted-foreground;
+  }
+
+  /* ─── Gradient Utilities ─── */
+  .gradient-hero {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.06) 0%, hsl(var(--background)) 50%, hsl(var(--primary) / 0.03) 100%);
+  }
+
+  .dark .gradient-hero {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.10) 0%, hsl(var(--background)) 50%, hsl(var(--primary) / 0.05) 100%);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  }
+
+  /* ─── Glow Effect ─── */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.08), 0 0 40px hsl(var(--primary) / 0.04);
+  }
+
+  .dark .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.15), 0 0 40px hsl(var(--primary) / 0.08);
   }
 }
 
