@@ -268,14 +268,14 @@ export default function SentimentAnalysis() {
       </motion.div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Sentiment Distribution */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card className="glass relative overflow-hidden h-full">
+          <Card className="glass relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
             <CardHeader className="relative">
               <div className="flex items-start justify-between gap-4">
@@ -305,7 +305,7 @@ export default function SentimentAnalysis() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card className="glass relative overflow-hidden h-full">
+          <Card className="glass relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-secondary/12 via-transparent to-transparent" />
             <CardHeader className="relative">
               <div className="flex items-start justify-between gap-4">
@@ -321,15 +321,15 @@ export default function SentimentAnalysis() {
               <Separator className="mt-4 bg-border/60" />
             </CardHeader>
             <CardContent className="relative pt-2">
-              <ScrollArea className="h-[380px] md:h-[460px] w-full pr-4">
+              <ScrollArea className="h-[320px] sm:h-[380px] md:h-[420px] w-full pr-4">
                 <div className="space-y-3 pb-1">
                   {sentimentData?.news && sentimentData.news.map((news: any, idx: number) => (
                     <div
                       key={idx}
-                      className="group rounded-xl border border-border/50 bg-background/40 p-4 shadow-sm hover:shadow-md hover:bg-muted/25 hover:border-border/80 transition-all"
+                      className="group rounded-xl border border-border/50 bg-background/40 p-3 sm:p-4 shadow-sm hover:shadow-md hover:bg-muted/25 hover:border-border/80 transition-all"
                     >
                       <div className="flex items-start gap-3">
-                        <Avatar className="h-9 w-9 mt-0.5">
+                        <Avatar className="h-8 w-8 sm:h-9 sm:w-9 mt-0.5 shrink-0">
                           <AvatarFallback className="text-xs font-semibold">
                             {getInitials(news.source || 'News')}
                           </AvatarFallback>
@@ -367,13 +367,6 @@ export default function SentimentAnalysis() {
                             <span>{formatPublishedAt(news.published_at)}</span>
                           </div>
                         </div>
-                      </div>
-
-                      <Separator className="mt-4 bg-border/50" />
-
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Tap to read full story</span>
-                        <span className="text-xs text-muted-foreground">#{idx + 1}</span>
                       </div>
                     </div>
                   ))}
