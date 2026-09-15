@@ -275,6 +275,10 @@ def home():
 def health_check():
     return {"status": "healthy"}
 
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health():
+    return {"status": "ok", "service": "stock-vanta-api"}
+
 @app.get("/api/news/providers")
 def get_news_providers_status():
     """Return health status and circuit breaker state of all news providers."""
