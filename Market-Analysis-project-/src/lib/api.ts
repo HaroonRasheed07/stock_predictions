@@ -586,3 +586,56 @@ export async function fetchHomeIntelligence(): Promise<HomeIntelligence> {
   return res.json();
 }
 
+// ─── Home Sub-Endpoints (independent parallel loading) ────────────────────────
+
+export interface HomeTicker {
+  marketStatus: string;
+  topStocks: Array<{
+    symbol: string;
+    name: string;
+    price: number;
+    change: number;
+    changePercent: number;
+  }>;
+  _cache_meta?: { status?: string; is_stale?: boolean; updated_at?: number };
+}
+
+export interface HomeBrief {
+  selectedStock: {
+    ticker: string;
+    price: number;
+    change: number;
+    changePercent: number;
+    signal: string;
+    score: number;
+    risk: string;
+    sentiment: string;
+    market_mood: string;
+    volatility: number;
+  } | null;
+  _cache_meta?: { status?: string; is_stale?: boolean; updated_at?: number };
+}
+
+export interface HomeDiscover {
+  discover: DiscoverStock[];
+  _cache_meta?: { status?: string; is_stale?: boolean; updated_at?: number };
+}
+
+export async function fetchHomeTicker(): Promise<HomeTicker> {
+  const res = await fetch(`${API_BASE}/api/home/ticker`);
+  if (!res.ok) throw new Error("Failed to fetch home ticker");
+  return res.json();
+}
+
+export async function fetchHomeBrief(): Promise<HomeBrief> {
+  const res = await fetch(`${API_BASE}/api/home/brief`);
+  if (!res.ok) throw new Error("Failed to fetch home brief");
+  return res.json();
+}
+
+export async function fetchHomeDiscover(): Promise<HomeDiscover> {
+  const res = await fetch(`${API_BASE}/api/home/discover`);
+  if (!res.ok) throw new Error("Failed to fetch home discover");
+  return res.json();
+}
+

@@ -13,7 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
-import { fetchHomeIntelligence, fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,6 @@ function HeroSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
   const [results, setResults] = useState<AssetInfo[]>([]);
   const [showResults, setShowResults] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prefersReduced = useReducedMotion();
 
   const handleSearch = useCallback((q: string) => {
     setQuery(q);
@@ -100,18 +99,48 @@ export default function Home() {
   const { setSelectedTicker } = useStockStore();
   const prefersReduced = useReducedMotion();
 
-  const { data: intel, isLoading } = useQuery({
-    queryKey: ['home-intelligence'],
-    queryFn: fetchHomeIntelligence,
+  // ═══════════════════════════════════════════════════════════════════════
+  // THREE INDEPENDENT QUERIES — start in parallel, resolve independently
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Query 1: Ticker (fastest — just top stocks + market status)
+  const { data: tickerData } = useQuery({
+    queryKey: ['home-ticker'],
+    queryFn: fetchHomeTicker,
     staleTime: 60000,
     gcTime: 300000,
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
-      const d = query.state.data as any;
-      const meta = d?._cache_meta;
-      if (!d || meta?.status === 'MISS' || meta?.is_stale) {
-        return 8000;
-      }
+      const meta = (query.state.data as any)?._cache_meta;
+      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 8000;
+      return false;
+    },
+  });
+
+  // Query 2: Brief preview (independent — can be slower)
+  const { data: briefData } = useQuery({
+    queryKey: ['home-brief'],
+    queryFn: fetchHomeBrief,
+    staleTime: 60000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const meta = (query.state.data as any)?._cache_meta;
+      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 8000;
+      return false;
+    },
+  });
+
+  // Query 3: Discover preview (independent — can be slower)
+  const { data: discoverData } = useQuery({
+    queryKey: ['home-discover'],
+    queryFn: fetchHomeDiscover,
+    staleTime: 60000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const meta = (query.state.data as any)?._cache_meta;
+      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 8000;
       return false;
     },
   });
@@ -121,10 +150,10 @@ export default function Home() {
     router.push('/markets/brief');
   };
 
-  const topStocks = intel?.topStocks || [];
-  const selected = intel?.selectedStock;
-  const discover = intel?.discover || [];
-  const marketStatus = intel?.marketStatus || 'Unknown';
+  const topStocks = tickerData?.topStocks || [];
+  const selected = briefData?.selectedStock;
+  const discover = discoverData?.discover || [];
+  const marketStatus = tickerData?.marketStatus || 'Unknown';
 
   const evidenceSteps = [
     { icon: BarChart3, label: 'Technical', description: 'Indicators, momentum, and pattern recognition', link: '/markets/stock/technical' },
@@ -200,7 +229,7 @@ export default function Home() {
     <div className="min-h-screen">
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 1 — HERO (instant render, zero data dependency)
+          SECTION 1 — HERO (instant render, ZERO data dependency)
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden gradient-hero py-16 md:py-24 lg:py-28">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
@@ -217,15 +246,13 @@ export default function Home() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
               </span>
               <span className="text-sm font-medium">Live Market Data</span>
-              {!isLoading && (
-                <span className={cn(
-                  'text-xs ml-1 px-2 py-0.5 rounded-full font-medium',
-                  marketStatus === 'Open' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
-                )}>
-                  <Clock className="h-3 w-3 inline mr-1" />
-                  Market {marketStatus}
-                </span>
-              )}
+              <span className={cn(
+                'text-xs ml-1 px-2 py-0.5 rounded-full font-medium',
+                marketStatus === 'Open' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+              )}>
+                <Clock className="h-3 w-3 inline mr-1" />
+                Market {marketStatus}
+              </span>
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 leading-tight">
@@ -236,7 +263,7 @@ export default function Home() {
             </h1>
 
             <p className="text-lg md:text-xl text-foreground/70 mb-8 max-w-2xl mx-auto">
-              Every brief layers technical indicators, sentiment, forecast models, and risk — so you can see the full picture before deciding.
+              Every brief layers technical indicators, sentiment, forecast models, and risk so you can see the full picture before deciding.
             </p>
 
             <HeroSearch onSelect={goToStock} />
@@ -260,7 +287,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 2 — LIVE TICKER BAR (animated, real data, reduced-motion safe)
+          SECTION 2 — LIVE TICKER BAR (loads independently from Query 1)
           ═══════════════════════════════════════════════════════════════════ */}
       {topStocks.length > 0 && (
         <div className="bg-card/50 border-y border-border/40 backdrop-blur-sm py-3 overflow-hidden">
@@ -287,9 +314,9 @@ export default function Home() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3 — TODAY'S STOCK INTELLIGENCE (real data, progressive)
+          SECTION 3 — TODAY'S STOCK INTELLIGENCE (loads independently from Query 2)
           ═══════════════════════════════════════════════════════════════════ */}
-      {selected && (
+      {selected ? (
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
             <motion.div
@@ -300,7 +327,7 @@ export default function Home() {
             >
               <h2 className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
               <p className="text-muted-foreground max-w-xl mx-auto">
-                A real snapshot from our engine — not a recommendation, just an evidence layer.
+                A real snapshot from our engine not a recommendation, just an evidence layer.
               </p>
             </motion.div>
 
@@ -384,10 +411,25 @@ export default function Home() {
             </motion.div>
           </div>
         </section>
-      )}
+      ) : briefData === undefined ? (
+        /* Brief loading skeleton — only shows while Query 2 is in flight */
+        <section className="py-12 md:py-16">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                A real snapshot from our engine not a recommendation, just an evidence layer.
+              </p>
+            </div>
+            <div className="max-w-2xl mx-auto">
+              <div className="h-48 rounded-2xl bg-muted/30 animate-pulse" />
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 4 — STOCKS WORTH INVESTIGATING (Discover preview)
+          SECTION 4 — STOCKS WORTH INVESTIGATING (loads independently from Query 3)
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
@@ -406,7 +448,8 @@ export default function Home() {
             </Link>
           </motion.div>
 
-          {isLoading ? (
+          {discoverData === undefined ? (
+            /* Discover loading skeleton — only shows while Query 3 is in flight */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-36 rounded-2xl bg-muted/30 animate-pulse" />
@@ -479,7 +522,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 5 — ONE STOCK, MULTIPLE LAYERS (evidence flow)
+          SECTION 5 — ONE STOCK, MULTIPLE LAYERS (static — no data dependency)
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
@@ -527,7 +570,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 6 — RESEARCH CAPABILITIES (static, 6 items)
+          SECTION 6 — RESEARCH CAPABILITIES (static — no data dependency)
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
@@ -539,7 +582,7 @@ export default function Home() {
           >
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Research Capabilities</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Everything available inside the product — built around evidence and transparency.
+              Everything available inside the product built around evidence and transparency.
             </p>
           </motion.div>
 
@@ -568,7 +611,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 7 — BUILT FOR EVIDENCE (trust, static)
+          SECTION 7 — BUILT FOR EVIDENCE (static — no data dependency)
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
@@ -606,7 +649,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 8 — FINAL CTA (search + buttons)
+          SECTION 8 — FINAL CTA (static — no data dependency)
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
