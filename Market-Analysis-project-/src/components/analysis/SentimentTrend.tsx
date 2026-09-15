@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EnhancedSentiment } from '@/lib/api';
 import { TrendingUp, TrendingDown, Minus, BrainCircuit, Smile, Frown, Meh } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 
 interface SentimentTrendProps {
   data: EnhancedSentiment | null;
@@ -10,6 +11,7 @@ interface SentimentTrendProps {
 }
 
 export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
+  const isMobile = useIsMobile();
   if (isLoading || !data) {
     return (
       <Card className="glass h-full animate-pulse">
@@ -65,39 +67,24 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
         <div className="space-y-6">
           {/* Sentiment Trend Chart */}
           {chartData.length > 0 ? (
-            <div className="h-[180px]">
+            <div className="h-[160px] sm:h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="date"
-                    stroke="hsl(var(--muted-foreground))"
-                    tick={{ fontSize: 10 }}
-                    minTickGap={30}
-                  />
-                  <YAxis
-                    stroke="hsl(var(--muted-foreground))"
-                    tick={{ fontSize: 10 }}
-                    domain={[-100, 100]}
-                    tickFormatter={(value) => `${value}%`}
-                  />
+                <LineChart data={chartData} margin={chartMargins(isMobile)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                  <XAxis {...xAxisConfig(isMobile, chartData.length)} />
+                  <YAxis {...yAxisConfig(isMobile, { domain: [-100, 100], tickFormatter: (v) => `${v}%` })} />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
+                    contentStyle={tooltipStyle}
                     formatter={(value: number) => [`${value.toFixed(0)}%`, 'Sentiment']}
                   />
                   <Line
                     type="monotone"
                     dataKey="score"
                     stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6 }}
+                    strokeWidth={isMobile ? 1.5 : 2}
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: isMobile ? 3 : 4 }}
+                    activeDot={{ r: isMobile ? 5 : 6 }}
                   />
-                  {/* Zero line */}
                   <Line
                     type="monotone"
                     dataKey="score"
@@ -111,7 +98,7 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-[180px] flex items-center justify-center text-muted-foreground">
+            <div className="h-[160px] sm:h-[180px] flex items-center justify-center text-muted-foreground">
               <p className="text-sm">No trend data available</p>
             </div>
           )}

@@ -18,6 +18,7 @@ import { TickerLogo } from '@/components/common/TickerLogo';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,7 @@ export default function StockOverview() {
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = useIsMobile();
 
   // Debounced autocomplete search
   const handleSearchInput = useCallback((value: string) => {
@@ -349,43 +351,30 @@ export default function StockOverview() {
         transition={{ delay: 0.3 }}
       >
         <Card className="glass">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <CardTitle className="text-base sm:text-lg">Price History - {ticker}</CardTitle>
-            <div className="flex space-x-1.5 sm:space-x-2">
+            <div className="flex gap-1 sm:gap-1.5 overflow-x-auto">
               {['1d', '1m', '6m', '1y'].map((range) => (
                 <Button
                   key={range}
                   variant={timeRange === (range === '1m' ? '1mo' : range === '6m' ? '6mo' : range) ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setTimeRange(range === '1m' ? '1mo' : range === '6m' ? '6mo' : range)}
-                  className="h-8 text-xs"
+                  className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3 shrink-0"
                 >
                   {range.toUpperCase()}
                 </Button>
               ))}
             </div>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: 12 }}
-                  minTickGap={30}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: 12 }}
-                  domain={['auto', 'auto']}
-                />
+          <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
+            <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.priceHistory.mobile : CHART_HEIGHTS.priceHistory.desktop}>
+              <LineChart data={chartData} margin={chartMargins(isMobile)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                <XAxis {...xAxisConfig(isMobile, chartData.length)} />
+                <YAxis {...yAxisConfig(isMobile)} domain={['auto', 'auto']} tickFormatter={(v) => `$${v >= 1000 ? (v/1000).toFixed(1) + 'K' : v.toFixed(0)}`} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
+                  contentStyle={tooltipStyle}
                   formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
                 />
                 <Line
@@ -393,7 +382,7 @@ export default function StockOverview() {
                   dataKey="close"
                   name="Price"
                   stroke="hsl(var(--primary))"
-                  strokeWidth={2}
+                  strokeWidth={isMobile ? 1.5 : 2}
                   dot={false}
                 />
               </LineChart>

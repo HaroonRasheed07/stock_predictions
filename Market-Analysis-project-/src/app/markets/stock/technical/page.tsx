@@ -23,6 +23,7 @@ import {
   Area,
 } from 'recharts';
 import { TrendingUp, Activity, Target, Search } from 'lucide-react';
+import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useStockStore } from '@/store/stockStore';
@@ -40,6 +41,7 @@ export default function TechnicalAnalysis() {
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = useIsMobile();
 
   const handleSearchInput = useCallback((value: string) => {
     setInputTicker(value);
@@ -160,20 +162,20 @@ export default function TechnicalAnalysis() {
   if (isLoading) return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Technical Analysis</h1>
-            <p className="text-muted-foreground">Advanced charting and live signals for {ticker}</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Technical Analysis</h1>
+            <p className="text-sm text-muted-foreground">Advanced charting and live signals for {ticker}</p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <WatchlistButton ticker={ticker} />
             <div ref={searchRef} className="relative">
               <form onSubmit={handleSearch} className="flex items-center space-x-2">
-                <Input type="text" placeholder="Search stocks, forex, futures..." value={inputTicker}
+                <Input type="text" placeholder="Search..." value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                  className="w-28 md:w-56 h-9 text-sm bg-background border-border/60" />
-                <Button type="submit" size="icon" variant="secondary"><Search className="h-4 w-4" /></Button>
+                  className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60" />
+                <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9"><Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
               </form>
             </div>
           </div>
@@ -187,30 +189,30 @@ export default function TechnicalAnalysis() {
   const filteredCandleData = candleData;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Technical Analysis</h1>
-            <p className="text-muted-foreground">Advanced charting and live signals for {ticker}</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Technical Analysis</h1>
+            <p className="text-sm text-muted-foreground">Advanced charting and live signals for {ticker}</p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <WatchlistButton ticker={ticker} />
             <div ref={searchRef} className="relative">
               <form onSubmit={handleSearch} className="flex items-center space-x-2">
                 <Input
                   type="text"
-                  placeholder="Search stocks, forex, futures..."
+                  placeholder="Search..."
                   value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                  className="w-28 md:w-56 h-9 text-sm bg-background border-border/60"
+                  className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60"
                 />
-                <Button type="submit" size="icon" variant="secondary">
-                  <Search className="h-4 w-4" />
+                <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9">
+                  <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
               </form>
               {showSuggestions && (suggestions.length > 0 || isSearching) && (
@@ -244,45 +246,45 @@ export default function TechnicalAnalysis() {
         </div>
       </motion.div>
 
-      {/* Indicators Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Indicators Summary — 2-col mobile, 3-col desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
         <Card className="glass">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">RSI (14)</p>
-                <p className="text-2xl font-bold">{indicators?.rsi}</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">RSI (14)</p>
+                <p className="text-xl sm:text-2xl font-bold">{indicators?.rsi}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
                   {parseFloat(indicators?.rsi || '0') > 70 ? 'Overbought' : parseFloat(indicators?.rsi || '0') < 30 ? 'Oversold' : 'Neutral'}
                 </p>
               </div>
-              <Activity className="h-8 w-8 text-primary" />
+              <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="glass">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">MACD</p>
-                <p className="text-2xl font-bold">{indicators?.macd}</p>
-                <p className="text-sm text-success mt-1">Bullish Cross</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">MACD</p>
+                <p className="text-xl sm:text-2xl font-bold">{indicators?.macd}</p>
+                <p className="text-xs sm:text-sm text-success mt-0.5 sm:mt-1">Bullish Cross</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-success" />
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="glass">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Signal</p>
-                <p className="text-2xl font-bold text-success">{indicators?.signal}</p>
-                <p className="text-sm text-muted-foreground mt-1">Strong momentum</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Signal</p>
+                <p className="text-xl sm:text-2xl font-bold text-success">{indicators?.signal}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Strong momentum</p>
               </div>
-              <Target className="h-8 w-8 text-success" />
+              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
             </div>
           </CardContent>
         </Card>
@@ -321,16 +323,16 @@ export default function TechnicalAnalysis() {
       >
         <Card className="glass">
           <CardHeader>
-            <div className="flex justify-between items-center w-full">
-              <CardTitle>Candlestick Chart - {ticker}</CardTitle>
-              <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+              <CardTitle className="text-base sm:text-lg">Candlestick Chart - {ticker}</CardTitle>
+              <div className="flex gap-1 sm:gap-1.5 overflow-x-auto">
                 {['1d', '5d', '1y', '2y'].map((range) => (
                   <Button
                     key={range}
                     variant={timeRange === range ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setTimeRange(range)}
-                    className="h-8 text-xs"
+                    className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3 shrink-0"
                   >
                     {range.toUpperCase()}
                   </Button>
@@ -338,15 +340,15 @@ export default function TechnicalAnalysis() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-2">
+          <CardContent className="pt-2 px-2 sm:px-6 pb-4 sm:pb-6">
             {filteredCandleData && filteredCandleData.length > 0 ? (
               <ProfessionalCandlestickChart 
                 data={filteredCandleData} 
                 ticker={ticker}
-                height={520}
+                height={isMobile ? CHART_HEIGHTS.candlestick.mobile : CHART_HEIGHTS.candlestick.desktop}
               />
             ) : (
-              <div className="flex items-center justify-center h-96 text-muted-foreground">
+              <div className="flex items-center justify-center h-60 sm:h-96 text-muted-foreground text-sm">
                 No candlestick data available
               </div>
             )}
@@ -362,16 +364,16 @@ export default function TechnicalAnalysis() {
       >
         <Card className="glass">
           <CardHeader>
-            <div className="flex justify-between items-center w-full">
-              <CardTitle>Price Action & Volume</CardTitle>
-              <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+              <CardTitle className="text-base sm:text-lg">Price Action & Volume</CardTitle>
+              <div className="flex gap-1 sm:gap-1.5 overflow-x-auto">
                 {['1y', '2y', '3y', '5y'].map((range) => (
                   <Button
                     key={range}
                     variant={timeRange === range ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setTimeRange(range)}
-                    className="h-8 text-xs"
+                    className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3 shrink-0"
                   >
                     {range.toUpperCase()}
                   </Button>
@@ -379,59 +381,17 @@ export default function TechnicalAnalysis() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={filteredCandleData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: 12 }}
-                  interval={filteredCandleData.length>0? Math.floor(filteredCandleData.length / 10):0}
-                />
-                <YAxis
-                  yAxisId="price"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis
-                  yAxisId="volume"
-                  orientation="right"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: 12 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Line
-                  yAxisId="price"
-                  type="monotone"
-                  dataKey="high"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={false}
-                  name="High"
-                />
-                <Line
-                  yAxisId="price"
-                  type="monotone"
-                  dataKey="low"
-                  stroke="hsl(var(--secondary))"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Low"
-                />
-                <Bar
-                  yAxisId="volume"
-                  dataKey="volume"
-                  fill="hsl(var(--muted))"
-                  opacity={0.3}
-                  name="Volume"
-                />
+          <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
+            <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.priceAction.mobile : CHART_HEIGHTS.priceAction.desktop}>
+              <ComposedChart data={filteredCandleData} margin={chartMargins(isMobile)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                <XAxis {...xAxisConfig(isMobile, filteredCandleData.length)} />
+                <YAxis yAxisId="price" {...yAxisConfig(isMobile)} />
+                <YAxis yAxisId="volume" orientation="right" {...yAxisConfig(isMobile)} tickFormatter={(v) => formatCompact(v)} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line yAxisId="price" type="monotone" dataKey="high" stroke="hsl(var(--primary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="High" />
+                <Line yAxisId="price" type="monotone" dataKey="low" stroke="hsl(var(--secondary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="Low" />
+                <Bar yAxisId="volume" dataKey="volume" fill="hsl(var(--muted))" opacity={0.3} name="Volume" />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
@@ -446,16 +406,16 @@ export default function TechnicalAnalysis() {
       >
         <Card className="glass">
           <CardHeader>
-            <div className="flex justify-between items-center w-full">
-              <CardTitle>Bollinger Bands</CardTitle>
-              <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+              <CardTitle className="text-base sm:text-lg">Bollinger Bands</CardTitle>
+              <div className="flex gap-1 sm:gap-1.5 overflow-x-auto">
                 {['1y', '2y', '3y', '5y'].map((range) => (
                   <Button
                     key={range}
                     variant={timeRange === range ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setTimeRange(range)}
-                    className="h-8 text-xs"
+                    className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3 shrink-0"
                   >
                     {range.toUpperCase()}
                   </Button>
@@ -463,48 +423,16 @@ export default function TechnicalAnalysis() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={filteredCandleData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: 12 }}
-                  interval={filteredCandleData.length>0? Math.floor(filteredCandleData.length / 10):0}
-                />
-                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="upper"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.1}
-                  name="Upper Band"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="close"
-                  stroke="hsl(var(--secondary))"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Close"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="lower"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.1}
-                  name="Lower Band"
-                />
+          <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
+            <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.bollinger.mobile : CHART_HEIGHTS.bollinger.desktop}>
+              <ComposedChart data={filteredCandleData} margin={chartMargins(isMobile)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                <XAxis {...xAxisConfig(isMobile, filteredCandleData.length)} />
+                <YAxis {...yAxisConfig(isMobile)} tickFormatter={(v) => `$${v >= 1000 ? (v/1000).toFixed(1) + 'K' : v.toFixed(0)}`} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(2)}`, '']} />
+                <Area type="monotone" dataKey="upper" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Upper Band" />
+                <Line type="monotone" dataKey="close" stroke="hsl(var(--secondary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="Close" />
+                <Area type="monotone" dataKey="lower" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Lower Band" />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
@@ -512,4 +440,11 @@ export default function TechnicalAnalysis() {
       </motion.div>
     </div>
   );
+}
+
+function formatCompact(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
+  return v.toString();
 }

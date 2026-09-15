@@ -9,12 +9,12 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <div className="relative h-10 w-auto">
+            <div className="relative h-[46px] w-auto">
               <Image
                 src="/logo.png"
                 alt="Stock Vanta"
-                width={160}
-                height={40}
+                width={257}
+                height={46}
                 className="object-contain h-full w-auto"
               />
             </div>

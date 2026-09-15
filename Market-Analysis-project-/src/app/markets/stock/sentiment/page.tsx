@@ -123,10 +123,10 @@ export default function SentimentAnalysis() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">Sentiment Analysis</h1>
-          <p className="text-muted-foreground">Real-time market sentiment from news and social media for {ticker}</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Sentiment Analysis</h1>
+          <p className="text-sm text-muted-foreground">Real-time market sentiment for {ticker}</p>
         </div>
         <div className="flex items-center gap-2">
           <WatchlistButton ticker={ticker} />
@@ -134,14 +134,14 @@ export default function SentimentAnalysis() {
             <form onSubmit={handleSearch} className="flex items-center gap-2">
               <Input
                 type="text"
-                placeholder="Search stocks, forex, futures..."
+                placeholder="Search..."
                 value={inputTicker}
                 onChange={(e) => handleSearchInput(e.target.value)}
                 onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                className="w-28 md:w-56 h-9 text-sm bg-background border-border/60"
+                className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60"
               />
-              <Button type="submit" size="icon" variant="secondary">
-                <Search className="h-4 w-4" />
+              <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9">
+                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </form>
             {showSuggestions && (suggestions.length > 0 || isSearching) && (
@@ -202,26 +202,26 @@ export default function SentimentAnalysis() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {headerSection}
 
       {/* Sentiment Score */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
         <Card className="glass">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Overall Score</p>
-                <p className="text-3xl font-bold">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Overall Score</p>
+                <p className="text-xl sm:text-3xl font-bold">
                   {sentimentData?.sentiment_score ? sentimentData.sentiment_score.toFixed(2) : '0.00'}
                 </p>
-                <p className={`text-sm mt-1 ${sentimentData?.sentiment_label === 'Positive' ? 'text-success' :
+                <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${sentimentData?.sentiment_label === 'Positive' ? 'text-success' :
                     sentimentData?.sentiment_label === 'Negative' ? 'text-destructive' : 'text-muted-foreground'
                   }`}>
                   {sentimentData?.sentiment_label || 'Neutral'}
                 </p>
               </div>
-              <TrendingUp className={`h-10 w-10 ${sentimentData?.sentiment_label === 'Positive' ? 'text-success' :
+              <TrendingUp className={`h-7 w-7 sm:h-10 sm:w-10 ${sentimentData?.sentiment_label === 'Positive' ? 'text-success' :
                   sentimentData?.sentiment_label === 'Negative' ? 'text-destructive' : 'text-muted-foreground'
                 }`} />
             </div>
@@ -229,27 +229,27 @@ export default function SentimentAnalysis() {
         </Card>
 
         <Card className="glass">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Sentiment</p>
-                <p className="text-3xl font-bold">{sentimentData?.sentiment_label || 'N/A'}</p>
-                <p className="text-sm text-muted-foreground mt-1">Market Mood</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Sentiment</p>
+                <p className="text-xl sm:text-3xl font-bold">{sentimentData?.sentiment_label || 'N/A'}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Market Mood</p>
               </div>
-              <MessageSquare className="h-10 w-10 text-primary" />
+              <MessageSquare className="h-7 w-7 sm:h-10 sm:w-10 text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass">
-          <CardContent className="p-6">
+        <Card className="glass col-span-2 md:col-span-1">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">News Count</p>
-                <p className="text-3xl font-bold">{sentimentData?.news?.length || 0}</p>
-                <p className="text-sm text-muted-foreground mt-1">Articles analyzed</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">News Count</p>
+                <p className="text-xl sm:text-3xl font-bold">{sentimentData?.news?.length || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Articles analyzed</p>
               </div>
-              <AlertCircle className="h-10 w-10 text-secondary" />
+              <AlertCircle className="h-7 w-7 sm:h-10 sm:w-10 text-secondary" />
             </div>
           </CardContent>
         </Card>

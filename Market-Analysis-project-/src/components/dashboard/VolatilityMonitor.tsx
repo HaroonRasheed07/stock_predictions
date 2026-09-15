@@ -122,44 +122,38 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
         </p>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-1.5 sm:gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
           <button
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3 ${
+            className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-md text-xs sm:text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-8 sm:h-9 px-2.5 sm:px-3 shrink-0 ${
               viewMode === 'daily'
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
             }`}
             onClick={() => setViewMode('daily')}
           >
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
-              <TrendingUp className="h-4 w-4" />
-            </span>
+            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Daily Vol</span>
           </button>
           <button
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3 ${
+            className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-md text-xs sm:text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-8 sm:h-9 px-2.5 sm:px-3 shrink-0 ${
               viewMode === 'weekly'
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
             }`}
             onClick={() => setViewMode('weekly')}
           >
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
-              <Activity className="h-4 w-4" />
-            </span>
+            <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Weekly Vol</span>
           </button>
           <button
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3 ${
+            className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-md text-xs sm:text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-8 sm:h-9 px-2.5 sm:px-3 shrink-0 ${
               viewMode === 'atr'
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
             }`}
             onClick={() => setViewMode('atr')}
           >
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
-              <ArrowUpDown className="h-4 w-4" />
-            </span>
+            <ArrowUpDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>ATR</span>
           </button>
         </div>
@@ -168,12 +162,12 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Rank</TableHead>
-                <TableHead>Asset</TableHead>
-                <TableHead className="text-right">
-                  {viewMode === 'daily' ? 'Daily Vol %' : viewMode === 'weekly' ? 'Weekly Vol %' : 'ATR'}
+                <TableHead className="w-[50px] sm:w-[100px] text-[10px] sm:text-xs">#</TableHead>
+                <TableHead className="text-[10px] sm:text-xs">Asset</TableHead>
+                <TableHead className="text-right text-[10px] sm:text-xs">
+                  {viewMode === 'daily' ? 'Daily %' : viewMode === 'weekly' ? 'Weekly %' : 'ATR'}
                 </TableHead>
-                <TableHead className="text-right">Level</TableHead>
+                <TableHead className="text-right text-[10px] sm:text-xs">Level</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -191,18 +185,18 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
                     className="hover:bg-muted/50 cursor-pointer"
                     onClick={() => onAssetClick?.(item.ticker)}
                   >
-                    <TableCell className="font-medium">#{index + 1}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-xs sm:text-sm py-2 sm:py-3">#{index + 1}</TableCell>
+                    <TableCell className="py-2 sm:py-3">
                       <div>
-                        <div className="font-semibold">{item.ticker}</div>
-                        <div className="text-xs text-muted-foreground">{item.name}</div>
+                        <div className="font-semibold text-xs sm:text-sm">{item.ticker}</div>
+                        <div className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{item.name}</div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-bold">{value.toFixed(2)}%</span>
+                    <TableCell className="text-right py-2 sm:py-3">
+                      <span className="font-bold text-xs sm:text-sm">{value.toFixed(2)}%</span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="outline" className={colorClass}>
+                    <TableCell className="text-right py-2 sm:py-3">
+                      <Badge variant="outline" className={`${colorClass} text-[10px] sm:text-xs`}>
                         {label}
                       </Badge>
                     </TableCell>
@@ -214,9 +208,9 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
         </div>
 
         {/* Simple bar chart visualization */}
-        <div className="mt-6 pt-4 border-t border-border/50">
-          <h4 className="text-sm font-semibold mb-3">Volatility Distribution</h4>
-          <div className="space-y-2">
+        <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-border/50">
+          <h4 className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Distribution</h4>
+          <div className="space-y-1.5 sm:space-y-2">
             {sortedData.slice(0, 5).map((item, index) => {
               const value = getSortValue(item);
               const maxValue = Math.max(...sortedData.map(getSortValue));
@@ -224,9 +218,9 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
               const colorClass = getVolatilityColor(value, viewMode);
               
               return (
-                <div key={item.ticker} className="flex items-center gap-3">
-                  <span className="text-xs font-medium w-16 truncate">{item.ticker}</span>
-                  <div className="flex-1 h-6 bg-muted/30 rounded-full overflow-hidden">
+                <div key={item.ticker} className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-[10px] sm:text-xs font-medium w-12 sm:w-16 truncate">{item.ticker}</span>
+                  <div className="flex-1 h-4 sm:h-6 bg-muted/30 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
@@ -234,7 +228,7 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
                       className={`h-full ${colorClass.split(' ')[1] || 'bg-primary'}`}
                     />
                   </div>
-                  <span className="text-xs font-medium w-12 text-right">{value.toFixed(1)}%</span>
+                  <span className="text-[10px] sm:text-xs font-medium w-10 sm:w-12 text-right">{value.toFixed(1)}%</span>
                 </div>
               );
             })}

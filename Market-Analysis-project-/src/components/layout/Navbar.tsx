@@ -39,12 +39,12 @@ export const Navbar = () => {
         <div className="flex h-14 items-center justify-between md:h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center group" aria-label="Stock Vanta Home">
-            <div className="relative h-9 w-auto md:h-10">
+            <div className="relative h-[34px] md:h-[42px] w-auto">
               <Image
                 src="/logo.png"
                 alt="Stock Vanta"
-                width={140}
-                height={40}
+                width={234}
+                height={42}
                 className="object-contain h-full w-auto"
                 priority
               />

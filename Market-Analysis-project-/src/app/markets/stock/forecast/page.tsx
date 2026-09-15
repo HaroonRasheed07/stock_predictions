@@ -20,6 +20,7 @@ import {
   Legend,
 } from 'recharts';
 import { TrendingUp, Target, Brain, AlertTriangle, Search, AlertCircle, BarChart3, Zap } from 'lucide-react';
+import { useIsMobile, chartMargins, axisTickStyle, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ export default function PriceForecasting() {
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = useIsMobile();
 
   const handleSearchInput = useCallback((value: string) => {
     setInputTicker(value);
@@ -136,14 +138,14 @@ export default function PriceForecasting() {
       <form onSubmit={handleSearch} className="flex items-center space-x-2">
         <Input
           type="text"
-          placeholder="Search stocks, forex, futures..."
+          placeholder="Search stocks..."
           value={inputTicker}
           onChange={(e) => handleSearchInput(e.target.value)}
           onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-          className="w-28 md:w-56 h-9 text-sm bg-background border-border/60"
+          className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60"
         />
-        <Button type="submit" size="icon" variant="secondary">
-          <Search className="h-4 w-4" />
+        <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9">
+          <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </Button>
       </form>
       {showSuggestions && (suggestions.length > 0 || isSearching) && (
@@ -189,10 +191,10 @@ export default function PriceForecasting() {
   if (isLoading) return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
-            <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
+            <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
           </div>
           {renderSearchForm()}
         </div>
@@ -208,10 +210,10 @@ export default function PriceForecasting() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
-              <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM & Prophet models</p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
+              <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
             </div>
             <div className="flex items-center space-x-2">
               <WatchlistButton ticker={ticker} />
@@ -238,10 +240,10 @@ export default function PriceForecasting() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
-            <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
+            <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
           </div>
           {renderSearchForm()}
         </div>
@@ -257,8 +259,6 @@ export default function PriceForecasting() {
     );
   }
 
-  console.log("Parsed forecastData in component:", forecastData);
-
   const apiStatus: string | undefined = (forecastData as any)?.status;
   const apiMeta: any = (forecastData as any)?._meta;
 
@@ -267,13 +267,6 @@ export default function PriceForecasting() {
   const predictedHistoricalPrices: number[] = Array.isArray(results?.predicted_historical_prices) ? results.predicted_historical_prices : [];
   const forecastPrices: number[] = Array.isArray(results?.forecast_prices) ? results.forecast_prices : [];
   const forecastDates: string[] = Array.isArray(results?.forecast_dates) ? results.forecast_dates : [];
-
-  console.log("Chart datasets before rendering:", {
-    actualPricesLength: actualPrices.length,
-    predictedHistoricalPricesLength: predictedHistoricalPrices.length,
-    forecastPricesLength: forecastPrices.length,
-    forecastDatesLength: forecastDates.length
-  });
 
   const historicalLength = actualPrices.length;
   const forecastLength = forecastPrices.length;
@@ -346,10 +339,10 @@ export default function PriceForecasting() {
     return (
       <div className="space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
-              <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
+              <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
             </div>
             {renderSearchForm()}
           </div>
@@ -372,10 +365,10 @@ export default function PriceForecasting() {
     return (
       <div className="space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
-              <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
+              <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
             </div>
             {renderSearchForm()}
           </div>
@@ -398,15 +391,15 @@ export default function PriceForecasting() {
   const isFallbackScaler = (forecastData as any)?.note === 'Using fallback scaler';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Price Forecasting</h1>
-            <p className="text-muted-foreground">AI-powered predictions for {ticker} using LSTM model</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
+            <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
           </div>
           {renderSearchForm()}
         </div>
@@ -518,18 +511,18 @@ export default function PriceForecasting() {
       >
         <Card className="glass">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Price Prediction (Next 10 Days)</CardTitle>
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline">LSTM Model</Badge>
-                <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg">Price Prediction (Next 10 Days)</CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px] sm:text-xs">LSTM</Badge>
+                <div className="flex gap-1 sm:gap-1.5 overflow-x-auto">
                   {['1y', '2y', '3y', '5y'].map((range) => (
                     <Button
                       key={range}
                       variant={timeRange === range ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setTimeRange(range)}
-                      className="h-8 text-xs"
+                      className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3 shrink-0"
                     >
                       {range.toUpperCase()}
                     </Button>
@@ -538,51 +531,46 @@ export default function PriceForecasting() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
             {historicalLength === 0 && forecastLength === 0 ? (
-              <div className="flex items-center justify-center h-80 text-muted-foreground">
-                No forecast data available for this ticker/timeframe
+              <div className="flex items-center justify-center h-60 text-muted-foreground text-sm">
+                No forecast data available
               </div>
             ) : (
-            <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: 12 }}
-                  interval={Math.floor(chartData.length / 10)}
-                />
-                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} domain={['auto', 'auto']} />
+            <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.forecast.mobile : CHART_HEIGHTS.forecast.desktop}>
+              <ComposedChart data={chartData} margin={chartMargins(isMobile)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                <XAxis {...xAxisConfig(isMobile, chartData.length)} />
+                <YAxis {...yAxisConfig(isMobile)} domain={['auto', 'auto']} tickFormatter={(v) => `$${v >= 1000 ? (v/1000).toFixed(1) + 'K' : v.toFixed(0)}`} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
+                  contentStyle={tooltipStyle}
+                  formatter={(value: number, name: string) => [
+                    `$${value.toFixed(2)}`,
+                    name === 'actual' ? 'Actual' : 'Forecast'
+                  ]}
                 />
-                <Legend />
-
-                {/* Actual price */}
+                <Legend
+                  wrapperStyle={{ fontSize: isMobile ? 10 : 12, paddingTop: 8 }}
+                  iconType="line"
+                  formatter={(value) => value === 'actual' ? 'Actual' : 'Predicted'}
+                />
                 <Line
                   type="monotone"
                   dataKey="actual"
                   stroke="#3b82f6"
-                  strokeWidth={2.5}
+                  strokeWidth={isMobile ? 2 : 2.5}
                   dot={false}
-                  name="Actual Price"
+                  name="actual"
                   connectNulls
                 />
-
-                {/* Predicted price */}
                 <Line
                   type="monotone"
                   dataKey="predicted"
                   stroke="#f59e0b"
-                  strokeWidth={2.5}
+                  strokeWidth={isMobile ? 2 : 2.5}
                   strokeDasharray="8 4"
                   dot={false}
-                  name="Predicted Price"
+                  name="predicted"
                   connectNulls
                 />
               </ComposedChart>
