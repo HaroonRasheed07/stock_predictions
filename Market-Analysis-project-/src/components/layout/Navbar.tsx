@@ -40,14 +40,25 @@ export const Navbar = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center group" aria-label="Stock Vanta Home">
             <div className="relative h-[34px] md:h-[42px] w-auto">
-              <Image
-                src="/logo.png"
-                alt="Stock Vanta"
-                width={234}
-                height={42}
-                className="object-contain h-full w-auto"
-                priority
-              />
+              {mounted && theme === 'dark' ? (
+                <Image
+                  src="/logo-dark.png"
+                  alt="Stock Vanta"
+                  width={234}
+                  height={42}
+                  className="object-contain h-full w-auto"
+                  priority
+                />
+              ) : (
+                <Image
+                  src="/logo.png"
+                  alt="Stock Vanta"
+                  width={234}
+                  height={42}
+                  className="object-contain h-full w-auto"
+                  priority
+                />
+              )}
             </div>
           </Link>
 

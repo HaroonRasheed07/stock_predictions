@@ -1,8 +1,16 @@
+'use client';
+
 import Link from 'next/link';
 import { Github, Linkedin } from 'lucide-react';
 import Image from 'next/image';
+import { useThemeStore } from '@/store/themeStore';
+import { useState, useEffect } from 'react';
 
 export const Footer = () => {
+  const { theme } = useThemeStore();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   return (
     <footer className="border-t border-border/40 bg-card/30 backdrop-blur-sm mt-20">
       <div className="container mx-auto px-4 py-12">
@@ -10,13 +18,23 @@ export const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="relative h-[46px] w-auto">
-              <Image
-                src="/logo.png"
-                alt="Stock Vanta"
-                width={257}
-                height={46}
-                className="object-contain h-full w-auto"
-              />
+              {mounted && theme === 'dark' ? (
+                <Image
+                  src="/logo-dark.png"
+                  alt="Stock Vanta"
+                  width={257}
+                  height={46}
+                  className="object-contain h-full w-auto"
+                />
+              ) : (
+                <Image
+                  src="/logo.png"
+                  alt="Stock Vanta"
+                  width={257}
+                  height={46}
+                  className="object-contain h-full w-auto"
+                />
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
               Real-time market intelligence and predictive analytics for modern traders & investors.
