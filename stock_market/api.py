@@ -120,56 +120,65 @@ def _background_precompute_daemon():
                     logger.debug(f"Daemon: home ticker warm failed: {e}")
 
             def _warm_home_brief():
+                """Compute home brief preview DIRECTLY (bypass get_swr to avoid cold-start blocking).
+                Writes result to cache so user requests never trigger expensive computation."""
                 try:
                     default_ticker = "AAPL"
                     top = get_top_performing_stocks(limit=1)
                     if top:
                         default_ticker = top[0].get("symbol", "AAPL")
-                    brief_payload, _ = cache_manager.get_swr(
+                    # Compute overview directly — do NOT use get_swr (it would block on MISS)
+                    overview_payload = _compute_market_overview_raw(default_ticker, "1y")
+                    result = {}
+                    if overview_payload:
+                        result["selectedStock"] = {
+                            "ticker": overview_payload.get("ticker", default_ticker),
+                            "price": overview_payload.get("currentPrice", 0),
+                            "change": overview_payload.get("change", 0),
+                            "changePercent": overview_payload.get("changePercent", 0),
+                            "signal": (overview_payload.get("tradeConfirmation") or {}).get("signal", "Hold"),
+                            "score": (overview_payload.get("tradeConfirmation") or {}).get("opportunity_score", 50),
+                            "risk": (overview_payload.get("risk") or {}).get("risk_level", "Unknown"),
+                            "sentiment": (overview_payload.get("sentiment") or {}).get("sentiment_label", "Neutral"),
+                            "market_mood": (overview_payload.get("sentiment") or {}).get("market_mood", "Unknown"),
+                            "volatility": (overview_payload.get("volatility") or {}).get("daily_volatility", 0),
+                        }
+                    else:
+                        result["selectedStock"] = None
+                    # Also write the underlying overview cache so other endpoints benefit
+                    cache_manager.set(
                         key=f"overview:{default_ticker}:1y",
-                        refresh_func=lambda t=default_ticker: _compute_market_overview_raw(t, "1y"),
+                        payload=overview_payload,
                         fresh_ttl_seconds=120.0,
                         stale_ttl_seconds=86400.0,
                         category="overview",
                         ticker=default_ticker,
                         period="1y",
                     )
-                    result = {}
-                    if brief_payload:
-                        result["selectedStock"] = {
-                            "ticker": brief_payload.get("ticker", default_ticker),
-                            "price": brief_payload.get("currentPrice", 0),
-                            "change": brief_payload.get("change", 0),
-                            "changePercent": brief_payload.get("changePercent", 0),
-                            "signal": (brief_payload.get("tradeConfirmation") or {}).get("signal", "Hold"),
-                            "score": (brief_payload.get("tradeConfirmation") or {}).get("opportunity_score", 50),
-                            "risk": (brief_payload.get("risk") or {}).get("risk_level", "Unknown"),
-                            "sentiment": (brief_payload.get("sentiment") or {}).get("sentiment_label", "Neutral"),
-                            "market_mood": (brief_payload.get("sentiment") or {}).get("market_mood", "Unknown"),
-                            "volatility": (brief_payload.get("volatility") or {}).get("daily_volatility", 0),
-                        }
-                    else:
-                        result["selectedStock"] = None
                     cache_manager.set(key="home_brief", payload=result, fresh_ttl_seconds=60.0, stale_ttl_seconds=86400.0, category="home_brief")
                 except Exception as e:
                     logger.debug(f"Daemon: home brief warm failed: {e}")
 
             def _warm_home_discover():
+                """Compute home discover preview DIRECTLY (bypass get_swr to avoid cold-start blocking).
+                Writes result to cache so user requests never trigger expensive computation."""
                 try:
                     default_tickers = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']
-                    discover_key = f"discover:1y:{','.join(sorted(default_tickers))}"
-                    discover_payload, _ = cache_manager.get_swr(
-                        key=discover_key,
-                        refresh_func=lambda: _discover_scan_raw(default_tickers, "1y"),
-                        fresh_ttl_seconds=120.0,
-                        stale_ttl_seconds=86400.0,
-                        category="discover",
-                    )
+                    # Compute discover scan directly — do NOT use get_swr (it would block on MISS)
+                    discover_payload = _discover_scan_raw(default_tickers, "1y")
                     result = {}
                     if discover_payload:
                         result["discover"] = list((discover_payload.get("stocks") or {}).values())[:6]
                     else:
                         result["discover"] = []
+                    # Also write the underlying discover cache so other endpoints benefit
+                    cache_manager.set(
+                        key=f"discover:1y:{','.join(sorted(default_tickers))}",
+                        payload=discover_payload,
+                        fresh_ttl_seconds=120.0,
+                        stale_ttl_seconds=86400.0,
+                        category="discover",
+                    )
                     cache_manager.set(key="home_discover_preview", payload=result, fresh_ttl_seconds=60.0, stale_ttl_seconds=86400.0, category="home_discover")
                 except Exception as e:
                     logger.debug(f"Daemon: home discover warm failed: {e}")
@@ -822,9 +831,9 @@ def get_market_overview(req: IndicatorRequest):
 
 
 def _home_intelligence_precache():
-    """Daemon helper: compute home intelligence and store in cache so first user request is instant."""
+    """Daemon helper: compute home intelligence and store in cache so first user request is instant.
+    Uses DIRECT computation (bypasses get_swr) to avoid cold-start blocking."""
     cache_key = "home_intelligence"
-    # Reuse the same logic as the endpoint's _compute_raw, but inline to avoid nesting closures.
     result: Dict[str, Any] = {}
     try:
         from datetime import datetime, timezone, timedelta
@@ -844,15 +853,8 @@ def _home_intelligence_precache():
         default_ticker = "AAPL"
         if result["topStocks"]:
             default_ticker = result["topStocks"][0].get("symbol", "AAPL")
-        brief_payload, _ = cache_manager.get_swr(
-            key=f"overview:{default_ticker}:1y",
-            refresh_func=lambda: _compute_market_overview_raw(default_ticker, "1y"),
-            fresh_ttl_seconds=120.0,
-            stale_ttl_seconds=86400.0,
-            category="overview",
-            ticker=default_ticker,
-            period="1y",
-        )
+        # Compute overview DIRECTLY — do NOT use get_swr (it would block on MISS)
+        brief_payload = _compute_market_overview_raw(default_ticker, "1y")
         if brief_payload:
             result["selectedStock"] = {
                 "ticker": brief_payload.get("ticker", default_ticker),
@@ -873,14 +875,8 @@ def _home_intelligence_precache():
         result["selectedStock"] = None
     try:
         default_tickers = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']
-        discover_key = f"discover:1y:{','.join(sorted(default_tickers))}"
-        discover_payload, _ = cache_manager.get_swr(
-            key=discover_key,
-            refresh_func=lambda: _discover_scan_raw(default_tickers, "1y"),
-            fresh_ttl_seconds=120.0,
-            stale_ttl_seconds=86400.0,
-            category="discover",
-        )
+        # Compute discover DIRECTLY — do NOT use get_swr (it would block on MISS)
+        discover_payload = _discover_scan_raw(default_tickers, "1y")
         if discover_payload:
             result["discover"] = list((discover_payload.get("stocks") or {}).values())[:6]
         else:

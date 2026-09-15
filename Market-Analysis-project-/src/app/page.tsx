@@ -270,7 +270,7 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
               <Link href="/markets/brief">
-                <Button size="lg" className="gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
+                <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
                   <Sparkles className="h-4 w-4" />
                   View Stock Brief
                 </Button>
@@ -672,7 +672,7 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/markets/brief">
-                <Button size="lg" className="gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
+                <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
                   <Sparkles className="h-4 w-4" />
                   View Stock Brief
                 </Button>
