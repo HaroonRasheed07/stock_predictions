@@ -17,21 +17,21 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <div className="relative h-[46px] w-auto">
+            <div className="relative w-auto" style={{ height: 'clamp(30px, 5vw, 40px)' }}>
               {mounted && theme === 'dark' ? (
                 <Image
                   src="/logo-dark.png"
                   alt="Stock Vanta"
-                  width={257}
-                  height={46}
+                  width={229}
+                  height={40}
                   className="object-contain h-full w-auto"
                 />
               ) : (
                 <Image
                   src="/logo.png"
                   alt="Stock Vanta"
-                  width={257}
-                  height={46}
+                  width={229}
+                  height={40}
                   className="object-contain h-full w-auto"
                 />
               )}

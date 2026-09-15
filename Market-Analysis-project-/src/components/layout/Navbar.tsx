@@ -38,14 +38,14 @@ export const Navbar = () => {
       <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between md:h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center group" aria-label="Stock Vanta Home">
-            <div className="relative h-[34px] md:h-[42px] w-auto">
+          <Link href="/" className="flex items-center group flex-shrink-0" aria-label="Stock Vanta Home">
+            <div className="relative w-auto" style={{ height: 'clamp(27px, 4.5vw, 37px)' }}>
               {mounted && theme === 'dark' ? (
                 <Image
                   src="/logo-dark.png"
                   alt="Stock Vanta"
-                  width={234}
-                  height={42}
+                  width={210}
+                  height={37}
                   className="object-contain h-full w-auto"
                   priority
                 />
@@ -53,8 +53,8 @@ export const Navbar = () => {
                 <Image
                   src="/logo.png"
                   alt="Stock Vanta"
-                  width={234}
-                  height={42}
+                  width={210}
+                  height={37}
                   className="object-contain h-full w-auto"
                   priority
                 />
