@@ -7,19 +7,28 @@ import '@/index.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Stock Vanta — AI-Driven Market Intelligence',
-  description: 'Professional-grade analytics for stocks, crypto, and e-commerce with AI-powered forecasting',
+  title: {
+    default: 'Stock Vanta | AI-Powered Stock Research',
+    template: '%s | Stock Vanta',
+  },
+  description: 'AI-powered stock research and decision intelligence with technical analysis, sentiment, forecasting, market opportunities, volatility insights and explainable stock signals.',
   icons: {
-    icon: '/logo.png',
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   openGraph: {
-    title: 'Stock Vanta — AI-Driven Market Intelligence',
-    description: 'Professional-grade analytics for stocks, crypto, and e-commerce with AI-powered forecasting',
+    title: 'Stock Vanta | AI-Powered Stock Research',
+    description: 'AI-powered stock research and decision intelligence with technical analysis, sentiment, forecasting, market opportunities, volatility insights and explainable stock signals.',
     images: [
       {
-        url: '/logo.png',
-        width: 1200,
-        height: 630,
+        url: '/icon-512.png',
+        width: 512,
+        height: 512,
         alt: 'Stock Vanta',
       },
     ],
@@ -28,9 +37,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Stock Vanta — AI-Driven Market Intelligence',
-    description: 'Professional-grade analytics for stocks, crypto, and e-commerce with AI-powered forecasting',
-    images: ['/logo.png'],
+    title: 'Stock Vanta | AI-Powered Stock Research',
+    description: 'AI-powered stock research and decision intelligence with technical analysis, sentiment, forecasting, market opportunities, volatility insights and explainable stock signals.',
+    images: ['/icon-512.png'],
   },
   metadataBase: new URL('https://stockvanta.vercel.app'),
 };

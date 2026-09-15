@@ -50,6 +50,14 @@ export default function Home() {
     staleTime: 60000,
     gcTime: 300000,
     refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const d = query.state.data as any;
+      const meta = d?._cache_meta;
+      if (!d || meta?.status === 'MISS' || meta?.is_stale) {
+        return 8000;
+      }
+      return false;
+    },
   });
 
   const goToStock = (ticker: string) => {
@@ -446,9 +454,9 @@ export default function Home() {
             </div>
           ) : (
             <div className="rounded-xl border border-border/40 bg-card/50 p-8 text-center">
-              <Search className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Discovery universe is refreshing</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Check back in a moment for fresh opportunities</p>
+              <Search className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3 animate-pulse" />
+              <p className="text-sm text-muted-foreground">Loading fresh opportunities…</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Building your discovery universe</p>
             </div>
           )}
         </section>

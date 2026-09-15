@@ -101,6 +101,11 @@ def _background_precompute_daemon():
                 scan_watchlist(wl, "1y")
             except Exception:
                 pass
+            # 4. Pre-warm home intelligence cache so first Home request is instant
+            try:
+                _home_intelligence_precache()
+            except Exception:
+                pass
             logger.info("[PERF] Daemon: market-wide precomputation finished successfully.")
         except Exception as e:
             logger.warning(f"Daemon precomputation error: {e}")
@@ -730,6 +735,87 @@ def get_market_overview(req: IndicatorRequest):
     return res
 
 
+def _home_intelligence_precache():
+    """Daemon helper: compute home intelligence and store in cache so first user request is instant."""
+    cache_key = "home_intelligence"
+    # Reuse the same logic as the endpoint's _compute_raw, but inline to avoid nesting closures.
+    result: Dict[str, Any] = {}
+    try:
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        et = now - timedelta(hours=4)
+        weekday = et.weekday()
+        market_time = et.hour * 60 + et.minute
+        is_open = weekday < 5 and 570 <= market_time < 960
+        result["marketStatus"] = "Open" if is_open else "Closed"
+    except Exception:
+        result["marketStatus"] = "Unknown"
+    try:
+        result["topStocks"] = get_top_performing_stocks(limit=8)
+    except Exception:
+        result["topStocks"] = []
+    try:
+        default_ticker = "AAPL"
+        if result["topStocks"]:
+            default_ticker = result["topStocks"][0].get("symbol", "AAPL")
+        brief_payload, _ = cache_manager.get_swr(
+            key=f"overview:{default_ticker}:1y",
+            refresh_func=lambda: _compute_market_overview_raw(default_ticker, "1y"),
+            fresh_ttl_seconds=120.0,
+            stale_ttl_seconds=86400.0,
+            category="overview",
+            ticker=default_ticker,
+            period="1y",
+        )
+        if brief_payload:
+            result["selectedStock"] = {
+                "ticker": brief_payload.get("ticker", default_ticker),
+                "price": brief_payload.get("currentPrice", 0),
+                "change": brief_payload.get("change", 0),
+                "changePercent": brief_payload.get("changePercent", 0),
+                "signal": (brief_payload.get("tradeConfirmation") or {}).get("signal", "Hold"),
+                "score": (brief_payload.get("tradeConfirmation") or {}).get("opportunity_score", 50),
+                "risk": (brief_payload.get("risk") or {}).get("risk_level", "Unknown"),
+                "sentiment": (brief_payload.get("sentiment") or {}).get("sentiment_label", "Neutral"),
+                "market_mood": (brief_payload.get("sentiment") or {}).get("market_mood", "Unknown"),
+                "volatility": (brief_payload.get("volatility") or {}).get("daily_volatility", 0),
+                "marketStatus": brief_payload.get("marketStatus", "Unknown"),
+            }
+        else:
+            result["selectedStock"] = None
+    except Exception:
+        result["selectedStock"] = None
+    try:
+        default_tickers = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']
+        discover_key = f"discover:1y:{','.join(sorted(default_tickers))}"
+        discover_payload, _ = cache_manager.get_swr(
+            key=discover_key,
+            refresh_func=lambda: _discover_scan_raw(default_tickers, "1y"),
+            fresh_ttl_seconds=120.0,
+            stale_ttl_seconds=86400.0,
+            category="discover",
+        )
+        if discover_payload:
+            result["discover"] = list((discover_payload.get("stocks") or {}).values())[:6]
+        else:
+            result["discover"] = []
+    except Exception:
+        result["discover"] = []
+    try:
+        wl = get_default_watchlist()[:10]
+        if wl:
+            wl_result = scan_watchlist_intelligent(wl, "1y")
+            result["alerts"] = wl_result.get("alerts", [])[:5]
+            result["alertSummary"] = wl_result.get("summary", None)
+        else:
+            result["alerts"] = []
+            result["alertSummary"] = None
+    except Exception:
+        result["alerts"] = []
+        result["alertSummary"] = None
+    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=60.0, stale_ttl_seconds=86400.0, category="home_intelligence")
+
+
 class DiscoverScanRequest(BaseModel):
     tickers: List[str]
     period: str = "1y"
@@ -862,10 +948,24 @@ def get_home_intelligence():
         res = dict(payload)
         res["_cache_meta"] = meta
         return res
-    result = _compute_raw()
-    cache_manager.set(key=cache_key, payload=result, fresh_ttl_seconds=60.0, stale_ttl_seconds=86400.0, category="home_intelligence")
+    # MISS: background refresh is already scheduled by get_swr.
+    # Return minimal skeleton so frontend renders instantly; next request will have data.
+    import datetime as _dt
+    now_utc = _dt.datetime.now(_dt.timezone.utc)
+    et = now_utc - _dt.timedelta(hours=4)
+    is_weekday = et.weekday() < 5
+    market_time = et.hour * 60 + et.minute
+    is_open = is_weekday and 570 <= market_time < 960
+    skeleton = {
+        "marketStatus": "Open" if is_open else "Closed",
+        "topStocks": [],
+        "selectedStock": None,
+        "discover": [],
+        "alerts": [],
+        "alertSummary": None,
+    }
     meta["status"] = "MISS"
-    res = dict(result)
+    res = dict(skeleton)
     res["_cache_meta"] = meta
     return res
 

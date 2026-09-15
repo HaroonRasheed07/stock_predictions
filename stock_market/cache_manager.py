@@ -294,7 +294,7 @@ class PersistentCacheManager:
                     )
                 return entry["payload"], meta
 
-        # 3. EXPIRED OR MISS
+        # 3. EXPIRED OR MISS — schedule background refresh so next request is fast
         meta = {
             "created_at": 0.0,
             "updated_at": 0.0,
@@ -303,6 +303,10 @@ class PersistentCacheManager:
             "refresh_in_progress": _single_flight.is_running(key),
             "status": "MISS"
         }
+        if refresh_func is not None and not _single_flight.is_running(key):
+            self.trigger_background_refresh(
+                key, refresh_func, fresh_ttl_seconds, stale_ttl_seconds, category, ticker, period
+            )
         return None, meta
 
     def trigger_background_refresh(
