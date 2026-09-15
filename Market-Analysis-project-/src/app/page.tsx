@@ -1,22 +1,77 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  TrendingUp, TrendingDown, BarChart3, Brain, Shield, Zap,
+  TrendingUp, TrendingDown, BarChart3, Brain, Shield,
   Activity, ArrowUpRight, ArrowDownRight, Minus, Clock,
-  Search, ChevronRight, AlertTriangle, Target, Sparkles, FileText,
+  Search, ChevronRight, AlertTriangle, Target, Sparkles,
+  Layers, Eye, LineChart, PieChart,
+  ArrowRight,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
-import { fetchHomeIntelligence } from '@/lib/api';
+import { fetchHomeIntelligence, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { TickerLogo } from '@/components/common/TickerLogo';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
+function HeroSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<AssetInfo[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefersReduced = useReducedMotion();
+
+  const handleSearch = useCallback((q: string) => {
+    setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.length < 1) { setResults([]); setShowResults(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await fetchAssetSearch(q);
+        setResults(data.slice(0, 8));
+        setShowResults(true);
+      } catch { setResults([]); }
+    }, 300);
+  }, []);
+
+  return (
+    <div className="relative w-full max-w-xl mx-auto">
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => handleSearch(e.target.value)}
+          placeholder="Search any stock ticker or company..."
+          className="pl-12 h-14 text-base rounded-2xl bg-background/80 border-border/60 backdrop-blur-sm shadow-lg"
+          onFocus={() => results.length > 0 && setShowResults(true)}
+          onBlur={() => setTimeout(() => setShowResults(false), 200)}
+        />
+      </div>
+      {showResults && results.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/60 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
+          {results.map((r) => (
+            <button
+              key={r.ticker}
+              onClick={() => { onSelect(r.ticker); setQuery(''); setShowResults(false); }}
+              className="flex items-center gap-3 w-full px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+            >
+              <TickerLogo ticker={r.ticker} size="sm" />
+              <div>
+                <p className="text-sm font-semibold">{r.ticker}</p>
+                <p className="text-xs text-muted-foreground truncate">{r.name}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SignalBadge({ signal, compact = false }: { signal: string; compact?: boolean }) {
   const config: Record<string, { bg: string; icon: any }> = {
@@ -43,6 +98,7 @@ function SignalBadge({ signal, compact = false }: { signal: string; compact?: bo
 export default function Home() {
   const router = useRouter();
   const { setSelectedTicker } = useStockStore();
+  const prefersReduced = useReducedMotion();
 
   const { data: intel, isLoading } = useQuery({
     queryKey: ['home-intelligence'],
@@ -68,56 +124,85 @@ export default function Home() {
   const topStocks = intel?.topStocks || [];
   const selected = intel?.selectedStock;
   const discover = intel?.discover || [];
-  const alerts = intel?.alerts || [];
-  const alertSummary = intel?.alertSummary;
   const marketStatus = intel?.marketStatus || 'Unknown';
 
-  const features = [
-    {
-      icon: FileText,
-      title: 'Stock Brief',
-      description: 'AI-powered stock intelligence — signal, timeframes, catalysts, risk.',
-      link: '/markets/brief',
-      gradient: 'from-blue-500 to-cyan-500',
-    },
-    {
-      icon: Search,
-      title: 'Discover',
-      description: 'Find opportunities across the market with smart screening.',
-      link: '/markets/discover',
-      gradient: 'from-purple-500 to-pink-500',
-    },
-    {
-      icon: BarChart3,
-      title: 'Technical Analysis',
-      description: 'Indicators, charts, and pattern recognition for equities.',
-      link: '/markets/stock/technical',
-      gradient: 'from-orange-500 to-red-500',
-    },
+  const evidenceSteps = [
+    { icon: BarChart3, label: 'Technical', description: 'Indicators, momentum, and pattern recognition', link: '/markets/stock/technical' },
+    { icon: Activity, label: 'Sentiment', description: 'News mood, social signals, and market context', link: '/markets/stock/sentiment' },
+    { icon: Brain, label: 'Forecast', description: 'ML price projections with confidence intervals', link: '/markets/stock/forecast' },
+    { icon: Shield, label: 'Risk', description: 'Volatility, drawdown, and downside exposure', link: '/markets/stock/technical' },
+    { icon: Target, label: 'Decision', description: 'Evidence-scored trade confirmation', link: '/markets/brief' },
   ];
 
   const capabilities = [
     {
+      icon: BarChart3,
+      title: 'Multi-Layer Stock Brief',
+      description: 'Signal, sentiment, catalysts, and risk in one concise brief.',
+      link: '/markets/brief',
+    },
+    {
+      icon: Search,
+      title: 'Discover & Screen',
+      description: 'Find opportunities across the market with smart filtering.',
+      link: '/markets/discover',
+    },
+    {
+      icon: LineChart,
+      title: 'Technical Analysis',
+      description: 'Real indicators, charts, and pattern recognition for equities.',
+      link: '/markets/stock/technical',
+    },
+    {
       icon: Brain,
-      title: 'AI Predictions',
-      description: 'LSTM-powered 10-day price forecasts with confidence intervals',
+      title: 'Forecast Models',
+      description: 'ML-based 10-day price projections with confidence bands.',
+      link: '/markets/stock/forecast',
     },
     {
-      icon: Shield,
+      icon: PieChart,
+      title: 'Sentiment Analysis',
+      description: 'News-driven sentiment scoring and mood tracking.',
+      link: '/markets/stock/sentiment',
+    },
+    {
+      icon: AlertTriangle,
       title: 'Risk Intelligence',
-      description: 'Multi-factor risk assessment with real-time monitoring',
+      description: 'Multi-factor risk assessment and real-time monitoring.',
+      link: '/markets/stock/technical',
+    },
+  ];
+
+  const trustPillars = [
+    {
+      icon: BarChart3,
+      title: 'Real Market Data',
+      description: 'All analysis is built on live and historical market data — not estimates.',
     },
     {
-      icon: Zap,
-      title: 'Real-Time Signals',
-      description: 'Live market event detection and alert system',
+      icon: Layers,
+      title: 'Multiple Evidence Layers',
+      description: 'Technical, sentiment, forecast, and risk signals evaluated together.',
+    },
+    {
+      icon: Eye,
+      title: 'Explainable Analysis',
+      description: 'Every brief tells you why — not just what the signal says.',
+    },
+    {
+      icon: Clock,
+      title: 'Timeframe Awareness',
+      description: 'Signals are framed for short, medium, and long-term horizons.',
     },
   ];
 
   return (
     <div className="min-h-screen">
-      {/* ─── Hero Section (renders instantly, no data dependency) ──────── */}
-      <section className="relative overflow-hidden gradient-hero py-16 md:py-24">
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 1 — HERO (instant render, zero data dependency)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden gradient-hero py-16 md:py-24 lg:py-28">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="container mx-auto px-4 relative z-10">
           <motion.div
@@ -133,34 +218,39 @@ export default function Home() {
               </span>
               <span className="text-sm font-medium">Live Market Data</span>
               {!isLoading && (
-                <Badge variant={marketStatus === 'Open' ? 'default' : 'secondary'} className="text-xs ml-1">
-                  <Clock className="h-3 w-3 mr-1" />
+                <span className={cn(
+                  'text-xs ml-1 px-2 py-0.5 rounded-full font-medium',
+                  marketStatus === 'Open' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                )}>
+                  <Clock className="h-3 w-3 inline mr-1" />
                   Market {marketStatus}
-                </Badge>
+                </span>
               )}
             </div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Real-time Market Intelligence &{' '}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 leading-tight">
+              Research Stocks With Evidence,{' '}
               <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Predictive Analytics
+                Not Guesswork.
               </span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-foreground/70 mb-8 max-w-2xl mx-auto">
-              Professional-grade analytics for equities with AI-powered forecasting, sentiment analysis, and decision intelligence
+            <p className="text-lg md:text-xl text-foreground/70 mb-8 max-w-2xl mx-auto">
+              Every brief layers technical indicators, sentiment, forecast models, and risk — so you can see the full picture before deciding.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <HeroSearch onSelect={goToStock} />
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
               <Link href="/markets/brief">
-                <Button size="lg" className="gradient-primary text-white hover:opacity-90 transition-opacity text-lg px-8 gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Stock Brief
+                <Button size="lg" className="gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
+                  <Sparkles className="h-4 w-4" />
+                  View Stock Brief
                 </Button>
               </Link>
               <Link href="/markets/discover">
-                <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-lg px-8 gap-2">
-                  <Search className="h-5 w-5" />
+                <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 gap-2 w-full sm:w-auto">
+                  <Search className="h-4 w-4" />
                   Discover Stocks
                 </Button>
               </Link>
@@ -169,12 +259,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Live Ticker (loads progressively) ─────────────────────────── */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 2 — LIVE TICKER BAR (animated, real data, reduced-motion safe)
+          ═══════════════════════════════════════════════════════════════════ */}
       {topStocks.length > 0 && (
-        <div className="bg-card/50 border-y border-border/40 backdrop-blur-sm py-4 overflow-hidden">
+        <div className="bg-card/50 border-y border-border/40 backdrop-blur-sm py-3 overflow-hidden">
           <motion.div
-            animate={{ x: ['0%', '-50%'] }}
-            transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+            animate={prefersReduced ? undefined : { x: ['0%', '-50%'] }}
+            transition={prefersReduced ? undefined : { duration: 30, repeat: Infinity, ease: 'linear' }}
             className="flex space-x-8 whitespace-nowrap"
           >
             {[...topStocks.slice(0, 8), ...topStocks.slice(0, 8)].map((stock, idx) => (
@@ -183,11 +275,10 @@ export default function Home() {
                 onClick={() => goToStock(stock.symbol)}
                 className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
               >
-                <span className="font-semibold">{stock.symbol}</span>
-                <span className="text-foreground/70">${stock.price.toFixed(2)}</span>
-                <span className={stock.changePercent >= 0 ? 'text-success' : 'text-destructive'}>
-                  {stock.changePercent >= 0 ? '+' : ''}
-                  {stock.changePercent.toFixed(2)}%
+                <span className="font-semibold text-sm">{stock.symbol}</span>
+                <span className="text-foreground/70 text-sm">${stock.price.toFixed(2)}</span>
+                <span className={cn('text-sm font-medium', stock.changePercent >= 0 ? 'text-success' : 'text-destructive')}>
+                  {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                 </span>
               </button>
             ))}
@@ -195,125 +286,33 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Features Grid (static, renders instantly) ────────────────── */}
-      <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Multi-Market Intelligence</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Comprehensive analytics across multiple dimensions of market data
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {features.map((feature, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-              >
-                <Link href={feature.link}>
-                  <Card className="card-interactive h-full group">
-                    <CardContent className="p-6">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                        <feature.icon className="h-6 w-6 text-white" />
-                      </div>
-                      <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                      <p className="text-muted-foreground">{feature.description}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Data Sections (progressive loading with section dividers) ── */}
-      <div className="container mx-auto px-4 pb-8">
-
-        {/* ─── Market Snapshot ────────────────────────────────────────── */}
-        <section className="py-6 border-t border-border/60">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Snapshot</h2>
-              <p className="text-xs text-muted-foreground/80 mt-0.5">What is happening across markets</p>
-            </div>
-            <Link href="/markets/stock" className="text-xs text-primary hover:underline flex items-center gap-1">
-              View All <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-          {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {topStocks.slice(0, 8).map((stock, idx) => (
-                <motion.div
-                  key={stock.symbol}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                >
-                  <button
-                    onClick={() => goToStock(stock.symbol)}
-                    className="w-full text-left rounded-xl border border-border/60 bg-card p-3.5 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <TickerLogo ticker={stock.symbol} size="sm" />
-                      <span className="text-sm font-semibold">{stock.symbol}</span>
-                    </div>
-                    <p className="text-lg font-bold">${stock.price.toFixed(2)}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      {stock.changePercent >= 0 ? (
-                        <ArrowUpRight className="h-3.5 w-3.5 text-success" />
-                      ) : (
-                        <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
-                      )}
-                      <span className={cn(
-                        'text-xs font-semibold',
-                        stock.changePercent >= 0 ? 'text-success' : 'text-destructive'
-                      )}>
-                        {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                      </span>
-                    </div>
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ─── Quick Brief ────────────────────────────────────────────── */}
-        {selected && (
-          <section className="py-6 border-t border-border/60">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Quick Brief</h2>
-                <p className="text-xs text-muted-foreground/80 mt-0.5">What needs your attention</p>
-              </div>
-              <button
-                onClick={() => goToStock(selected.ticker)}
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                Full Brief <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 3 — TODAY'S STOCK INTELLIGENCE (real data, progressive)
+          ═══════════════════════════════════════════════════════════════════ */}
+      {selected && (
+        <section className="py-12 md:py-16">
+          <div className="container mx-auto px-4">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-8"
+            >
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                A real snapshot from our engine — not a recommendation, just an evidence layer.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="max-w-2xl mx-auto"
             >
               <button
                 onClick={() => goToStock(selected.ticker)}
-                className="w-full text-left rounded-xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-lg hover:border-primary/20 active:scale-[0.99]"
+                className="w-full text-left rounded-2xl border border-border/60 bg-card p-6 transition-all duration-200 hover:shadow-lg hover:border-primary/20 active:scale-[0.99]"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -377,38 +376,55 @@ export default function Home() {
                     <p className="text-xs font-semibold mt-0.5">{selected.signal}</p>
                   </div>
                 </div>
+
+                <div className="flex items-center justify-center gap-1 text-xs text-primary mt-4 font-medium">
+                  View Full Brief <ArrowRight className="h-3 w-3" />
+                </div>
               </button>
             </motion.div>
-          </section>
-        )}
-
-        {/* ─── Discover Preview ───────────────────────────────────────── */}
-        <section className="py-6 border-t border-border/60">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Discover</h2>
-              <p className="text-xs text-muted-foreground/80 mt-0.5">Stocks worth investigating</p>
-            </div>
-            <Link href="/markets/discover" className="text-xs text-primary hover:underline flex items-center gap-1">
-              See All <ChevronRight className="h-3 w-3" />
-            </Link>
           </div>
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 4 — STOCKS WORTH INVESTIGATING (Discover preview)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-12 md:py-16 border-t border-border/60">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="flex items-center justify-between mb-6"
+          >
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold">Stocks Worth Investigating</h2>
+              <p className="text-muted-foreground mt-1">A daily universe based on real screening conditions.</p>
+            </div>
+            <Link href="/markets/discover" className="text-sm text-primary hover:underline flex items-center gap-1 shrink-0">
+              See All <ChevronRight className="h-4 w-4" />
+            </Link>
+          </motion.div>
+
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-36 rounded-2xl bg-muted/30 animate-pulse" />
+              ))}
             </div>
           ) : discover.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {discover.slice(0, 6).map((stock, idx) => (
                 <motion.div
                   key={stock.ticker}
                   initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
                   transition={{ delay: idx * 0.05 }}
                 >
                   <button
                     onClick={() => goToStock(stock.ticker)}
-                    className="w-full text-left rounded-xl border border-border/60 bg-card p-4 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.99]"
+                    className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.99]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2.5">
@@ -453,139 +469,180 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-border/40 bg-card/50 p-8 text-center">
+            <div className="rounded-2xl border border-border/40 bg-card/50 p-10 text-center">
               <Search className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3 animate-pulse" />
-              <p className="text-sm text-muted-foreground">Loading fresh opportunities…</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Building your discovery universe</p>
+              <p className="text-sm text-muted-foreground">Building your discovery universe…</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">This updates as fresh data arrives.</p>
             </div>
           )}
-        </section>
+        </div>
+      </section>
 
-        {/* ─── Watchlist Alerts ───────────────────────────────────────── */}
-        {alerts.length > 0 && (
-          <section className="py-6 border-t border-border/60">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Alerts</h2>
-                {alertSummary && alertSummary.total > 0 && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {alertSummary.total}
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="space-y-2">
-              {alerts.slice(0, 5).map((alert, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                >
-                  <button
-                    onClick={() => goToStock(alert.ticker)}
-                    className="w-full text-left flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3.5 transition-all duration-200 hover:shadow-sm hover:border-border/80"
-                  >
-                    <div className={cn(
-                      'p-2 rounded-lg',
-                      alert.severity === 'high' ? 'bg-destructive/10' :
-                      alert.severity === 'medium' ? 'bg-warning/10' : 'bg-muted/50'
-                    )}>
-                      {alert.type === 'price_move' ? (
-                        <TrendingUp className={cn('h-4 w-4', alert.direction === 'up' ? 'text-success' : 'text-destructive')} />
-                      ) : alert.type === 'volume_spike' ? (
-                        <Activity className="h-4 w-4 text-primary" />
-                      ) : alert.type === 'rsi_extreme' ? (
-                        <AlertTriangle className="h-4 w-4 text-warning" />
-                      ) : (
-                        <Target className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">{alert.ticker}</span>
-                        <Badge variant="secondary" className={cn(
-                          'text-[10px]',
-                          alert.severity === 'high' ? 'bg-destructive/10 text-destructive' :
-                          alert.severity === 'medium' ? 'bg-warning/10 text-warning' : ''
-                        )}>
-                          {alert.severity}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.message}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ─── Capabilities (static, renders instantly) ────────────────── */}
-        <section className="py-12 border-t border-border/60">
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 5 — ONE STOCK, MULTIPLE LAYERS (evidence flow)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-12 md:py-16 border-t border-border/60">
+        <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             className="text-center mb-10"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Advanced Capabilities</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Powered by cutting-edge machine learning and real-time data processing
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">One Stock, Multiple Layers</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              We don&apos;t give you a single number and hope. We show you every evidence layer behind the brief.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {capabilities.map((cap, idx) => (
+          <div className="max-w-lg mx-auto space-y-3">
+            {evidenceSteps.map((step, idx) => (
               <motion.div
-                key={idx}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                key={step.label}
+                initial={{ opacity: 0, x: -15 }}
+                whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="text-center"
+                transition={{ delay: idx * 0.08 }}
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-primary mx-auto mb-4 flex items-center justify-center">
-                  <cap.icon className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">{cap.title}</h3>
-                <p className="text-muted-foreground">{cap.description}</p>
+                <Link
+                  href={step.link}
+                  className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20 group"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                    <step.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-primary uppercase tracking-wide">Step {idx + 1}</span>
+                      <span className="text-base font-semibold">{step.label}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">{step.description}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                </Link>
               </motion.div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ─── CTA Section (static) ─────────────────────────────────── */}
-        <section className="py-12 border-t border-border/60">
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 6 — RESEARCH CAPABILITIES (static, 6 items)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-12 md:py-16 border-t border-border/60">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Research Capabilities</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Everything available inside the product — built around evidence and transparency.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {capabilities.map((cap, idx) => (
+              <motion.div
+                key={cap.title}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.06 }}
+              >
+                <Link href={cap.link}>
+                  <div className="rounded-2xl border border-border/60 bg-card p-6 h-full transition-all duration-200 hover:shadow-md hover:border-primary/20 group">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <cap.icon className="h-5 w-5 text-white" />
+                    </div>
+                    <h3 className="text-base font-semibold mb-1">{cap.title}</h3>
+                    <p className="text-sm text-muted-foreground">{cap.description}</p>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 7 — BUILT FOR EVIDENCE (trust, static)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-12 md:py-16 border-t border-border/60">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Built for Evidence</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Not a prediction tool. A research system that shows its work.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
+            {trustPillars.map((pillar, idx) => (
+              <motion.div
+                key={pillar.title}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.08 }}
+                className="text-center"
+              >
+                <div className="w-12 h-12 rounded-xl bg-primary/10 mx-auto mb-4 flex items-center justify-center">
+                  <pillar.icon className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-base font-semibold mb-1">{pillar.title}</h3>
+                <p className="text-sm text-muted-foreground">{pillar.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 8 — FINAL CTA (search + buttons)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-12 md:py-16 border-t border-border/60">
+        <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto glow-primary"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Ready to Transform Your Trading Strategy?
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3">
+              Start With Evidence
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join traders using AI-driven market analysis for data-driven decisions
+            <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
+              Search a stock and see the full brief — technical, sentiment, forecast, risk, and decision evidence in one view.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+
+            <div className="mb-8">
+              <HeroSearch onSelect={goToStock} />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/markets/brief">
-                <Button size="lg" className="gradient-primary text-white hover:opacity-90 transition-opacity text-lg px-8 gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Get Started
+                <Button size="lg" className="gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
+                  <Sparkles className="h-4 w-4" />
+                  View Stock Brief
                 </Button>
               </Link>
               <Link href="/about">
-                <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-lg px-8">
-                  Learn More
+                <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 w-full sm:w-auto">
+                  How Stock Vanta Works
                 </Button>
               </Link>
             </div>
           </motion.div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
