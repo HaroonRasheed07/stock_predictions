@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 
 export const metadata: Metadata = {
   title: { absolute: `Analysis Methodology — How Stock Analysis Works | ${SITE_NAME}` },
@@ -34,8 +33,6 @@ export default function MethodologyPage() {
 
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8 md:py-12 max-w-3xl">
-          <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Methodology' }]} />
-
           <header className="mt-6 mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Analysis Methodology</h1>
             <p className="text-lg text-muted-foreground">

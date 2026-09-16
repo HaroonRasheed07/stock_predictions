@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getStockInfo, getRelatedStocks, getAllAllowlistedSymbols } from '@/lib/stock-allowlist';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 import { StockPageClient } from './StockPageClient';
 
 interface PageProps {
@@ -72,14 +71,6 @@ export default async function StockPage({ params }: PageProps) {
 
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-6 md:py-8">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Stocks', href: '/stocks' },
-              { label: `${info.name} (${info.symbol})` },
-            ]}
-          />
-
           <div className="mt-6 mb-4">
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-2xl md:text-3xl font-bold">{info.name} ({info.symbol}) Stock Analysis</h1>

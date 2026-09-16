@@ -37,7 +37,7 @@ export const Footer = () => {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              AI-powered stock research with technical analysis, sentiment, forecasting, and risk intelligence.
+              AI-powered stock research combining technical analysis, market sentiment, forecasting and risk insights.
             </p>
           </div>
 
@@ -46,8 +46,8 @@ export const Footer = () => {
             <h3 className="font-semibold mb-4">Product</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/stocks" className="text-muted-foreground hover:text-primary transition-colors">
-                  Stocks
+                <Link href="/markets/stock" className="text-muted-foreground hover:text-primary transition-colors">
+                  Stock Market
                 </Link>
               </li>
               <li>
@@ -60,31 +60,43 @@ export const Footer = () => {
                   Discover
                 </Link>
               </li>
+              <li>
+                <Link href="/markets/stock/watchlist" className="text-muted-foreground hover:text-primary transition-colors">
+                  Watchlist
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Learn */}
+          {/* Analysis */}
           <div>
-            <h3 className="font-semibold mb-4">Learn</h3>
+            <h3 className="font-semibold mb-4">Analysis</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/learn" className="text-muted-foreground hover:text-primary transition-colors">
-                  All Guides
-                </Link>
-              </li>
-              <li>
-                <Link href="/learn/what-is-technical-analysis" className="text-muted-foreground hover:text-primary transition-colors">
+                <Link href="/markets/stock/technical" className="text-muted-foreground hover:text-primary transition-colors">
                   Technical Analysis
                 </Link>
               </li>
               <li>
-                <Link href="/learn/what-is-rsi" className="text-muted-foreground hover:text-primary transition-colors">
-                  What Is RSI?
+                <Link href="/markets/stock/sentiment" className="text-muted-foreground hover:text-primary transition-colors">
+                  Sentiment Analysis
                 </Link>
               </li>
               <li>
-                <Link href="/learn/what-is-macd" className="text-muted-foreground hover:text-primary transition-colors">
-                  What Is MACD?
+                <Link href="/markets/stock/forecast" className="text-muted-foreground hover:text-primary transition-colors">
+                  AI Forecasting
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <h3 className="font-semibold mb-4">Resources</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/learn" className="text-muted-foreground hover:text-primary transition-colors">
+                  Learn
                 </Link>
               </li>
               <li>
@@ -92,13 +104,6 @@ export const Footer = () => {
                   Methodology
                 </Link>
               </li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h3 className="font-semibold mb-4">Company</h3>
-            <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/about" className="text-muted-foreground hover:text-primary transition-colors">
                   About

@@ -14,7 +14,7 @@ export default function NotFound() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      router.push(`/stocks?q=${encodeURIComponent(query.trim())}`);
+      router.push(`/stocks/${query.trim().toLowerCase()}`);
     }
   };
 
@@ -41,8 +41,8 @@ export default function NotFound() {
           <Link href="/">
             <Button variant="outline">Homepage</Button>
           </Link>
-          <Link href="/stocks">
-            <Button>Browse Stocks</Button>
+          <Link href="/markets/discover">
+            <Button>Discover Stocks</Button>
           </Link>
           <Link href="/learn">
             <Button variant="outline">Learn</Button>

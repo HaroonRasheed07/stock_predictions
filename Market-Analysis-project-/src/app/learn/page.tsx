@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getAllArticles } from '@/lib/learn-articles';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 
 export const metadata: Metadata = {
   title: { absolute: `Learn — Stock Market Analysis Guides & Financial Education | ${SITE_NAME}` },
@@ -37,8 +36,6 @@ export default function LearnPage() {
 
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8 md:py-12">
-          <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Learn' }]} />
-
           <div className="mt-6 mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Learn Stock Analysis</h1>
             <p className="text-muted-foreground max-w-2xl">

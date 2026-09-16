@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getArticle, getAllArticleSlugs } from '@/lib/learn-articles';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -92,14 +91,6 @@ export default async function LearnArticlePage({ params }: PageProps) {
 
       <div className="min-h-screen">
         <article className="container mx-auto px-4 py-8 md:py-12 max-w-3xl">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Learn', href: '/learn' },
-              { label: article.h1 },
-            ]}
-          />
-
           <header className="mt-6 mb-8">
             <div className="flex flex-wrap gap-2 mb-4">
               {article.tags.map((tag) => (

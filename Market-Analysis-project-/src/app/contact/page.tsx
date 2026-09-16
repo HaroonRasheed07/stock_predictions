@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Github, Linkedin, Mail } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 
 export const metadata: Metadata = {
   title: { absolute: 'Contact Stock Vanta' },
@@ -19,9 +18,7 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <div className="container mx-auto px-4 py-12 md:py-24 max-w-4xl">
-      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Contact' }]} />
-
-      <div className="space-y-8 text-center mt-6">
+      <div className="space-y-8 text-center">
         <h1 className="text-4xl font-bold tracking-tight">Contact Stock Vanta</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Have questions, feedback, or want to collaborate? Feel free to reach out via email or connect on social media.
