@@ -13,6 +13,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: '/stocks',
+        destination: '/markets/discover',
+        permanent: true,
+      },
+      {
         source: '/analysis',
         destination: '/markets/stock',
         permanent: true,

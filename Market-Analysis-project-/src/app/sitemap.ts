@@ -18,12 +18,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${SITE_URL}/stocks`,
-      lastModified: LAST_MODIFIED,
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
-    {
       url: `${SITE_URL}/about`,
       lastModified: LAST_MODIFIED,
       changeFrequency: 'monthly',

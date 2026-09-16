@@ -17,6 +17,7 @@ const NAV_LINKS = [
   { href: '/markets/stock/sentiment', label: 'Sentiment' },
   { href: '/markets/stock/forecast', label: 'Forecast' },
   { href: '/about', label: 'About' },
+  { href: '/contact', label: 'Contact' },
 ];
 
 export const Navbar = () => {
