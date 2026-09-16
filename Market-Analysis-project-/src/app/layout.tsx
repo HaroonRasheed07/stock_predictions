@@ -4,15 +4,18 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { LayoutWrapper } from './layout-wrapper';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { OrganizationJsonLd, WebsiteJsonLd } from '@/components/seo/StructuredData';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SEO_INDEXING_ENABLED } from '@/lib/seo';
 import '@/index.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Stock Vanta | AI-Powered Stock Research',
-    template: '%s | Stock Vanta',
+    default: `${SITE_NAME} | AI-Powered Stock Research`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: 'AI-powered stock research and decision intelligence with technical analysis, sentiment, forecasting, market opportunities, volatility insights and explainable stock signals.',
+  description: SITE_DESCRIPTION,
+  robots: SEO_INDEXING_ENABLED ? 'index, follow' : 'noindex, nofollow',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '48x48' },
@@ -23,26 +26,26 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: 'Stock Vanta | AI-Powered Stock Research',
-    description: 'AI-powered stock research and decision intelligence with technical analysis, sentiment, forecasting, market opportunities, volatility insights and explainable stock signals.',
+    title: `${SITE_NAME} | AI-Powered Stock Research`,
+    description: SITE_DESCRIPTION,
     images: [
       {
         url: '/icon-512.png',
         width: 512,
         height: 512,
-        alt: 'Stock Vanta',
+        alt: SITE_NAME,
       },
     ],
     type: 'website',
-    siteName: 'Stock Vanta',
+    siteName: SITE_NAME,
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Stock Vanta | AI-Powered Stock Research',
-    description: 'AI-powered stock research and decision intelligence with technical analysis, sentiment, forecasting, market opportunities, volatility insights and explainable stock signals.',
+    title: `${SITE_NAME} | AI-Powered Stock Research`,
+    description: SITE_DESCRIPTION,
     images: ['/icon-512.png'],
   },
-  metadataBase: new URL('https://stockvanta.vercel.app'),
+  metadataBase: new URL(SITE_URL),
 };
 
 export default function RootLayout({
@@ -52,7 +55,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        <OrganizationJsonLd />
+        <WebsiteJsonLd />
+      </head>
       <body>
         <div>
           <TooltipProvider>

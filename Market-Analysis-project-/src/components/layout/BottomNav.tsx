@@ -1,15 +1,15 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Search, FileText, BarChart3, MoreHorizontal } from 'lucide-react';
+import { Home, Search, FileText, BarChart3, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: Home },
+  { label: 'Stocks', href: '/stocks', icon: BarChart3 },
   { label: 'Discover', href: '/markets/discover', icon: Search },
   { label: 'Brief', href: '/markets/brief', icon: FileText },
-  { label: 'Markets', href: '/markets/stock', icon: BarChart3 },
-  { label: 'More', href: '/markets/more', icon: MoreHorizontal },
+  { label: 'Learn', href: '/learn', icon: BookOpen },
 ];
 
 export function BottomNav() {

@@ -108,7 +108,7 @@ export default function WatchlistPage() {
   };
 
   const handleAssetClick = (ticker: string) => {
-    router.push(`/markets/stock?ticker=${ticker}`);
+    router.push(`/stocks/${ticker.toLowerCase()}`);
   };
 
   const getScoreColor = (score: number) => {
