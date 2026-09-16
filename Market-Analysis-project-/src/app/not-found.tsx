@@ -6,15 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStockStore } from '@/store/stockStore';
 
 export default function NotFound() {
   const [query, setQuery] = useState('');
   const router = useRouter();
+  const { setSelectedTicker } = useStockStore();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      router.push(`/stocks/${query.trim().toLowerCase()}`);
+      setSelectedTicker(query.trim());
+      router.push('/markets/stock');
     }
   };
 

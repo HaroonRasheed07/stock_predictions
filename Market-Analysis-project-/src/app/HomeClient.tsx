@@ -13,7 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
-import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchDiscoverScan, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { Input } from '@/components/ui/input';
@@ -147,13 +147,31 @@ export default function Home() {
 
   const goToStock = (ticker: string) => {
     setSelectedTicker(ticker);
-    router.push(`/stocks/${ticker.toLowerCase()}`);
+    router.push('/markets/stock');
   };
 
   const topStocks = tickerData?.topStocks || [];
   const selected = briefData?.selectedStock;
   const discover = discoverData?.discover || [];
   const marketStatus = tickerData?.marketStatus || 'Unknown';
+
+  // Query 3b: Enrich discover stocks with sentiment from discover/scan
+  const discoverTickers = discover.slice(0, 6).map((s) => s.ticker);
+  const { data: scanData } = useQuery({
+    queryKey: ['discover-sentiment', ...discoverTickers],
+    queryFn: () => fetchDiscoverScan(discoverTickers, '1y'),
+    enabled: discoverTickers.length > 0,
+    staleTime: 300000,
+    gcTime: 600000,
+  });
+
+  const discoverWithSentiment = discover.map((stock) => {
+    const scanStock = scanData?.stocks?.[stock.ticker];
+    return {
+      ...stock,
+      sentiment: stock.sentiment || scanStock?.sentiment || '',
+    };
+  });
 
   const evidenceSteps = [
     { icon: BarChart3, label: 'Technical', description: 'Indicators, momentum, and pattern recognition', link: '/markets/stock/technical' },
@@ -455,9 +473,9 @@ export default function Home() {
                 <div key={i} className="h-36 rounded-2xl bg-muted/30 animate-pulse" />
               ))}
             </div>
-          ) : discover.length > 0 ? (
+          ) : discoverWithSentiment.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {discover.slice(0, 6).map((stock, idx) => (
+              {discoverWithSentiment.slice(0, 6).map((stock, idx) => (
                 <motion.div
                   key={stock.ticker}
                   initial={{ opacity: 0, y: 10 }}

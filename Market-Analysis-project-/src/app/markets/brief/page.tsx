@@ -259,7 +259,7 @@ export default function StockBriefPage() {
   return (
     <div className="space-y-4 p-4 md:p-6">
       {/* Search */}
-      <StockSearch onSelect={(t) => { setSelectedTicker(t); router.push(`/stocks/${t.toLowerCase()}`); }} />
+      <StockSearch onSelect={(t) => { setSelectedTicker(t); }} />
 
       {/* Stock Header */}
       <div className="flex items-start justify-between gap-3">

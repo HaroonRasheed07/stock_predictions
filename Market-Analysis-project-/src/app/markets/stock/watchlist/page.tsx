@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useWatchlistStore } from '@/store/watchlistStore';
+import { useStockStore } from '@/store/stockStore';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOpportunityScan, fetchWatchlistDefaults, fetchAssetSearch, OpportunityScore, AssetInfo } from '@/lib/api';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
@@ -108,7 +109,8 @@ export default function WatchlistPage() {
   };
 
   const handleAssetClick = (ticker: string) => {
-    router.push(`/stocks/${ticker.toLowerCase()}`);
+    useStockStore.getState().setSelectedTicker(ticker);
+    router.push('/markets/stock');
   };
 
   const getScoreColor = (score: number) => {

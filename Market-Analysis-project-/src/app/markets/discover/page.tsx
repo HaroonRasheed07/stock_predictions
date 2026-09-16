@@ -182,7 +182,7 @@ export default function DiscoverPage() {
 
   const openStock = (ticker: string) => {
     setSelectedTicker(ticker);
-    router.push(`/stocks/${ticker.toLowerCase()}`);
+    router.push('/markets/stock');
   };
 
   return (
