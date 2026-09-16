@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useStockStore } from '@/store/stockStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import {
@@ -193,6 +194,7 @@ function StockSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
 
 // ─── Main Stock Brief Page ─────────────────────────────────────────────────
 export default function StockBriefPage() {
+  const router = useRouter();
   const { selectedTicker, setSelectedTicker } = useStockStore();
   const { watchlist, addToWatchlist, removeFromWatchlist } = useWatchlistStore();
   const [timeframe, setTimeframe] = useState<string>('swing');
@@ -256,7 +258,7 @@ export default function StockBriefPage() {
   return (
     <div className="space-y-4 p-4 md:p-6">
       {/* Search */}
-      <StockSearch onSelect={setSelectedTicker} />
+      <StockSearch onSelect={(t) => { setSelectedTicker(t); router.push(`/stocks/${t.toLowerCase()}`); }} />
 
       {/* Stock Header */}
       <div className="flex items-start justify-between gap-3">
