@@ -220,10 +220,11 @@ export default function StockBriefPage() {
     staleTime: 300000,
   });
 
-  const { data: evidence } = useQuery<SignalEvidenceResponse>({
+  const { data: evidence, isLoading: evidenceLoading, error: evidenceError } = useQuery<SignalEvidenceResponse>({
     queryKey: ['signal-evidence', ticker, '1y'],
     queryFn: () => fetchSignalEvidence(ticker, '1y'),
     staleTime: 600000,
+    retry: 1,
   });
 
   const tradeConfirmation = overview?.tradeConfirmation;
@@ -465,7 +466,9 @@ export default function StockBriefPage() {
         {/* Signal Evidence */}
         <ExpandableSection title="Historical Evidence" icon={History}>
           <div className="space-y-2 pt-3">
-            {evidence ? (
+            {evidenceLoading ? (
+              <p className="text-xs text-muted-foreground">Analyzing historical patterns…</p>
+            ) : evidence ? (
               <>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Overall Accuracy</span>
@@ -479,8 +482,10 @@ export default function StockBriefPage() {
                   </div>
                 ))}
               </>
+            ) : evidenceError ? (
+              <p className="text-xs text-muted-foreground">Historical analysis is temporarily unavailable.</p>
             ) : (
-              <p className="text-xs text-muted-foreground">Not enough historical data</p>
+              <p className="text-xs text-muted-foreground">Not enough historical data for this analysis.</p>
             )}
           </div>
         </ExpandableSection>

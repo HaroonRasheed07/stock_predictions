@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getStockInfo, getRelatedStocks, getAllAllowlistedSymbols } from '@/lib/stock-allowlist';
@@ -8,6 +7,8 @@ import { StockPageClient } from './StockPageClient';
 interface PageProps {
   params: Promise<{ symbol: string }>;
 }
+
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   return getAllAllowlistedSymbols().map((symbol) => ({
@@ -18,15 +19,17 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { symbol } = await params;
   const info = getStockInfo(symbol);
-  if (!info) return {};
+  const displayName = info?.name || symbol.toUpperCase();
+  const displaySymbol = info?.symbol || symbol.toUpperCase();
 
-  const title = { absolute: `${info.symbol} Stock Analysis — Technical Signals, Sentiment & Forecast | ${SITE_NAME}` };
-  const description = `Analyze ${info.name} (${info.symbol}) with technical indicators, market sentiment, risk assessment, and Stock Vanta's model-based forecast.`;
+  const title = { absolute: `${displaySymbol} Stock Analysis — Technical Signals, Sentiment & Forecast | ${SITE_NAME}` };
+  const description = `Analyze ${displayName} (${displaySymbol}) with technical indicators, market sentiment, risk assessment, and Stock Vanta's model-based forecast.`;
 
   return {
     title,
     description,
     alternates: { canonical: `${SITE_URL}/stocks/${symbol.toLowerCase()}` },
+    robots: info ? undefined : { index: false, follow: true },
     openGraph: {
       title,
       description,
@@ -45,15 +48,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function StockPage({ params }: PageProps) {
   const { symbol } = await params;
   const info = getStockInfo(symbol);
-  if (!info) notFound();
-
+  const displayName = info?.name || symbol.toUpperCase();
+  const displaySymbol = info?.symbol || symbol.toUpperCase();
   const related = getRelatedStocks(symbol);
 
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: `${info.symbol} Stock Analysis`,
-    description: `Technical analysis, sentiment, risk assessment, and forecast for ${info.name} (${info.symbol}).`,
+    name: `${displaySymbol} Stock Analysis`,
+    description: `Technical analysis, sentiment, risk assessment, and forecast for ${displayName} (${displaySymbol}).`,
     url: `${SITE_URL}/stocks/${symbol.toLowerCase()}`,
     isPartOf: {
       '@type': 'WebSite',
@@ -73,22 +76,24 @@ export default async function StockPage({ params }: PageProps) {
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="mt-6 mb-4">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl md:text-3xl font-bold">{info.name} ({info.symbol}) Stock Analysis</h1>
+              <h1 className="text-2xl md:text-3xl font-bold">{displayName} ({displaySymbol}) Stock Analysis</h1>
             </div>
             <p className="text-muted-foreground max-w-3xl">
-              Explore {info.name} ({info.symbol}) with AI-powered technical indicators, market sentiment analysis, risk assessment, and model-based price forecasting. Part of {SITE_NAME}'s research platform.
+              Explore {displayName} ({displaySymbol}) with AI-powered technical indicators, market sentiment analysis, risk assessment, and model-based price forecasting. Part of {SITE_NAME}'s research platform.
             </p>
           </div>
 
-          <StockPageClient symbol={info.symbol} />
+          <StockPageClient symbol={displaySymbol} />
 
           <div className="mt-8 space-y-6">
-            <section>
-              <h2 className="text-lg font-semibold mb-3">About {info.name}</h2>
-              <p className="text-sm text-muted-foreground">
-                {info.name} ({info.symbol}) operates in the {info.sector} sector, within the {info.industry} industry. This page provides technical analysis, sentiment data, and forecasting tools to help you research {info.symbol} as part of your broader investment analysis.
-              </p>
-            </section>
+            {info && (
+              <section>
+                <h2 className="text-lg font-semibold mb-3">About {info.name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {info.name} ({info.symbol}) operates in the {info.sector} sector, within the {info.industry} industry. This page provides technical analysis, sentiment data, and forecasting tools to help you research {info.symbol} as part of your broader investment analysis.
+                </p>
+              </section>
+            )}
 
             {related.length > 0 && (
               <section>
