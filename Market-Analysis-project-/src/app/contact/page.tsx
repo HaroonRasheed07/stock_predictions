@@ -1,32 +1,14 @@
-import type { Metadata } from 'next';
 import { Github, Linkedin, Mail } from 'lucide-react';
-import { SITE_URL, SITE_NAME } from '@/lib/seo';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
-
-export const metadata: Metadata = {
-  title: { absolute: 'Contact Stock Vanta' },
-  description: `Get in touch with ${SITE_NAME}. Reach out via email or connect on LinkedIn and GitHub.`,
-  alternates: { canonical: `${SITE_URL}/contact` },
-  openGraph: {
-    title: `Contact | ${SITE_NAME}`,
-    description: `Get in touch with ${SITE_NAME}.`,
-    url: `${SITE_URL}/contact`,
-    siteName: SITE_NAME,
-    type: 'website',
-  },
-};
 
 export default function ContactPage() {
   return (
     <div className="container mx-auto px-4 py-12 md:py-24 max-w-4xl">
-      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Contact' }]} />
-
-      <div className="space-y-8 text-center mt-6">
-        <h1 className="text-4xl font-bold tracking-tight">Contact Stock Vanta</h1>
+      <div className="space-y-8 text-center">
+        <h1 className="text-4xl font-bold tracking-tight">Contact Me</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Have questions, feedback, or want to collaborate? Feel free to reach out via email or connect on social media.
+          Feel free to reach out to me via email or connect with me on social media.
         </p>
-
+        
         <div className="grid gap-8 md:grid-cols-3 mt-12">
           <a
             href="mailto:haroonchoudhary2322@gmail.com"

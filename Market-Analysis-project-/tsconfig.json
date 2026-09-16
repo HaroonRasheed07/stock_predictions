@@ -46,6 +46,10 @@
   ],
   "exclude": [
     "node_modules",
-    "src/pages"
+    "src/pages",
+    "src/App.tsx",
+    "src/main.tsx",
+    "tsconfig.app.json",
+    "tsconfig.node.json"
   ]
 }

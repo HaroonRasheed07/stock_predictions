@@ -75,7 +75,7 @@ export function LayoutWrapper({ children }: { children: ReactNode }) {
         <div className="flex flex-col min-h-screen">
           <Navbar />
           <div className="flex-1">{children}</div>
-          <div className="pb-20 md:pb-0"><Footer /></div>
+          <div className="hidden md:block"><Footer /></div>
         </div>
       </QueryClientProvider>
     );
@@ -97,7 +97,7 @@ export function LayoutWrapper({ children }: { children: ReactNode }) {
             {children}
           </motion.div>
         </AnimatePresence>
-        <div className="pb-20 md:pb-0"><Footer /></div>
+        <div className="hidden md:block"><Footer /></div>
       </div>
       <BottomNav />
     </QueryClientProvider>
