@@ -147,7 +147,7 @@ export default function Home() {
 
   const goToStock = (ticker: string) => {
     setSelectedTicker(ticker);
-    router.push('/markets/brief');
+    router.push(`/stocks/${ticker.toLowerCase()}`);
   };
 
   const topStocks = tickerData?.topStocks || [];
@@ -522,7 +522,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 5 — ONE STOCK, MULTIPLE LAYERS (static — no data dependency)
+          SECTION 5 — ANALYZE WITH STOCK VANTA (premium core-feature cards)
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
@@ -532,39 +532,105 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-center mb-10"
           >
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">One Stock, Multiple Layers</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Analyze With Stock Vanta</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              We don&apos;t give you a single number and hope. We show you every evidence layer behind the brief.
+              Three powerful analysis layers — each built on real market data, not guesswork.
             </p>
           </motion.div>
 
-          <div className="max-w-lg mx-auto space-y-3">
-            {evidenceSteps.map((step, idx) => (
-              <motion.div
-                key={step.label}
-                initial={{ opacity: 0, x: -15 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.08 }}
-              >
-                <Link
-                  href={step.link}
-                  className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20 group"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                    <step.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-primary uppercase tracking-wide">Step {idx + 1}</span>
-                      <span className="text-base font-semibold">{step.label}</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {/* Technical Analysis Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0 }}
+            >
+              <Link href="/markets/stock/technical" className="block rounded-2xl border border-border/60 bg-card p-6 h-full hover:shadow-lg hover:border-primary/20 transition-all group">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <BarChart3 className="h-5 w-5 text-blue-500" />
+                </div>
+                <h3 className="text-lg font-bold mb-1">Technical Analysis</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  RSI, MACD, moving averages, Bollinger Bands, and trend strength — all computed from real OHLCV data.
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {['RSI', 'MACD', 'Trend', 'Bollinger'].map((indicator) => (
+                    <div key={indicator} className="text-[10px] px-2 py-1 rounded bg-muted/40 text-muted-foreground text-center font-medium">
+                      {indicator}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{step.description}</p>
+                  ))}
+                </div>
+                <span className="text-xs text-primary font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                  Explore Technical Analysis <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
+            </motion.div>
+
+            {/* Sentiment Analysis Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.08 }}
+            >
+              <Link href="/markets/stock/sentiment" className="block rounded-2xl border border-border/60 bg-card p-6 h-full hover:shadow-lg hover:border-primary/20 transition-all group">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-500/20 to-green-600/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Activity className="h-5 w-5 text-green-500" />
+                </div>
+                <h3 className="text-lg font-bold mb-1">Sentiment Analysis</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Understand whether market mood is Positive, Neutral, or Negative — and why.
+                </p>
+                <div className="flex gap-2 mb-4">
+                  <div className="flex-1 text-center py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <p className="text-[10px] text-green-600 font-medium">Positive</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                </Link>
-              </motion.div>
-            ))}
+                  <div className="flex-1 text-center py-2 rounded-lg bg-muted/30 border border-border/40">
+                    <p className="text-[10px] text-muted-foreground font-medium">Neutral</p>
+                  </div>
+                  <div className="flex-1 text-center py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <p className="text-[10px] text-red-600 font-medium">Negative</p>
+                  </div>
+                </div>
+                <span className="text-xs text-primary font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                  View Market Sentiment <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
+            </motion.div>
+
+            {/* AI Forecasting Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.16 }}
+            >
+              <Link href="/markets/stock/forecast" className="block rounded-2xl border border-border/60 bg-card p-6 h-full hover:shadow-lg hover:border-primary/20 transition-all group">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Brain className="h-5 w-5 text-purple-500" />
+                </div>
+                <h3 className="text-lg font-bold mb-1">AI Forecasting</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  LSTM model-based price outlook with forecast trend, confidence, and clear limitations.
+                </p>
+                <div className="grid grid-cols-3 gap-1 mb-4">
+                  {[
+                    { label: 'Current', value: '$___' },
+                    { label: 'Forecast', value: '$___' },
+                    { label: 'Horizon', value: '10d' },
+                  ].map((item) => (
+                    <div key={item.label} className="text-center py-1.5 rounded bg-muted/30">
+                      <p className="text-[9px] text-muted-foreground">{item.label}</p>
+                      <p className="text-xs font-bold">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <span className="text-xs text-primary font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                  Explore Forecast <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -671,10 +737,10 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/markets/brief">
+              <Link href="/stocks">
                 <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
                   <Sparkles className="h-4 w-4" />
-                  View Stock Brief
+                  Browse Stocks
                 </Button>
               </Link>
               <Link href="/about">

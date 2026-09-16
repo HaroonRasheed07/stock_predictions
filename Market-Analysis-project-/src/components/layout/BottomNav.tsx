@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: Home },
+  { label: 'Stocks', href: '/stocks', icon: BarChart3 },
   { label: 'Discover', href: '/markets/discover', icon: Search },
   { label: 'Brief', href: '/markets/brief', icon: FileText },
-  { label: 'Markets', href: '/markets/stock', icon: BarChart3 },
   { label: 'More', href: '/markets/more', icon: MoreHorizontal },
 ];
 

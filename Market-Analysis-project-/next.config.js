@@ -10,6 +10,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  async redirects() {
+    return [
+      { source: '/analysis', destination: '/markets/stock', permanent: true },
+      { source: '/test-chart', destination: '/', permanent: false },
+    ];
+  },
 };
 
 module.exports = nextConfig;
