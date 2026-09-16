@@ -37,7 +37,7 @@ export const Footer = () => {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Real-time market intelligence and predictive analytics for modern traders & investors.
+              AI-powered stock research with technical analysis, sentiment, forecasting, and risk intelligence.
             </p>
           </div>
 
@@ -69,7 +69,22 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/learn" className="text-muted-foreground hover:text-primary transition-colors">
-                  Guides
+                  All Guides
+                </Link>
+              </li>
+              <li>
+                <Link href="/learn/what-is-technical-analysis" className="text-muted-foreground hover:text-primary transition-colors">
+                  Technical Analysis
+                </Link>
+              </li>
+              <li>
+                <Link href="/learn/what-is-rsi" className="text-muted-foreground hover:text-primary transition-colors">
+                  What Is RSI?
+                </Link>
+              </li>
+              <li>
+                <Link href="/learn/what-is-macd" className="text-muted-foreground hover:text-primary transition-colors">
+                  What Is MACD?
                 </Link>
               </li>
               <li>
@@ -77,42 +92,44 @@ export const Footer = () => {
                   Methodology
                 </Link>
               </li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h3 className="font-semibold mb-4">Company</h3>
+            <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/about" className="text-muted-foreground hover:text-primary transition-colors">
                   About
                 </Link>
               </li>
-            </ul>
-          </div>
-
-          {/* Connect */}
-          <div>
-            <h3 className="font-semibold mb-4">Connect</h3>
-            <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/contact" className="text-muted-foreground hover:text-primary transition-colors">
                   Contact
                 </Link>
               </li>
-              <li>
-                <a
-                  href="https://www.linkedin.com/in/haroon-rasheed-55022427a"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  LinkedIn
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/HaroonRasheed07"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  GitHub
-                </a>
+              <li className="pt-2">
+                <div className="flex space-x-3">
+                  <a
+                    href="https://www.linkedin.com/in/haroon-rasheed-55022427a"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg border border-border/60 bg-card hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="LinkedIn"
+                  >
+                    <Linkedin className="h-4 w-4" />
+                  </a>
+                  <a
+                    href="https://github.com/HaroonRasheed07"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg border border-border/60 bg-card hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="GitHub"
+                  >
+                    <Github className="h-4 w-4" />
+                  </a>
+                </div>
               </li>
             </ul>
           </div>

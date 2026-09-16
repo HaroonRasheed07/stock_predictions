@@ -1,17 +1,10 @@
+import { STRUCTURED_DATA_ORGANIZATION, STRUCTURED_DATA_WEBSITE, SITE_URL } from '@/lib/seo';
+
 export function OrganizationJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Organization',
-          name: 'Stock Vanta',
-          url: 'https://stockvanta.vercel.app',
-          logo: 'https://stockvanta.vercel.app/logo.png',
-          description: 'AI-powered stock research and decision intelligence.',
-        }),
-      }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA_ORGANIZATION) }}
     />
   );
 }
@@ -20,39 +13,26 @@ export function WebsiteJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'WebSite',
-          name: 'Stock Vanta',
-          url: 'https://stockvanta.vercel.app',
-          potentialAction: {
-            '@type': 'SearchAction',
-            target: 'https://stockvanta.vercel.app/stocks?q={search_term_string}',
-            'query-input': 'required name=search_term_string',
-          },
-        }),
-      }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA_WEBSITE) }}
     />
   );
 }
 
 export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; url: string }> }) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'BreadcrumbList',
-          itemListElement: items.map((item, i) => ({
-            '@type': 'ListItem',
-            position: i + 1,
-            name: item.name,
-            item: item.url,
-          })),
-        }),
-      }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
     />
   );
 }

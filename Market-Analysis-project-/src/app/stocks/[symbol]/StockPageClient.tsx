@@ -1,32 +1,27 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useStockStore } from '@/store/stockStore';
-import { useRouter } from 'next/navigation';
 import {
   fetchMarketOverview,
   fetchIndicators,
   fetchSentiment,
   fetchForecast,
 } from '@/lib/api';
-import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
-  BarChart3, Activity, Brain, TrendingUp, TrendingDown, ArrowLeft,
-  Search, DollarSign, Shield, AlertTriangle, Target,
+  BarChart3, Activity, Brain, TrendingUp, TrendingDown,
+  DollarSign, Shield, AlertTriangle, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
 import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 import ProfessionalCandlestickChart from '@/components/ProfessionalCandlestickChart';
 import {
-  ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 type Tab = 'overview' | 'technical' | 'sentiment' | 'forecast';
 
@@ -76,7 +71,6 @@ function OverviewSection({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Price Header */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: 'Price', value: `$${(overview.currentPrice || 0).toFixed(2)}`, change: `${(overview.changePercent || 0) >= 0 ? '+' : ''}${(overview.changePercent || 0).toFixed(2)}%`, positive: (overview.change || 0) >= 0 },
@@ -92,7 +86,6 @@ function OverviewSection({ ticker }: { ticker: string }) {
         ))}
       </div>
 
-      {/* Chart */}
       {chartData.length > 0 && (
         <Card className="glass">
           <CardHeader className="pb-2">
@@ -112,7 +105,6 @@ function OverviewSection({ ticker }: { ticker: string }) {
         </Card>
       )}
 
-      {/* Summary Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="glass">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Trade Confirmation</CardTitle></CardHeader>
@@ -180,7 +172,6 @@ function TechnicalSection({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Indicator Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         {[
           { label: 'RSI (14)', value: indicators.rsi, sub: parseFloat(indicators.rsi) > 70 ? 'Overbought' : parseFloat(indicators.rsi) < 30 ? 'Oversold' : 'Neutral', icon: Activity, color: 'text-primary' },
@@ -200,7 +191,6 @@ function TechnicalSection({ ticker }: { ticker: string }) {
         ))}
       </div>
 
-      {/* Candlestick Chart */}
       <Card className="glass">
         <CardHeader className="pb-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -219,7 +209,6 @@ function TechnicalSection({ ticker }: { ticker: string }) {
         </CardContent>
       </Card>
 
-      {/* Bollinger Bands */}
       <Card className="glass">
         <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">Bollinger Bands</CardTitle></CardHeader>
         <CardContent className="px-2 sm:px-6 pb-4">
@@ -263,7 +252,6 @@ function SentimentSection({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Sentiment Summary */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <div className={cn('rounded-xl border p-3 sm:p-4 bg-card/50 text-center', label === 'Positive' ? 'border-green-500/30' : 'border-border/50')}>
           <p className="text-[10px] sm:text-xs text-muted-foreground uppercase">Positive</p>
@@ -280,7 +268,6 @@ function SentimentSection({ ticker }: { ticker: string }) {
         </div>
       </div>
 
-      {/* Market Mood */}
       {sentimentData.market_mood && (
         <Card className="glass">
           <CardContent className="p-4">
@@ -293,7 +280,6 @@ function SentimentSection({ ticker }: { ticker: string }) {
         </Card>
       )}
 
-      {/* News Headlines */}
       {sentimentData.news && sentimentData.news.length > 0 && (
         <Card className="glass">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Recent News</CardTitle></CardHeader>
@@ -361,7 +347,6 @@ function ForecastSection({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Forecast Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: 'Current', value: `$${currentPrice.toFixed(2)}`, icon: DollarSign },
@@ -377,7 +362,6 @@ function ForecastSection({ ticker }: { ticker: string }) {
         ))}
       </div>
 
-      {/* Forecast Chart */}
       <Card className="glass">
         <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">Price Forecast — Next {forecast_prices.length} Days</CardTitle></CardHeader>
         <CardContent className="px-2 sm:px-6 pb-4">
@@ -395,7 +379,6 @@ function ForecastSection({ ticker }: { ticker: string }) {
         </CardContent>
       </Card>
 
-      {/* Model Info */}
       <Card className="glass">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -412,79 +395,46 @@ function ForecastSection({ ticker }: { ticker: string }) {
   );
 }
 
-export default function StockPageClient({ symbol, name }: { symbol: string; name: string }) {
+export function StockPageClient({ symbol }: { symbol: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const { setSelectedTicker } = useStockStore();
-  const router = useRouter();
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     setSelectedTicker(symbol);
   }, [symbol, setSelectedTicker]);
 
-  const goHome = () => { router.push('/'); };
-
   return (
-    <div className="min-h-screen">
-      {/* Top Bar */}
-      <div className="border-b border-border/40 bg-card/30 backdrop-blur-sm sticky top-14 md:top-16 z-30">
-        <div className="container mx-auto px-4 py-2">
-          <Breadcrumbs items={[
-            { label: 'Home', href: '/' },
-            { label: 'Stocks', href: '/stocks' },
-            { label: `${name} (${symbol})` },
-          ]} />
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0',
+                isActive
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="container mx-auto px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        {/* Stock Identity */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">{name}</h1>
-            <p className="text-lg text-muted-foreground font-mono">{symbol}</p>
-          </div>
-          <Link href="/stocks">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              All Stocks
-            </Button>
-          </Link>
+      <Suspense fallback={<div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-32 rounded-xl bg-muted/30 animate-pulse" />)}</div>}>
+        <div key={activeTab}>
+          {activeTab === 'overview' && <OverviewSection ticker={symbol} />}
+          {activeTab === 'technical' && <TechnicalSection ticker={symbol} />}
+          {activeTab === 'sentiment' && <SentimentSection ticker={symbol} />}
+          {activeTab === 'forecast' && <ForecastSection ticker={symbol} />}
         </div>
-
-        {/* Tab Navigation */}
-        <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0',
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Tab Content with Error Boundaries */}
-        <Suspense fallback={<div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-32 rounded-xl bg-muted/30 animate-pulse" />)}</div>}>
-          <div key={activeTab}>
-            {activeTab === 'overview' && <OverviewSection ticker={symbol} />}
-            {activeTab === 'technical' && <TechnicalSection ticker={symbol} />}
-            {activeTab === 'sentiment' && <SentimentSection ticker={symbol} />}
-            {activeTab === 'forecast' && <ForecastSection ticker={symbol} />}
-          </div>
-        </Suspense>
-      </div>
+      </Suspense>
     </div>
   );
 }

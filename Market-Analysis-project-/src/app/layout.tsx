@@ -3,8 +3,9 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LayoutWrapper } from './layout-wrapper';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { OrganizationJsonLd, WebsiteJsonLd } from '@/components/seo/StructuredData';
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/seo';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SEO_INDEXING_ENABLED } from '@/lib/seo';
 import '@/index.css';
 import type { Metadata } from 'next';
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  robots: SEO_INDEXING_ENABLED ? 'index, follow' : 'noindex, nofollow',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '48x48' },
@@ -26,7 +28,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: `${SITE_NAME} | AI-Powered Stock Research`,
     description: SITE_DESCRIPTION,
-    images: [{ url: '/icon-512.png', width: 512, height: 512, alt: SITE_NAME }],
+    images: [
+      {
+        url: '/icon-512.png',
+        width: 512,
+        height: 512,
+        alt: SITE_NAME,
+      },
+    ],
     type: 'website',
     siteName: SITE_NAME,
   },
@@ -57,6 +66,7 @@ export default function RootLayout({
             <Sonner />
             <LayoutWrapper>{children}</LayoutWrapper>
             <Analytics />
+            <SpeedInsights />
           </TooltipProvider>
         </div>
       </body>

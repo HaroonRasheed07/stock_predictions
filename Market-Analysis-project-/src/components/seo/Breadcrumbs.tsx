@@ -1,34 +1,27 @@
-'use client';
-
-import React from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
-export interface BreadcrumbItem {
+interface BreadcrumbItem {
   label: string;
   href?: string;
 }
 
-export function Breadcrumbs({ items, className }: { items: BreadcrumbItem[]; className?: string }) {
+export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
-    <nav aria-label="Breadcrumb" className={cn('text-xs text-muted-foreground', className)}>
-      <ol className="flex items-center gap-1 flex-wrap">
-        {items.map((item, i) => {
-          const isLast = i === items.length - 1;
-          return (
-            <li key={i} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/50" />}
-              {item.href && !isLast ? (
-                <Link href={item.href} className="hover:text-foreground transition-colors">
-                  {item.label}
-                </Link>
-              ) : (
-                <span className={isLast ? 'text-foreground font-medium' : ''}>{item.label}</span>
-              )}
-            </li>
-          );
-        })}
+    <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+      <ol className="flex items-center flex-wrap gap-1 list-none">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-center gap-1">
+            {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/50" />}
+            {item.href ? (
+              <Link href={item.href} className="hover:text-primary transition-colors">
+                {item.label}
+              </Link>
+            ) : (
+              <span className="text-foreground font-medium">{item.label}</span>
+            )}
+          </li>
+        ))}
       </ol>
     </nav>
   );

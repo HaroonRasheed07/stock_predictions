@@ -1,39 +1,67 @@
-import { MetadataRoute } from 'next';
-import { SITE_URL } from '@/lib/seo';
+import type { MetadataRoute } from 'next';
+import { SITE_URL, SEO_INDEXING_ENABLED } from '@/lib/seo';
 import { getAllAllowlistedSymbols } from '@/lib/stock-allowlist';
-import { learnArticles } from '@/lib/learn-articles';
+import { getAllArticleSlugs } from '@/lib/learn-articles';
 
-const SEO_INDEXING_ENABLED = process.env.SEO_INDEXING_ENABLED === 'true';
+const LAST_MODIFIED = new Date('2026-09-16');
 
 export default function sitemap(): MetadataRoute.Sitemap {
   if (!SEO_INDEXING_ENABLED) {
     return [];
   }
 
-  const base = SITE_URL;
-
-  const staticPages = [
-    { url: base, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 1 },
-    { url: `${base}/stocks`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.9 },
-    { url: `${base}/about`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.6 },
-    { url: `${base}/contact`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.5 },
-    { url: `${base}/methodology`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.7 },
-    { url: `${base}/learn`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: SITE_URL,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: 'daily',
+      priority: 1,
+    },
+    {
+      url: `${SITE_URL}/stocks`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/about`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${SITE_URL}/contact`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    },
+    {
+      url: `${SITE_URL}/methodology`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${SITE_URL}/learn`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
   ];
 
-  const stockPages = getAllAllowlistedSymbols().map((symbol) => ({
-    url: `${base}/stocks/${symbol.toLowerCase()}`,
-    lastModified: new Date(),
+  const tickerPages: MetadataRoute.Sitemap = getAllAllowlistedSymbols().map((symbol) => ({
+    url: `${SITE_URL}/stocks/${symbol.toLowerCase()}`,
+    lastModified: LAST_MODIFIED,
     changeFrequency: 'daily' as const,
-    priority: 0.9,
+    priority: 0.8,
   }));
 
-  const learnPages = learnArticles.map((article) => ({
-    url: `${base}/learn/${article.slug}`,
-    lastModified: new Date(article.updatedDate),
+  const learnPages: MetadataRoute.Sitemap = getAllArticleSlugs().map((slug) => ({
+    url: `${SITE_URL}/learn/${slug}`,
+    lastModified: LAST_MODIFIED,
     changeFrequency: 'monthly' as const,
-    priority: 0.7,
+    priority: 0.6,
   }));
 
-  return [...staticPages, ...stockPages, ...learnPages];
+  return [...staticPages, ...tickerPages, ...learnPages];
 }

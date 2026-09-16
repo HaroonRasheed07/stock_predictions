@@ -12,8 +12,16 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      { source: '/analysis', destination: '/markets/stock', permanent: true },
-      { source: '/test-chart', destination: '/', permanent: false },
+      {
+        source: '/analysis',
+        destination: '/markets/stock',
+        permanent: true,
+      },
+      {
+        source: '/test-chart',
+        destination: '/',
+        permanent: true,
+      },
     ];
   },
 };
