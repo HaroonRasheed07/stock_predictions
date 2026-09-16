@@ -3,6 +3,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LayoutWrapper } from './layout-wrapper';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import '@/index.css';
 import type { Metadata } from 'next';
 
@@ -59,6 +60,7 @@ export default function RootLayout({
             <Sonner />
             <LayoutWrapper>{children}</LayoutWrapper>
             <Analytics />
+            <SpeedInsights />
           </TooltipProvider>
         </div>
       </body>
