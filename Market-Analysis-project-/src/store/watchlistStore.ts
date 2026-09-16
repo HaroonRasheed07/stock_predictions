@@ -10,7 +10,7 @@ interface WatchlistState {
   setWatchlist: (tickers: string[]) => void;
 }
 
-const DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'NVDA', 'GC=F', 'EURUSD=X'];
+const DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN'];
 
 export const useWatchlistStore = create<WatchlistState>()(
   persist(

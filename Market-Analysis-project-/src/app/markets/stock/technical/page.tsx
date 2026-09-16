@@ -157,6 +157,7 @@ export default function TechnicalAnalysis() {
     rsi: typeof latest.rsi === 'number' ? latest.rsi.toFixed(2) : 'N/A',
     macd: typeof latest.macd === 'number' ? latest.macd.toFixed(2) : 'N/A',
     signal: latest.macd > latest.signal ? 'Buy' : 'Sell',
+    macdLabel: latest.macd > latest.signal ? 'Bullish Cross' : 'Bearish Cross',
   } : null;
 
   if (isLoading) return (
@@ -269,9 +270,13 @@ export default function TechnicalAnalysis() {
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">MACD</p>
                 <p className="text-xl sm:text-2xl font-bold">{indicators?.macd}</p>
-                <p className="text-xs sm:text-sm text-success mt-0.5 sm:mt-1">Bullish Cross</p>
+                <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${indicators?.signal === 'Buy' ? 'text-success' : 'text-destructive'}`}>{indicators?.macdLabel}</p>
               </div>
-              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
+              {indicators?.signal === 'Buy' ? (
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
+              ) : (
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-destructive rotate-180" />
+              )}
             </div>
           </CardContent>
         </Card>
@@ -382,6 +387,7 @@ export default function TechnicalAnalysis() {
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
+            {filteredCandleData.length > 0 ? (
             <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.priceAction.mobile : CHART_HEIGHTS.priceAction.desktop}>
               <ComposedChart data={filteredCandleData} margin={chartMargins(isMobile)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
@@ -394,6 +400,11 @@ export default function TechnicalAnalysis() {
                 <Bar yAxisId="volume" dataKey="volume" fill="hsl(var(--muted))" opacity={0.3} name="Volume" />
               </ComposedChart>
             </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-48 sm:h-64 text-muted-foreground text-sm">
+                No price action data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -424,6 +435,7 @@ export default function TechnicalAnalysis() {
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
+            {filteredCandleData.length > 0 ? (
             <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.bollinger.mobile : CHART_HEIGHTS.bollinger.desktop}>
               <ComposedChart data={filteredCandleData} margin={chartMargins(isMobile)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
@@ -435,6 +447,11 @@ export default function TechnicalAnalysis() {
                 <Area type="monotone" dataKey="lower" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Lower Band" />
               </ComposedChart>
             </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-48 sm:h-64 text-muted-foreground text-sm">
+                No Bollinger Band data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

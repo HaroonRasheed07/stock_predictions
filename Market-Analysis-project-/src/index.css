@@ -9,7 +9,7 @@
 @layer base {
   :root {
     /* ─── Background — Premium Light (layered, not pure white) ─── */
-    --background: 220 14% 94%;
+    --background: 220 16% 95%;
     --foreground: 222 30% 11%;
 
     /* ─── Cards — White surface on tinted background ─── */
@@ -49,8 +49,8 @@
     --warning-foreground: 0 0% 100%;
 
     /* ─── Borders — Clearly visible on light surfaces ─── */
-    --border: 220 11% 78%;
-    --input: 220 11% 78%;
+    --border: 220 11% 76%;
+    --input: 220 11% 76%;
     --ring: 222 70% 40%;
 
     /* ─── Radius ─── */
@@ -224,7 +224,7 @@
 
   /* ─── Premium Glass Effect ─── */
   .glass {
-    @apply rounded-xl border border-border/60 bg-card shadow-sm;
+    @apply rounded-xl border border-border/70 bg-card shadow-sm;
   }
 
   .dark .glass {

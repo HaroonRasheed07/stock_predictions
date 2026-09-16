@@ -156,17 +156,27 @@ export default function Home() {
   const marketStatus = tickerData?.marketStatus || 'Unknown';
 
   // Query 3b: Enrich discover stocks with sentiment from discover/scan
+  // Backend times out at 6+ tickers, so batch in groups of 5
   const discoverTickers = discover.slice(0, 6).map((s) => s.ticker);
-  const { data: scanData } = useQuery({
-    queryKey: ['discover-sentiment', ...discoverTickers],
-    queryFn: () => fetchDiscoverScan(discoverTickers, '1y'),
-    enabled: discoverTickers.length > 0,
+  const batch1 = discoverTickers.slice(0, 5);
+  const batch2 = discoverTickers.slice(5);
+  const { data: scanData1 } = useQuery({
+    queryKey: ['discover-sentiment', ...batch1],
+    queryFn: () => fetchDiscoverScan(batch1, '1y'),
+    enabled: batch1.length > 0,
+    staleTime: 300000,
+    gcTime: 600000,
+  });
+  const { data: scanData2 } = useQuery({
+    queryKey: ['discover-sentiment', ...batch2],
+    queryFn: () => fetchDiscoverScan(batch2, '1y'),
+    enabled: batch2.length > 0,
     staleTime: 300000,
     gcTime: 600000,
   });
 
   const discoverWithSentiment = discover.map((stock) => {
-    const scanStock = scanData?.stocks?.[stock.ticker];
+    const scanStock = scanData1?.stocks?.[stock.ticker] || scanData2?.stocks?.[stock.ticker];
     return {
       ...stock,
       sentiment: stock.sentiment || scanStock?.sentiment || '',
@@ -508,7 +518,12 @@ export default function Home() {
                     <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/40">
                       <div className="text-center">
                         <p className="text-[10px] font-medium text-muted-foreground uppercase">Sentiment</p>
-                        <p className="text-xs font-semibold mt-0.5">{stock.sentiment || '—'}</p>
+                        <p className={cn(
+                          'text-xs font-semibold mt-0.5',
+                          stock.sentiment === 'Positive' ? 'text-success' :
+                          stock.sentiment === 'Negative' ? 'text-destructive' :
+                          stock.sentiment === 'Neutral' ? 'text-warning' : 'text-muted-foreground'
+                        )}>{stock.sentiment || '—'}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] font-medium text-muted-foreground uppercase">Risk</p>

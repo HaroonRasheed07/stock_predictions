@@ -325,9 +325,6 @@ export default function PriceForecasting() {
   
   // Calculate price volatility
   const volatility = calculateVolatility(actualPrices);
-  
-  // Calculate confidence based on accuracy
-  const confidence = Math.min(95, Math.max(60, modelAccuracy + 10));
 
   const hasValidSeries =
     actualPrices.length > 0 &&
@@ -462,27 +459,11 @@ export default function PriceForecasting() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Model Confidence</p>
-                <p className="text-2xl font-bold">{confidence.toFixed(1)}%</p>
-                {confidence > 80 && (
-                  <Badge variant="outline" className="mt-2 border-success text-success">
-                    High
-                  </Badge>
-                )}
-                {confidence > 70 && confidence <= 80 && (
-                  <Badge variant="outline" className="mt-2 border-yellow-600 text-yellow-600">
-                    Medium
-                  </Badge>
-                )}
-                {confidence <= 70 && (
-                  <Badge variant="outline" className="mt-2 border-destructive text-destructive">
-                    Low
-                  </Badge>
-                )}
+                <p className="text-sm text-muted-foreground mb-1">Expected Range</p>
+                <p className="text-2xl font-bold">${Math.min(...futurePrices).toFixed(2)} – ${Math.max(...futurePrices).toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-2">{forecastLength}-day forecast horizon</p>
               </div>
-              {confidence > 80 && <Zap className="h-8 w-8 text-success" />}
-              {confidence > 70 && confidence <= 80 && <Zap className="h-8 w-8 text-yellow-600" />}
-              {confidence <= 70 && <Zap className="h-8 w-8 text-destructive" />}
+              <Target className="h-8 w-8 text-secondary" />
             </div>
           </CardContent>
         </Card>
@@ -608,8 +589,8 @@ export default function PriceForecasting() {
                 <span className="font-semibold">2012 - 2024</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Prediction Accuracy</span>
-                <span className="font-semibold text-success">{modelAccuracy.toFixed(2)}%</span>
+                <span className="text-muted-foreground">Historical Fit</span>
+                <span className="font-semibold text-success">{modelAccuracy.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
@@ -656,6 +637,10 @@ export default function PriceForecasting() {
           </Card>
         </motion.div>
       </div>
+
+      <p className="text-xs text-muted-foreground text-center py-2">
+        Forecasts are based on historical OHLCV data and technical indicators. Historical fit does not guarantee future prediction performance. This analysis is for informational purposes only and does not constitute investment advice.
+      </p>
     </div>
   );
 }
