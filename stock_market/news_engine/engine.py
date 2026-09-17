@@ -4,6 +4,10 @@ news_engine/engine.py — Main orchestrator for Stock Vanta News Engine.
 One ticker → one canonical article set → one canonical sentiment snapshot.
 """
 
+import os as _os
+from dotenv import load_dotenv
+load_dotenv(_os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), '.env'))
+
 import logging
 import time
 import threading
@@ -11,6 +15,7 @@ import sqlite3
 import json
 import os
 import sys
+import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -32,7 +37,7 @@ MIN_RELEVANT_ARTICLES = 2        # Minimum for "sufficient" status
 SNAPSHOT_TTL_SECONDS = 900       # 15 minutes
 LOOKBACK_DAYS = 3                # How far back to look for news
 MAX_ARTICLES_PER_TICKER = 20     # Cap per ticker
-METHODOLOGY_VERSION = "3"        # Bump when rule engine changes materially
+METHODOLOGY_VERSION = "4"        # Bump when rule engine changes materially
 
 # Recency weights (hours since publication)
 RECENCY_WEIGHTS = [
@@ -50,6 +55,9 @@ SOURCE_QUALITY = {
     "gdelt": 0.6,
     "rss": 0.8,  # RSS from established publishers
 }
+
+# Sentiment history persistence interval
+SENTIMENT_HISTORY_INTERVAL_SECONDS = 900  # 15 minutes, matching SNAPSHOT_TTL
 
 
 # ─── L1 Memory Cache ────────────────────────────────────────────────────────
@@ -108,8 +116,23 @@ def _init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sentiment_history (
+            ticker TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            score REAL,
+            label TEXT,
+            positive_pct REAL,
+            neutral_pct REAL,
+            negative_pct REAL,
+            article_count INTEGER,
+            methodology_version TEXT,
+            PRIMARY KEY (ticker, timestamp)
+        )
+    """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_ticker ON news_articles(ticker)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_expires ON sentiment_snapshots(expires_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_history_ticker_ts ON sentiment_history(ticker, timestamp)")
     conn.commit()
     conn.close()
 
@@ -126,14 +149,19 @@ def _sqlite_get_snapshot(ticker: str) -> Optional[SentimentSnapshot]:
 
         if row:
             expires_at = datetime.fromisoformat(row[1])
+            data = json.loads(row[0])
+            # Reject old methodology versions
+            cached_version = data.get("methodology_version", "1")
+            if cached_version != METHODOLOGY_VERSION:
+                logger.info(f"[CACHE] {ticker} rejecting old methodology v{cached_version} (current=v{METHODOLOGY_VERSION})")
+                return None
+            snapshot = _dict_to_snapshot(data)
+            # Mark freshness based on expiry
             if datetime.now(timezone.utc) < expires_at:
-                data = json.loads(row[0])
-                # Reject old methodology versions
-                cached_version = data.get("methodology_version", "1")
-                if cached_version != METHODOLOGY_VERSION:
-                    logger.info(f"[CACHE] {ticker} rejecting old methodology v{cached_version} (current=v{METHODOLOGY_VERSION})")
-                    return None
-                return _dict_to_snapshot(data)
+                snapshot.data_freshness = "fresh"
+            else:
+                snapshot.data_freshness = "stale"
+            return snapshot
     except Exception as e:
         logger.debug(f"[CACHE] SQLite read error for {ticker}: {e}")
     return None
@@ -242,7 +270,7 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
         articles=articles,
         generated_at=d.get("generated_at", ""),
         data_freshness=d.get("data_freshness", "fresh"),
-        methodology_version=d.get("methodology_version", "3"),
+        methodology_version=d.get("methodology_version", "4"),
         provider_summary=d.get("provider_summary", {}),
     )
 
@@ -286,6 +314,12 @@ def _score_relevance(article: NewsArticle, company: CompanyIdentity) -> float:
     """
     Score article relevance to the target company.
     Returns 0.0-1.0. Higher = more relevant.
+
+    Tier-based approach:
+    - Tier A (0.5+): Direct ticker/entity match via provider metadata
+    - Tier B (0.3+): Company name clearly present in text
+    - Tier C (0.15+): Contextual mention (alias, short name)
+    - Tier D (<0.15): Weak/indirect — candidate for rejection
     """
     text = f"{article.title} {article.description}".lower()
     score = 0.0
@@ -323,10 +357,12 @@ def _score_relevance(article: NewsArticle, company: CompanyIdentity) -> float:
             score += 0.15
             break
 
-    # Penalize if title is very generic and doesn't mention company
-    title_lower = article.title.lower()
-    if score < 0.1 and not any(w in title_lower for w in [company.ticker.lower(), company.canonical_name.lower()]):
-        score *= 0.3
+    # Tier-based filtering (no aggressive blanket penalty):
+    # Tier A: score >= 0.5 — strong direct match, keep as-is
+    # Tier B: 0.3 <= score < 0.5 — company name present, keep as-is
+    # Tier C: 0.15 <= score < 0.3 — contextual, keep but lower threshold
+    # Tier D: score < 0.15 — weak/indirect, will be filtered by RELEVANCE_THRESHOLD
+    # No multiplier penalty — let the threshold handle Tier D rejection cleanly.
 
     return min(1.0, score)
 
@@ -367,6 +403,8 @@ def _deduplicate_articles(articles: List[NewsArticle]) -> List[NewsArticle]:
     if not articles:
         return []
 
+    import re
+
     # Build fingerprint groups
     seen_fingerprints: Dict[str, int] = {}
     groups: Dict[int, List[NewsArticle]] = {}
@@ -374,7 +412,6 @@ def _deduplicate_articles(articles: List[NewsArticle]) -> List[NewsArticle]:
 
     for article in articles:
         # Normalize for fingerprinting
-        import re
         norm_title = re.sub(r'[^a-z0-9]', '', article.title.lower())
         norm_url = re.sub(r'[?#].*', '', article.url.lower())
         fp = hashlib.md5(f"{norm_title}|{norm_url}".encode()).hexdigest()
@@ -437,9 +474,6 @@ def _jaccard_similarity(s1: str, s2: str) -> float:
     intersection = set1 & set2
     union = set1 | set2
     return len(intersection) / len(union) if union else 0.0
-
-
-import hashlib
 
 
 # ─── Weighted Aggregation ───────────────────────────────────────────────────
@@ -515,6 +549,244 @@ def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, Senti
     return final_score, label, positive_pct, neutral_pct, negative_pct, positive_count, neutral_count, negative_count
 
 
+# ─── Sentiment History Persistence ──────────────────────────────────────────
+
+def _persist_sentiment_history(ticker: str, snapshot: SentimentSnapshot):
+    """
+    Persist a sentiment history point if conditions are met.
+    Saves only when:
+    - 15+ minutes since last save (matching SNAPSHOT_TTL), OR
+    - Score changed by more than 0.1 from last saved point, OR
+    - Label changed
+    """
+    try:
+        conn = sqlite3.connect(_DB_PATH)
+
+        # Get last saved point for this ticker
+        last_row = conn.execute(
+            "SELECT timestamp, score, label FROM sentiment_history "
+            "WHERE ticker = ? ORDER BY timestamp DESC LIMIT 1",
+            (ticker,)
+        ).fetchone()
+
+        now = datetime.now(timezone.utc)
+        should_save = False
+
+        if last_row is None:
+            # No history yet — always save
+            should_save = True
+        else:
+            last_ts = datetime.fromisoformat(last_row[0])
+            last_score = last_row[1]
+            last_label = last_row[2]
+
+            minutes_since = (now - last_ts).total_seconds() / 60
+            if minutes_since >= 15:
+                should_save = True
+            elif last_score is not None and snapshot.score is not None:
+                if abs(snapshot.score - last_score) > 0.1:
+                    should_save = True
+            if snapshot.label.value != last_label:
+                should_save = True
+
+        if should_save:
+            conn.execute(
+                "INSERT OR REPLACE INTO sentiment_history "
+                "(ticker, timestamp, score, label, positive_pct, neutral_pct, negative_pct, article_count, methodology_version) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    ticker,
+                    now.isoformat(),
+                    snapshot.score,
+                    snapshot.label.value,
+                    snapshot.positive_pct,
+                    snapshot.neutral_pct,
+                    snapshot.negative_pct,
+                    snapshot.relevant_article_count,
+                    snapshot.methodology_version,
+                )
+            )
+            conn.commit()
+            logger.debug(f"[HISTORY] {ticker} saved sentiment history point at {now.isoformat()}")
+
+        conn.close()
+    except Exception as e:
+        logger.debug(f"[HISTORY] Failed to persist sentiment history for {ticker}: {e}")
+
+
+def get_sentiment_history(ticker: str, period: str = "7d") -> List[Dict[str, Any]]:
+    """Return historical sentiment points for trend chart."""
+    ticker = ticker.upper().strip()
+
+    # Parse period
+    period_map = {
+        "1d": timedelta(days=1),
+        "3d": timedelta(days=3),
+        "7d": timedelta(days=7),
+        "14d": timedelta(days=14),
+        "30d": timedelta(days=30),
+        "90d": timedelta(days=90),
+    }
+    td = period_map.get(period, timedelta(days=7))
+    cutoff = (datetime.now(timezone.utc) - td).isoformat()
+
+    try:
+        conn = sqlite3.connect(_DB_PATH)
+        rows = conn.execute(
+            "SELECT timestamp, score, label, positive_pct, neutral_pct, negative_pct, article_count "
+            "FROM sentiment_history "
+            "WHERE ticker = ? AND timestamp >= ? "
+            "ORDER BY timestamp ASC",
+            (ticker, cutoff)
+        ).fetchall()
+        conn.close()
+
+        return [
+            {
+                "timestamp": row[0],
+                "score": row[1],
+                "label": row[2],
+                "positive_pct": row[3],
+                "neutral_pct": row[4],
+                "negative_pct": row[5],
+                "article_count": row[6],
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        logger.debug(f"[HISTORY] Failed to read sentiment history for {ticker}: {e}")
+        return []
+
+
+# ─── Provider Diagnostics ───────────────────────────────────────────────────
+
+def get_provider_diagnostics(ticker: str) -> Dict[str, Any]:
+    """Return detailed provider diagnostic info for a ticker. DEV ONLY.
+
+    Traces the full pipeline and returns:
+    - resolved company identity
+    - each provider's status, raw count, accepted count
+    - relevance rejected count
+    - dedupe removed count
+    - final count
+    """
+    ticker = ticker.upper().strip()
+    diagnostics: Dict[str, Any] = {
+        "ticker": ticker,
+        "resolved_company": {},
+        "providers": {},
+        "relevance_rejected": 0,
+        "dedupe_removed": 0,
+        "final_count": 0,
+    }
+
+    try:
+        company = resolve_company(ticker)
+        diagnostics["resolved_company"] = {
+            "ticker": company.ticker,
+            "canonical_name": company.canonical_name,
+            "short_name": company.short_name,
+            "aliases": company.aliases,
+        }
+
+        providers = get_all_providers()
+        all_articles: List[NewsArticle] = []
+
+        for provider in providers:
+            provider_diag: Dict[str, Any] = {
+                "status": "skipped",
+                "raw_count": 0,
+                "accepted_count": 0,
+                "latency_ms": 0,
+            }
+
+            if not provider.is_available():
+                diagnostics["providers"][provider.name] = provider_diag
+                continue
+
+            try:
+                result = provider.fetch(
+                    ticker=ticker,
+                    company=company,
+                    lookback_days=LOOKBACK_DAYS,
+                    max_results=10,
+                )
+                provider_diag["status"] = "success" if result.success else f"error: {result.error}"
+                provider_diag["raw_count"] = len(result.articles)
+                provider_diag["latency_ms"] = round(result.latency_ms, 1)
+
+                if result.articles:
+                    # Score relevance for diagnostic count
+                    accepted = 0
+                    for article in result.articles:
+                        article.relevance_score = _score_relevance(article, company)
+                        if article.relevance_score >= RELEVANCE_THRESHOLD:
+                            accepted += 1
+                    provider_diag["accepted_count"] = accepted
+                    all_articles.extend(result.articles)
+
+            except Exception as e:
+                provider_diag["status"] = f"error: {e}"
+
+            diagnostics["providers"][provider.name] = provider_diag
+
+        # Score all and count rejected
+        total_raw = len(all_articles)
+        for article in all_articles:
+            article.relevance_score = _score_relevance(article, company)
+        relevant = [a for a in all_articles if a.relevance_score >= RELEVANCE_THRESHOLD]
+        diagnostics["relevance_rejected"] = total_raw - len(relevant)
+
+        # Dedup
+        unique = _deduplicate_articles(relevant)
+        diagnostics["dedupe_removed"] = len(relevant) - len(unique)
+        diagnostics["final_count"] = len(unique)
+
+    except Exception as e:
+        diagnostics["error"] = str(e)
+
+    return diagnostics
+
+
+# ─── Legacy Dict Override ───────────────────────────────────────────────────
+
+def _to_legacy_dict_safe(snapshot: SentimentSnapshot) -> Dict[str, Any]:
+    """
+    Extended legacy dict that properly handles non-SUFFICIENT statuses.
+    When status is NEWS_UNAVAILABLE, INSUFFICIENT, or NO_RELEVANT_NEWS:
+    - score is 0.0 (not calculated)
+    - counts are all 0
+    - pcts are all 0 (never 100% neutral with zero articles)
+    - includes note explaining the state
+    """
+    base = snapshot.to_legacy_dict()
+
+    if snapshot.status != SentimentStatus.SUFFICIENT:
+        base["score"] = 0.0
+        base["sentiment_score"] = 0.0
+        base["positive_count"] = 0
+        base["neutral_count"] = 0
+        base["negative_count"] = 0
+        base["positive_pct"] = 0.0
+        base["neutral_pct"] = 0.0
+        base["negative_pct"] = 0.0
+        base["score_available"] = False
+
+        # Add explanatory note
+        status_notes = {
+            SentimentStatus.NEWS_UNAVAILABLE: "News data temporarily unavailable. No articles retrieved from any provider.",
+            SentimentStatus.INSUFFICIENT: "Not enough relevant articles to compute a reliable sentiment score.",
+            SentimentStatus.NO_RELEVANT_NEWS: "Articles found but none were relevant enough to the target company.",
+            SentimentStatus.ERROR: "An error occurred during sentiment analysis.",
+        }
+        note = status_notes.get(snapshot.status, "Sentiment score not available.")
+        base["news_impact_summary"] = note
+    else:
+        base["score_available"] = True
+
+    return base
+
+
 # ─── Main Pipeline ──────────────────────────────────────────────────────────
 
 def get_sentiment_snapshot(
@@ -526,14 +798,14 @@ def get_sentiment_snapshot(
 
     Pipeline:
     1. Check L1 cache → return if fresh
-    2. Check SQLite cache → promote to L1 if fresh
+    2. Check SQLite cache → promote to L1 if fresh, return stale if expired (no force_refresh)
     3. Acquire single-flight lock
     4. Fetch from providers (adaptive fallback)
     5. Score relevance
     6. Deduplicate
     7. Run FinBERT
     8. Aggregate weighted sentiment
-    9. Store in L1 + SQLite
+    9. Store in L1 + SQLite + persist history
     10. Return canonical snapshot
     """
     ticker = ticker.upper().strip()
@@ -547,13 +819,16 @@ def get_sentiment_snapshot(
             logger.info(f"[ENGINE] {ticker} L1 cache HIT")
             return cached
 
-    # 2. SQLite cache check
+    # 2. SQLite cache check — return stale if present (unless force_refresh)
     if not force_refresh:
         sqlite_cached = _sqlite_get_snapshot(ticker)
         if sqlite_cached:
-            sqlite_cached.data_freshness = "fresh"
-            _l1_set(ticker, sqlite_cached)
-            logger.info(f"[ENGINE] {ticker} SQLite cache HIT")
+            if sqlite_cached.data_freshness == "fresh":
+                _l1_set(ticker, sqlite_cached)
+                logger.info(f"[ENGINE] {ticker} SQLite cache HIT (fresh)")
+            else:
+                # Stale but still usable — return with stale freshness
+                logger.info(f"[ENGINE] {ticker} SQLite cache HIT (stale, returning as-is)")
             return sqlite_cached
 
     # 3. Single-flight: if another request is computing, wait
@@ -603,7 +878,7 @@ def get_sentiment_snapshot(
             except Exception as e:
                 provider_results[provider.name] = {"status": f"error: {e}", "count": 0}
                 logger.warning(f"[ENGINE] {provider.name} error for {ticker}: {e}")
-                continue
+                continue  # Always continue to next provider
 
         logger.info(f"[ENGINE] {ticker} collected {len(all_articles)} raw articles from {len([p for p in providers if p.is_available()])} providers")
 
@@ -765,6 +1040,9 @@ def get_sentiment_snapshot(
         _l1_set(ticker, snapshot)
         _sqlite_set_snapshot(ticker, snapshot)
 
+        # 13. Persist sentiment history
+        _persist_sentiment_history(ticker, snapshot)
+
         logger.info(
             f"[ENGINE] {ticker} DONE: {snapshot.status.value} | "
             f"score={snapshot.score:.3f} | label={snapshot.label.value} | "
@@ -792,7 +1070,7 @@ def get_sentiment_snapshot(
 def get_sentiment_for_api(ticker: str) -> Dict[str, Any]:
     """Public API: returns snapshot as legacy-compatible dict."""
     snapshot = get_sentiment_snapshot(ticker)
-    return snapshot.to_legacy_dict()
+    return _to_legacy_dict_safe(snapshot)
 
 
 def get_news_provider_status() -> Dict[str, Dict[str, Any]]:

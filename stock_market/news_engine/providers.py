@@ -24,7 +24,11 @@ from typing import List, Optional, Dict, Any, Tuple
 from urllib.parse import quote
 from datetime import datetime, timezone, timedelta
 
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
+
 from .models import NewsArticle, ProviderResult, SourceType, CompanyIdentity
+from .company_resolver import get_search_queries
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +143,11 @@ class NewsDataProvider(NewsProvider):
         self._timeout = 10
         self.rate_limiter = RateLimiter(max_calls=10, window_seconds=60.0)
 
+    def is_available(self) -> bool:
+        if not self._api_key:
+            return False
+        return self.circuit_breaker.state != CircuitBreaker.OPEN
+
     def fetch(
         self,
         ticker: str,
@@ -151,10 +160,13 @@ class NewsDataProvider(NewsProvider):
 
         start = time.perf_counter()
         try:
-            # Search by ticker symbol for better relevance
-            query = ticker
+            queries = get_search_queries(company)
+            query = queries[0] if queries else ticker
             encoded = quote(query, safe="")
-            url = f"{self._base_url}?apikey={self._api_key}&q={encoded}&language=en&size={min(max_results, 10)}"
+            url = (
+                f"{self._base_url}?apikey={self._api_key}&q={encoded}"
+                f"&language=en&category=business&size={min(max_results, 10)}"
+            )
             resp = requests.get(url, timeout=self._timeout)
             resp.raise_for_status()
             data = resp.json()
@@ -236,6 +248,8 @@ class MarketauxProvider(NewsProvider):
                 "published_after": published_after,
                 "limit": min(max_results, 50),
                 "group_similar": "true",
+                "filter_entities": "true",
+                "must_have_entities": "true",
             }
             resp = requests.get(f"{self._base_url}/news/all", params=params, timeout=self._timeout)
             resp.raise_for_status()
@@ -245,7 +259,6 @@ class MarketauxProvider(NewsProvider):
             for item in data.get("data", [])[:max_results]:
                 title = item.get("title", "") or ""
                 desc = item.get("description", "") or ""
-                # Marketaux provides entity-level sentiment
                 entities = item.get("entities", [])
                 raw_sentiment = ""
                 raw_score = 0.0
@@ -258,6 +271,8 @@ class MarketauxProvider(NewsProvider):
                         if ent_symbol == ticker.upper():
                             raw_sentiment = ent.get("sentiment", "")
                             raw_score = ent.get("sentiment_score", 0.0)
+                if not matched:
+                    matched = [company.short_name] if company.short_name else []
 
                 articles.append(NewsArticle(
                     title=title,
@@ -333,9 +348,11 @@ class CurrentsProvider(NewsProvider):
         start = time.perf_counter()
         try:
             published_after = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%S")
+            queries = get_search_queries(company)
+            keyword = queries[0] if queries else ticker
             params = {
                 "apiKey": self._api_key,
-                "keyword": ticker,
+                "keyword": keyword,
                 "language": "en",
                 "published_after": published_after,
             }
@@ -407,7 +424,7 @@ class GDELTProvider(NewsProvider):
 
         start = time.perf_counter()
         try:
-            query = f'"{company.canonical_name}"'
+            query = company.short_name or company.ticker
             params = {
                 "query": query,
                 "mode": "ArtList",
@@ -416,6 +433,7 @@ class GDELTProvider(NewsProvider):
                 "sort": "DateDesc",
                 "timespan": f"{lookback_days}d",
                 "sourcelang": "eng",
+                "include": "Title,Description",
             }
             headers = {"User-Agent": "StockVanta/1.0"}
             resp = requests.get(self._base_url, params=params, timeout=self._timeout, headers=headers)
@@ -497,14 +515,59 @@ _RSS_SOURCES = [
         "source_type": SourceType.PUBLISHER_RSS,
         "category": "general_finance",
     },
+    {
+        "id": "bloomberg_odd_lots",
+        "name": "Bloomberg Odd Lots",
+        "url": "https://feeds.bloomberg.com/markets/news.rss",
+        "source_type": SourceType.PUBLISHER_RSS,
+        "category": "markets",
+    },
+    {
+        "id": "wsj_markets",
+        "name": "WSJ Markets",
+        "url": "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+        "source_type": SourceType.PUBLISHER_RSS,
+        "category": "markets",
+    },
+    {
+        "id": "ft_markets",
+        "name": "FT Markets",
+        "url": "https://www.ft.com/markets?format=rss",
+        "source_type": SourceType.PUBLISHER_RSS,
+        "category": "markets",
+    },
 ]
+
+# Well-known sector/industry terms for broader relevance matching on popular companies
+_SECTOR_KEYWORDS = {
+    "tech": ["software", "semiconductor", "cloud", "ai", "artificial intelligence", "chip", "data center", "saas"],
+    "finance": ["bank", "banking", "financial", "credit", "lending", "investment", "capital markets"],
+    "healthcare": ["pharma", "drug", "biotech", "medical", "health", "fda", "clinical trial"],
+    "energy": ["oil", "gas", "energy", "renewable", "solar", "wind", "pipeline", "crude"],
+    "consumer": ["retail", "consumer", "brand", "e-commerce", "shopping", "store"],
+    "auto": ["electric vehicle", "ev", "automaker", "autonomous", "self-driving"],
+}
+
+# Map tickers to their sector for well-known companies
+_TICKER_SECTOR: Dict[str, str] = {}
+_SECTOR_MAP: Dict[str, List[str]] = {
+    "tech": ["AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "CRM", "ADBE", "INTC", "AMD", "CSCO", "NFLX", "ORCL", "QCOM", "IBM"],
+    "finance": ["JPM", "BAC", "GS", "WFC", "SCHW", "V", "MA"],
+    "healthcare": ["JNJ", "PFE", "MRK", "ABBV", "UNH", "LLY", "ABT", "AMGN", "TMO"],
+    "energy": ["XOM", "CVX", "COP", "NEE"],
+    "consumer": ["WMT", "KO", "PEP", "NKE", "MCD", "COST", "PG", "HD", "LOW", "DIS"],
+    "auto": ["TSLA", "RIVN", "LCID"],
+}
+for _sector, _tickers in _SECTOR_MAP.items():
+    for _t in _tickers:
+        _TICKER_SECTOR[_t] = _sector
 
 
 class RSSProvider(NewsProvider):
     def __init__(self):
         super().__init__("rss")
         self._timeout = 8
-        self.rate_limiter = RateLimiter(max_calls=100, window_seconds=60.0)  # generous for free RSS
+        self.rate_limiter = RateLimiter(max_calls=100, window_seconds=60.0)
 
     def fetch(
         self,
@@ -549,12 +612,14 @@ class RSSProvider(NewsProvider):
         content = resp.text
 
         articles = []
-        # Simple XML parsing (avoid lxml dependency)
         items = re.findall(r'<item>(.*?)</item>', content, re.DOTALL)
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
-        for item_xml in items[:20]:  # Parse at most 20 items per feed
+        sector = _TICKER_SECTOR.get(ticker.upper(), "")
+        sector_terms = _SECTOR_KEYWORDS.get(sector, []) if sector else []
+
+        for item_xml in items[:50]:
             title_match = re.search(r'<title[^>]*>(.*?)</title>', item_xml, re.DOTALL)
             link_match = re.search(r'<link[^>]*>(.*?)</link>', item_xml, re.DOTALL)
             desc_match = re.search(r'<description[^>]*>(.*?)</description>', item_xml, re.DOTALL)
@@ -563,14 +628,12 @@ class RSSProvider(NewsProvider):
             title = re.sub(r'<!\[CDATA\[(.*?)\]\]>', r'\1', title_match.group(1)).strip() if title_match else ""
             link = re.sub(r'<!\[CDATA\[(.*?)\]\]>', r'\1', link_match.group(1)).strip() if link_match else ""
             desc = re.sub(r'<!\[CDATA\[(.*?)\]\]>', r'\1', desc_match.group(1)).strip() if desc_match else ""
-            # Clean HTML from description
             desc = re.sub(r'<[^>]+>', '', desc).strip()
             pub_date = pub_match.group(1).strip() if pub_match else ""
 
             if not title:
                 continue
 
-            # Check if article might be about this ticker/company
             text = f"{title} {desc}".lower()
             is_relevant = (
                 ticker.lower() in text
@@ -579,12 +642,15 @@ class RSSProvider(NewsProvider):
                 or any(alias.lower() in text for alias in company.aliases)
             )
 
+            if not is_relevant and sector_terms:
+                is_relevant = any(term in text for term in sector_terms)
+
             if not is_relevant:
                 continue
 
             articles.append(NewsArticle(
                 title=title,
-                description=desc[:500],  # Truncate long descriptions
+                description=desc[:500],
                 url=link,
                 publisher=source["name"],
                 published_at=pub_date,
@@ -602,11 +668,11 @@ class RSSProvider(NewsProvider):
 def get_all_providers() -> List[NewsProvider]:
     """Return all registered providers in priority order."""
     return [
-        MarketauxProvider(),     # Best for stock-specific news
-        NewsDataProvider(),      # Broad coverage
-        CurrentsProvider(),      # Additional coverage
-        GDELTProvider(),         # Free fallback
-        RSSProvider(),           # Free supplement
+        MarketauxProvider(),
+        NewsDataProvider(),
+        CurrentsProvider(),
+        GDELTProvider(),
+        RSSProvider(),
     ]
 
 

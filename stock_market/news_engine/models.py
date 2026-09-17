@@ -217,19 +217,30 @@ class SentimentSnapshot:
         Includes article count distribution (positive_count, neutral_count, negative_count)
         and distribution percentages that match the counts."""
         neutral_count = self.relevant_article_count - self.positive_count - self.negative_count
+        has_articles = self.relevant_article_count > 0
+        is_available = self.status.value == "sufficient"
+
+        # Never show fake 100% neutral when there are zero articles
+        pos_pct = self.positive_pct if has_articles else 0.0
+        neg_pct = self.negative_pct if has_articles else 0.0
+        neu_pct = self.neutral_pct if has_articles else 0.0
+        pos_count = self.positive_count if has_articles else 0
+        neg_count = self.negative_count if has_articles else 0
+        neu_count = neutral_count if has_articles else 0
+
         return {
             "ticker": self.ticker,
-            "sentiment_score": self.score,
+            "sentiment_score": self.score if is_available else 0.0,
             "sentiment_label": self.sentiment_label,
             "status": self.status.value,
-            "score": self.score,
+            "score": self.score if is_available else 0.0,
             "label": self.sentiment_label,
-            "positive_count": self.positive_count,
-            "negative_count": self.negative_count,
-            "neutral_count": neutral_count,
-            "positive_pct": self.positive_pct,
-            "neutral_pct": self.neutral_pct,
-            "negative_pct": self.negative_pct,
+            "positive_count": pos_count,
+            "negative_count": neg_count,
+            "neutral_count": neu_count,
+            "positive_pct": pos_pct,
+            "neutral_pct": neu_pct,
+            "negative_pct": neg_pct,
             "article_count": self.article_count,
             "relevant_article_count": self.relevant_article_count,
             "source_count": self.source_count,
@@ -238,6 +249,7 @@ class SentimentSnapshot:
             "providers_attempted": self.providers_attempted,
             "generated_at": self.generated_at,
             "data_freshness": self.data_freshness,
+            "score_available": is_available,
             "news": [
                 {
                     "title": a.title,

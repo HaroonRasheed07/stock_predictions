@@ -102,13 +102,7 @@ def _background_precompute_daemon():
                     cache_key = "home_ticker"
                     result = {"marketStatus": "Unknown", "topStocks": []}
                     try:
-                        from datetime import datetime, timezone, timedelta
-                        now = datetime.now(timezone.utc)
-                        et = now - timedelta(hours=4)
-                        weekday = et.weekday()
-                        market_time = et.hour * 60 + et.minute
-                        is_open = weekday < 5 and 570 <= market_time < 960
-                        result["marketStatus"] = "Open" if is_open else "Closed"
+                        result["marketStatus"] = _compute_market_status_str()
                     except Exception:
                         pass
                     try:
@@ -451,7 +445,18 @@ def watchlist_monitor(req: WatchlistScanRequest):
     Intelligent watchlist monitoring: detects meaningful price moves,
     volume spikes, RSI extremes, and trend changes across watchlist tickers.
     """
-    from watchlist_monitor import scan_watchlist_intelligent
+from watchlist_monitor import scan_watchlist_intelligent
+from market_status import get_market_status as _get_market_status, is_market_open as _is_market_open
+
+
+def _compute_market_status_str() -> str:
+    """Return 'Open' or 'Closed' for frontend compatibility."""
+    try:
+        ms = _get_market_status()
+        label = ms.get("label", "Unknown")
+        return label.replace("Market ", "")
+    except Exception:
+        return "Unknown"
 
     if not req.tickers:
         req.tickers = get_default_watchlist()
@@ -789,17 +794,7 @@ def _compute_market_overview_raw(ticker: str, period: str) -> Dict[str, Any]:
             result["watchlist"] = []
 
         try:
-            from datetime import datetime, timezone, timedelta
-            now = datetime.now(timezone.utc)
-            et = now - timedelta(hours=4)
-            hour, minute = et.hour, et.minute
-            weekday = et.weekday()
-            market_time = hour * 60 + minute
-            market_open = 9 * 60 + 30
-            market_close = 16 * 60
-            is_weekday = weekday < 5
-            is_open = is_weekday and market_open <= market_time < market_close
-            result["marketStatus"] = "Open" if is_open else "Closed"
+            result["marketStatus"] = _compute_market_status_str()
         except Exception:
             result["marketStatus"] = "Unknown"
 
@@ -859,13 +854,7 @@ def _home_intelligence_precache():
     cache_key = "home_intelligence"
     result: Dict[str, Any] = {}
     try:
-        from datetime import datetime, timezone, timedelta
-        now = datetime.now(timezone.utc)
-        et = now - timedelta(hours=4)
-        weekday = et.weekday()
-        market_time = et.hour * 60 + et.minute
-        is_open = weekday < 5 and 570 <= market_time < 960
-        result["marketStatus"] = "Open" if is_open else "Closed"
+        result["marketStatus"] = _compute_market_status_str()
     except Exception:
         result["marketStatus"] = "Unknown"
     try:
@@ -940,17 +929,7 @@ def get_home_intelligence():
 
         # 1. Market status
         try:
-            from datetime import datetime, timezone, timedelta
-            now = datetime.now(timezone.utc)
-            et = now - timedelta(hours=4)
-            hour, minute = et.hour, et.minute
-            weekday = et.weekday()
-            market_time = hour * 60 + minute
-            market_open = 9 * 60 + 30
-            market_close = 16 * 60
-            is_weekday = weekday < 5
-            is_open = is_weekday and market_open <= market_time < market_close
-            result["marketStatus"] = "Open" if is_open else "Closed"
+            result["marketStatus"] = _compute_market_status_str()
         except Exception:
             result["marketStatus"] = "Unknown"
 
@@ -1055,14 +1034,8 @@ def get_home_intelligence():
         return res
     # MISS: background refresh is already scheduled by get_swr.
     # Return minimal skeleton so frontend renders instantly; next request will have data.
-    import datetime as _dt
-    now_utc = _dt.datetime.now(_dt.timezone.utc)
-    et = now_utc - _dt.timedelta(hours=4)
-    is_weekday = et.weekday() < 5
-    market_time = et.hour * 60 + et.minute
-    is_open = is_weekday and 570 <= market_time < 960
     skeleton = {
-        "marketStatus": "Open" if is_open else "Closed",
+        "marketStatus": _compute_market_status_str(),
         "topStocks": [],
         "selectedStock": None,
         "discover": [],
@@ -1087,13 +1060,7 @@ def get_home_ticker():
     def _compute():
         result = {}
         try:
-            from datetime import datetime, timezone, timedelta
-            now = datetime.now(timezone.utc)
-            et = now - timedelta(hours=4)
-            weekday = et.weekday()
-            market_time = et.hour * 60 + et.minute
-            is_open = weekday < 5 and 570 <= market_time < 960
-            result["marketStatus"] = "Open" if is_open else "Closed"
+            result["marketStatus"] = _compute_market_status_str()
         except Exception:
             result["marketStatus"] = "Unknown"
         try:
@@ -2096,14 +2063,25 @@ def get_sentiment(request: SentimentRequest):
             "status": result.get("status", "sufficient"),
             "positive_count": result.get("positive_count", 0),
             "negative_count": result.get("negative_count", 0),
+            "neutral_count": result.get("neutral_count", 0),
+            "positive_pct": result.get("positive_pct", 0.0),
+            "neutral_pct": result.get("neutral_pct", 0.0),
+            "negative_pct": result.get("negative_pct", 0.0),
             "news": result["news"],
             "news_count": result.get("news_count", len(result.get("news", []))),
             "source_providers": result.get("source_providers", []),
+            "providers_attempted": result.get("providers_attempted", []),
+            "article_count": result.get("article_count", 0),
+            "relevant_article_count": result.get("relevant_article_count", 0),
+            "source_count": result.get("source_count", 0),
             "score": result["score"],
             "label": result["label"],
             "sentiment_trend_7d": result.get("sentiment_trend_7d", []),
             "news_impact_summary": result.get("news_impact_summary", ""),
             "market_mood": result.get("market_mood", "Unknown"),
+            "methodology_version": result.get("methodology_version", "4"),
+            "data_freshness": result.get("data_freshness", "fresh"),
+            "score_available": result.get("score_available", True),
         }
 
     payload, meta = cache_manager.get_swr(
@@ -2135,3 +2113,29 @@ def get_sentiment(request: SentimentRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Server error: {e}")
+
+
+# ─── Sentiment Trend History ─────────────────────────────────────────────────
+
+class SentimentTrendRequest(BaseModel):
+    ticker: str
+    period: str = "7d"
+
+
+@app.post("/api/data/sentiment/trend")
+def get_sentiment_trend(request: SentimentTrendRequest):
+    """Return historical sentiment data points for trend chart."""
+    try:
+        from news_engine.engine import get_sentiment_history
+        points = get_sentiment_history(request.ticker, request.period)
+        return {
+            "ticker": request.ticker,
+            "period": request.period,
+            "points": points,
+        }
+    except Exception as e:
+        return {
+            "ticker": request.ticker,
+            "period": request.period,
+            "points": [],
+        }

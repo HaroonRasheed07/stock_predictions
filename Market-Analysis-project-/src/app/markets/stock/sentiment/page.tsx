@@ -214,7 +214,9 @@ export default function SentimentAnalysis() {
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Overall Score</p>
                 <p className="text-xl sm:text-3xl font-bold">
-                  {sentimentData?.sentiment_score ? sentimentData.sentiment_score.toFixed(2) : '0.00'}
+                  {sentimentData?.score_available === false
+                    ? '—'
+                    : (sentimentData?.sentiment_score ? sentimentData.sentiment_score.toFixed(2) : '0.00')}
                 </p>
                 <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`}>
                   {formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}
@@ -244,7 +246,11 @@ export default function SentimentAnalysis() {
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">News Count</p>
                 <p className="text-xl sm:text-3xl font-bold">{sentimentData?.news_count ?? sentimentData?.news?.length ?? 0}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Articles analyzed</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+                  {(sentimentData?.status === 'news_unavailable' || sentimentData?.status === 'no_relevant_news')
+                    ? 'No articles found'
+                    : 'Articles analyzed'}
+                </p>
               </div>
               <AlertCircle className="h-7 w-7 sm:h-10 sm:w-10 text-secondary" />
             </div>
@@ -291,7 +297,15 @@ export default function SentimentAnalysis() {
               <Separator className="mt-4 bg-border/60" />
             </CardHeader>
             <CardContent className="relative pt-2">
-              {sentimentData && <ProfessionalSentimentChart data={sentimentData} />}
+              {(sentimentData?.news_count === 0 || sentimentData?.status === 'news_unavailable' || sentimentData?.status === 'no_relevant_news') ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Newspaper className="h-12 w-12 text-muted-foreground/40 mb-4" />
+                  <p className="text-sm font-medium text-muted-foreground">No sentiment distribution available</p>
+                  <p className="text-xs text-muted-foreground mt-1">0 analyzed articles</p>
+                </div>
+              ) : (
+                sentimentData && <ProfessionalSentimentChart data={sentimentData} />
+              )}
             </CardContent>
           </Card>
         </motion.div>

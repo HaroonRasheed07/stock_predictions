@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, BarChart3, LineChart, MessageSquare, Activity, Star, Search, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 const subPages = [
@@ -16,6 +16,46 @@ const subPages = [
   { title: 'Forecast', path: '/markets/stock/forecast', icon: Activity },
   { title: 'Watchlist', path: '/markets/stock/watchlist', icon: Star },
 ];
+
+function MarketStatusBadge() {
+  const [status, setStatus] = useState<string>('Unknown');
+  const [nextOpen, setNextOpen] = useState<string>('');
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/home/ticker', { next: { revalidate: 60 } });
+        const data = await res.json();
+        setStatus(data.marketStatus || 'Unknown');
+      } catch {
+        setStatus('Unknown');
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isOpen = status === 'Open';
+  const isHoliday = status === 'Holiday';
+
+  return (
+    <div className="flex items-center gap-2 px-2">
+      <span className="relative flex h-2 w-2">
+        {isOpen && (
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+        )}
+        <span className={cn(
+          "relative inline-flex rounded-full h-2 w-2",
+          isOpen ? "bg-success" : isHoliday ? "bg-warning" : "bg-muted-foreground"
+        )}></span>
+      </span>
+      <span className="text-sm text-muted-foreground">
+        Market {status}
+      </span>
+    </div>
+  );
+}
 
 export function MarketsLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/';
@@ -60,13 +100,7 @@ export function MarketsLayout({ children }: { children: ReactNode }) {
               {/* Market Status */}
               <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-foreground mb-3 px-2">Market Status</h3>
-                <div className="flex items-center gap-2 px-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-                  </span>
-                  <span className="text-sm text-muted-foreground">Markets Open</span>
-                </div>
+                <MarketStatusBadge />
               </div>
             </div>
           </aside>

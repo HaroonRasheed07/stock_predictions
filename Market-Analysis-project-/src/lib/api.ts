@@ -236,13 +236,19 @@ export interface EnhancedSentiment {
   positive_pct: number;
   neutral_pct: number;
   negative_pct: number;
+  article_count?: number;
+  relevant_article_count?: number;
+  source_count?: number;
   news_count: number;
   source_providers: string[];
+  providers_attempted?: string[];
   news: Array<{ title: string; source: string; url: string; published_at: string; sentiment?: number }>;
   sentiment_trend_7d: Array<{ date: string; score: number }>;
   news_impact_summary: string;
   market_mood: string;
   methodology_version?: string;
+  data_freshness?: string;
+  score_available?: boolean;
 }
 
 
