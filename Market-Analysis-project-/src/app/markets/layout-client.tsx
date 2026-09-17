@@ -18,17 +18,26 @@ const subPages = [
 ];
 
 function MarketStatusBadge() {
-  const [status, setStatus] = useState<string>('Unknown');
+  const [label, setLabel] = useState<string>('Unknown');
+  const [status, setStatus] = useState<string>('unknown');
   const [nextOpen, setNextOpen] = useState<string>('');
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch('/api/home/ticker', { next: { revalidate: 60 } });
-        const data = await res.json();
-        setStatus(data.marketStatus || 'Unknown');
+        const res = await fetch('/api/market/status');
+        if (res.ok) {
+          const data = await res.json();
+          setLabel(data.label || 'Unknown');
+          setStatus(data.status || 'unknown');
+          setNextOpen(data.next_open || '');
+        } else {
+          setLabel('Unknown');
+          setStatus('unknown');
+        }
       } catch {
-        setStatus('Unknown');
+        setLabel('Unknown');
+        setStatus('unknown');
       }
     };
     fetchStatus();
@@ -36,8 +45,20 @@ function MarketStatusBadge() {
     return () => clearInterval(interval);
   }, []);
 
-  const isOpen = status === 'Open';
-  const isHoliday = status === 'Holiday';
+  const isOpen = status === 'open';
+  const isHoliday = status === 'holiday';
+  const isClosed = status === 'closed';
+  const isPreMarket = status === 'pre_market';
+  const isAfterHours = status === 'after_hours';
+
+  // Format next open time if available
+  let subtitle = '';
+  if (nextOpen && !isOpen) {
+    try {
+      const d = new Date(nextOpen);
+      subtitle = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET';
+    } catch { /* ignore */ }
+  }
 
   return (
     <div className="flex items-center gap-2 px-2">
@@ -51,7 +72,7 @@ function MarketStatusBadge() {
         )}></span>
       </span>
       <span className="text-sm text-muted-foreground">
-        Market {status}
+        Market {label.replace('Market ', '')}
       </span>
     </div>
   );

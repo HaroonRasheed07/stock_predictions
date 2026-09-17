@@ -224,8 +224,8 @@ export default function StockOverview() {
     {
       title: 'Sentiment',
       value: sentimentStatus === 'insufficient' ? 'No Data' : sentimentLabel,
-      change: sentimentStatus === 'insufficient' ? 'No recent news' : `${(sentimentScore * 100).toFixed(0)}% Score`,
-      trend: sentimentScore > 0.1 ? 'up' : sentimentScore < -0.1 ? 'down' : 'neutral',
+      change: sentimentStatus === 'insufficient' ? 'No recent news' : `${sentimentScore >= 0 ? '+' : ''}${sentimentScore.toFixed(2)} Score`,
+      trend: sentimentScore > 0.15 ? 'up' : sentimentScore < -0.15 ? 'down' : 'neutral',
       icon: Users,
       color: getSentimentColorClass(sentimentLabel, sentimentStatus),
     },

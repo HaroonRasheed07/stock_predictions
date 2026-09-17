@@ -1085,6 +1085,24 @@ def get_home_ticker():
     return res
 
 
+@app.get("/api/market/status")
+def get_market_status_endpoint():
+    """Lightweight: returns full US market status with timestamps."""
+    try:
+        ms = _get_market_status()
+        return {
+            "market": "US",
+            "status": ms.get("status", "unknown"),
+            "label": ms.get("label", "Unknown"),
+            "timezone": "America/New_York",
+            "next_open": ms.get("next_open"),
+            "next_close": ms.get("next_close"),
+            "is_early_close": ms.get("is_early_close", False),
+        }
+    except Exception as e:
+        return {"market": "US", "status": "unknown", "label": "Unknown", "timezone": "America/New_York"}
+
+
 @app.get("/api/home/brief")
 def get_home_brief():
     """Lightweight: just selectedStock preview. Uses overview SWR cache."""

@@ -215,6 +215,7 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
                 "entity_match_score": a.entity_match_score,
                 "entity_count": a.entity_count,
                 "rule_score": getattr(a, 'rule_score', 0.0),
+                "events": getattr(a, 'events', []),
             }
             for a in s.articles[:MAX_ARTICLES_PER_TICKER]
         ],
@@ -222,6 +223,8 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
         "data_freshness": s.data_freshness,
         "methodology_version": s.methodology_version,
         "provider_summary": s.provider_summary,
+        "drivers": getattr(s, 'drivers', []),
+        "explanation": getattr(s, 'explanation', ''),
     }
 
 
@@ -244,6 +247,7 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
             entity_match_score=a.get("entity_match_score", 0.0),
             entity_count=a.get("entity_count", 0),
             rule_score=a.get("rule_score", 0.0),
+            events=a.get("events", []),
         )
         for a in d.get("articles", [])
     ]
@@ -278,6 +282,8 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
         data_freshness=d.get("data_freshness", "fresh"),
         methodology_version=d.get("methodology_version", "4"),
         provider_summary=d.get("provider_summary", {}),
+        drivers=d.get("drivers", []),
+        explanation=d.get("explanation", ""),
     )
 
 
@@ -996,6 +1002,7 @@ def get_sentiment_snapshot(
             for article in unique_articles:
                 result = _score_article(article.title, article.description)
                 rule_score = result["score"]  # Already normalized by shared_sentiment.py
+                rule_events = result.get("events", [])
 
                 # Convert rule_score to pseudo-FinBERT probabilities for label
                 # (label is used for count-based distribution)
@@ -1024,7 +1031,8 @@ def get_sentiment_snapshot(
                     source_quality=source_q,
                     entity_match_score=article.entity_match_score,
                     entity_count=article.entity_count,
-                    rule_score=rule_score,  # Store the actual rule engine score
+                    rule_score=rule_score,
+                    events=rule_events,
                 ))
 
         # 10. Aggregate
@@ -1066,6 +1074,29 @@ def get_sentiment_snapshot(
             provider_summary=provider_results,
             methodology_version=METHODOLOGY_VERSION,
         )
+
+        # 11b. Extract drivers and generate explanation
+        if article_sentiments and status == SentimentStatus.SUFFICIENT:
+            from .models import extract_drivers_from_article, aggregate_drivers, generate_explanation
+            all_drivers = []
+            for a in article_sentiments:
+                if a.rule_score != 0 and a.events:
+                    article_drivers = extract_drivers_from_article(
+                        a.title, "", a.rule_score, a.events, []
+                    )
+                    all_drivers.extend(article_drivers)
+            snapshot.drivers = aggregate_drivers(all_drivers)
+            snapshot.explanation = generate_explanation(
+                snapshot.score,
+                snapshot.label.value,
+                snapshot.drivers,
+                snapshot.relevant_article_count,
+                snapshot.source_count,
+            )
+        elif status in (SentimentStatus.INSUFFICIENT, SentimentStatus.NO_RELEVANT_NEWS, SentimentStatus.NEWS_UNAVAILABLE):
+            from .models import generate_explanation
+            snapshot.explanation = generate_explanation(0.0, "Insufficient News", [], len(all_articles), 0)
+
         snapshot.news_impact_summary += f" Processing time: {elapsed_ms:.0f}ms."
 
         # 12. Store in caches

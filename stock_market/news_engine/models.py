@@ -6,7 +6,7 @@ One ticker → one canonical article set → one canonical sentiment snapshot.
 """
 
 from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timezone
 from enum import Enum
 import hashlib
@@ -130,6 +130,107 @@ class ArticleSentiment:
     entity_match_score: float = 0.0
     entity_count: int = 0
     rule_score: float = 0.0  # Raw rule-engine score before pseudo-prob conversion
+    drivers: List[Dict[str, Any]] = field(default_factory=list)  # Extracted sentiment drivers
+    events: List[str] = field(default_factory=list)  # Event types from rule engine
+
+
+# ─── Sentiment Drivers ──────────────────────────────────────────────────────
+
+DRIVER_CATEGORIES = {
+    'EARNINGS': 'Earnings',
+    'REVENUE': 'Revenue',
+    'GUIDANCE': 'Guidance',
+    'ANALYST_ACTION': 'Analyst Ratings',
+    'CONTRACT': 'Contracts',
+    'PRODUCT': 'Products',
+    'M_A': 'M&A',
+    'REGULATORY': 'Regulation',
+    'LEGAL': 'Legal',
+    'MANAGEMENT': 'Management',
+    'CAPITAL_RETURN': 'Capital Returns',
+    'CYBERSECURITY': 'Cybersecurity',
+    'MARKET_REACTION': 'Market Reaction',
+    'GENERAL': 'Other',
+}
+
+
+def extract_drivers_from_article(title: str, description: str, rule_score: float, events: list, matched_phrases: list) -> List[Dict[str, Any]]:
+    """Extract structured sentiment drivers from a single article's metadata."""
+    drivers = []
+    direction = "positive" if rule_score > 0.05 else "negative" if rule_score < -0.05 else "neutral"
+    if direction == "neutral":
+        return drivers
+
+    for event_type in events:
+        category = DRIVER_CATEGORIES.get(event_type, 'Other')
+        strength = min(abs(rule_score), 1.0)
+        drivers.append({
+            "category": category,
+            "direction": direction,
+            "strength": round(strength, 2),
+            "event_type": event_type,
+        })
+    return drivers
+
+
+def aggregate_drivers(all_drivers: List[Dict[str, Any]], top_n: int = 5) -> List[Dict[str, Any]]:
+    """Aggregate drivers across articles, keep strongest per category."""
+    by_category: Dict[str, Dict[str, Any]] = {}
+    for d in all_drivers:
+        cat = d["category"]
+        if cat not in by_category:
+            by_category[cat] = {
+                "category": cat,
+                "direction": d["direction"],
+                "total_strength": 0.0,
+                "article_count": 0,
+            }
+        entry = by_category[cat]
+        entry["total_strength"] += d["strength"]
+        entry["article_count"] += 1
+        if d["strength"] > max(0.1, 0.0):
+            entry["direction"] = d["direction"]
+
+    result = sorted(by_category.values(), key=lambda x: x["total_strength"], reverse=True)
+    for r in result:
+        r["contribution"] = round(r["total_strength"] / max(1, r["article_count"]), 2)
+        del r["total_strength"]
+    return result[:top_n]
+
+
+def generate_explanation(
+    score: float,
+    label: str,
+    drivers: List[Dict[str, Any]],
+    article_count: int,
+    source_count: int,
+) -> str:
+    """Generate deterministic, human-readable explanation from drivers."""
+    pos_drivers = [d["category"] for d in drivers if d["direction"] == "positive"]
+    neg_drivers = [d["category"] for d in drivers if d["direction"] == "negative"]
+
+    parts = []
+
+    if label == "Insufficient News":
+        return f"Not enough relevant articles to compute a reliable sentiment score. Found {article_count} article(s)."
+
+    if not pos_drivers and not neg_drivers:
+        if abs(score) < 0.05:
+            parts.append("News coverage is mostly factual with no strong directional catalyst.")
+        elif score > 0:
+            parts.append("Slight positive bias in recent coverage, but evidence is limited.")
+        else:
+            parts.append("Slight negative bias in recent coverage, but evidence is limited.")
+    else:
+        if pos_drivers and not neg_drivers:
+            parts.append(f"Recent coverage shows positive signals driven by {' and '.join(pos_drivers[:3])}.")
+        elif neg_drivers and not pos_drivers:
+            parts.append(f"Recent coverage shows negative signals driven by {' and '.join(neg_drivers[:3])}.")
+        else:
+            parts.append(f"Mixed signals: positive drivers ({', '.join(pos_drivers[:3])}) offset by negative drivers ({', '.join(neg_drivers[:3])}).")
+
+    parts.append(f"Based on {article_count} relevant article{'s' if article_count != 1 else ''} from {source_count} source{'s' if source_count != 1 else ''}.")
+    return " ".join(parts)
 
 
 @dataclass
@@ -152,6 +253,8 @@ class SentimentSnapshot:
 
     articles: List[ArticleSentiment] = field(default_factory=list)
     news_headlines: List[Dict[str, Any]] = field(default_factory=list)
+    drivers: List[Dict[str, Any]] = field(default_factory=list)
+    explanation: str = ""
 
     generated_at: str = ""
     expires_at: str = ""
@@ -210,6 +313,8 @@ class SentimentSnapshot:
         return "Neutral"
 
     def _compute_summary(self) -> str:
+        if self.explanation:
+            return self.explanation
         return (
             f"Based on {self.relevant_article_count} relevant articles "
             f"from {self.source_count} sources. "
@@ -285,6 +390,8 @@ class SentimentSnapshot:
                 for a in self.articles[:20]
             ],
             "sentiment_trend_7d": [],  # Populated by get_sentiment_for_api() from history DB
+            "drivers": self.drivers,
+            "explanation": self.explanation or self._compute_summary(),
             "news_impact_summary": self.news_impact_summary,
             "market_mood": self.market_mood,
             "methodology_version": self.methodology_version,

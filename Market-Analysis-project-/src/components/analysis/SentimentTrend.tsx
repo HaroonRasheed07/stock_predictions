@@ -5,6 +5,13 @@ import { TrendingUp, TrendingDown, Minus, BrainCircuit, Smile, Frown, Meh } from
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 
+interface Driver {
+  category: string;
+  direction: string;
+  article_count: number;
+  contribution: number;
+}
+
 interface SentimentTrendProps {
   data: EnhancedSentiment | null;
   isLoading?: boolean;
@@ -22,7 +29,7 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
     );
   }
 
-  const { sentiment_trend_7d, news_impact_summary, sentiment_label, sentiment_score, score, status } = data;
+  const { sentiment_trend_7d, news_impact_summary, sentiment_label, sentiment_score, score, status, drivers, explanation } = data as any;
 
   // Use canonical label from backend — never derive independently
   const canonicalLabel = sentiment_label || 'Neutral';
@@ -31,7 +38,7 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
   // Prepare chart data
   const chartData = sentiment_trend_7d?.map((item) => ({
     date: new Date(item.date || item.timestamp || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    score: (item.score ?? 0) * 100, // Convert to percentage
+    score: item.score ?? 0,
   })) || [];
 
   // Determine mood icon and color from canonical label
@@ -76,10 +83,10 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
                 <LineChart data={chartData} margin={chartMargins(isMobile)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
                   <XAxis {...xAxisConfig(isMobile, chartData.length)} />
-                  <YAxis {...yAxisConfig(isMobile, { domain: [-100, 100], tickFormatter: (v) => `${v}%` })} />
+                  <YAxis {...yAxisConfig(isMobile, { domain: [-1, 1], tickFormatter: (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}` })} />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(value: number) => [`${value.toFixed(0)}%`, 'Sentiment']}
+                    formatter={(value: number) => [`${value >= 0 ? '+' : ''}${value.toFixed(2)}`, 'Sentiment']}
                   />
                   <Line
                     type="monotone"
@@ -112,17 +119,63 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
           )}
 
           {/* News Impact Summary */}
-          {news_impact_summary && (
-            <div className="space-y-3 pt-4 border-t border-border/50">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <BrainCircuit className="h-4 w-4 text-primary" />
-                News Impact Summary
-              </h4>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {news_impact_summary}
-              </p>
+          <div className="space-y-3 pt-4 border-t border-border/50">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <BrainCircuit className="h-4 w-4 text-primary" />
+              What's Driving Sentiment
+            </h4>
+
+            {/* Score + Label */}
+            <div className="flex items-center gap-3">
+              <span className={`text-lg font-bold ${canonicalScore > 0.15 ? 'text-success' : canonicalScore < -0.15 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {canonicalScore >= 0 ? '+' : ''}{canonicalScore.toFixed(2)}
+              </span>
+              <span className={`text-sm font-medium px-2 py-0.5 rounded ${
+                canonicalLabel === 'Positive' ? 'bg-success/10 text-success' :
+                canonicalLabel === 'Negative' ? 'bg-destructive/10 text-destructive' :
+                'bg-muted text-muted-foreground'
+              }`}>
+                {canonicalLabel}
+              </span>
             </div>
-          )}
+
+            {/* Explanation */}
+            {(explanation || news_impact_summary) && (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {explanation || news_impact_summary}
+              </p>
+            )}
+
+            {/* Drivers */}
+            {drivers && drivers.length > 0 && (
+              <div className="space-y-2">
+                {drivers.filter((d: Driver) => d.direction === 'positive').length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-success/80 uppercase mb-1">Positive Drivers</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {drivers.filter((d: Driver) => d.direction === 'positive').map((d: Driver, i: number) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+                          {d.category}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {drivers.filter((d: Driver) => d.direction === 'negative').length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-destructive/80 uppercase mb-1">Negative Drivers</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {drivers.filter((d: Driver) => d.direction === 'negative').map((d: Driver, i: number) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                          {d.category}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Current Sentiment Indicator */}
           <div className="flex items-center justify-between pt-4 border-t border-border/50">
@@ -142,7 +195,7 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold">{(canonicalScore * 100).toFixed(0)}%</p>
+              <p className="text-2xl font-bold">{canonicalScore >= 0 ? '+' : ''}{canonicalScore.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">Score</p>
             </div>
           </div>

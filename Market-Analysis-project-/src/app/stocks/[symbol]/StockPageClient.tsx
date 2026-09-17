@@ -75,7 +75,7 @@ function OverviewSection({ ticker }: { ticker: string }) {
         {[
           { label: 'Price', value: `$${(overview.currentPrice || 0).toFixed(2)}`, change: `${(overview.changePercent || 0) >= 0 ? '+' : ''}${(overview.changePercent || 0).toFixed(2)}%`, positive: (overview.change || 0) >= 0 },
           { label: 'Change', value: `${(overview.change || 0) >= 0 ? '+' : ''}$${Math.abs(overview.change || 0).toFixed(2)}`, change: overview.marketStatus || '', positive: (overview.change || 0) >= 0 },
-          { label: 'Sentiment', value: sentimentLabel, change: `${(sentimentScore * 100).toFixed(0)}%`, positive: sentimentScore > 0.5 },
+          { label: 'Sentiment', value: sentimentLabel, change: `${sentimentScore >= 0 ? '+' : ''}${sentimentScore.toFixed(2)}`, positive: sentimentScore > 0.15 },
           { label: 'Risk', value: overview.risk?.risk_level || 'N/A', change: `Score: ${overview.risk?.risk_score || 0}`, positive: overview.risk?.risk_level !== 'High' },
         ].map((stat, i) => (
           <div key={i} className="rounded-xl border border-border/50 p-3 sm:p-4 bg-card/50">
