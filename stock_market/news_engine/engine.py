@@ -212,6 +212,8 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
                 "finbert_negative": a.finbert_negative,
                 "weighted_score": a.weighted_score,
                 "source_quality": a.source_quality,
+                "entity_match_score": a.entity_match_score,
+                "entity_count": a.entity_count,
             }
             for a in s.articles[:MAX_ARTICLES_PER_TICKER]
         ],
@@ -238,6 +240,8 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
             finbert_negative=a.get("finbert_negative", 0.0),
             weighted_score=a.get("weighted_score", 0.0),
             source_quality=a.get("source_quality", 0.5),
+            entity_match_score=a.get("entity_match_score", 0.0),
+            entity_count=a.get("entity_count", 0),
         )
         for a in d.get("articles", [])
     ]
@@ -320,6 +324,9 @@ def _score_relevance(article: NewsArticle, company: CompanyIdentity) -> float:
     - Tier B (0.3+): Company name clearly present in text
     - Tier C (0.15+): Contextual mention (alias, short name)
     - Tier D (<0.15): Weak/indirect — candidate for rejection
+
+    Entity diversity penalty: if provider identified many entities and our
+    ticker is just one of many, reduce weight to avoid incidental mentions.
     """
     text = f"{article.title} {article.description}".lower()
     score = 0.0
@@ -357,12 +364,14 @@ def _score_relevance(article: NewsArticle, company: CompanyIdentity) -> float:
             score += 0.15
             break
 
-    # Tier-based filtering (no aggressive blanket penalty):
-    # Tier A: score >= 0.5 — strong direct match, keep as-is
-    # Tier B: 0.3 <= score < 0.5 — company name present, keep as-is
-    # Tier C: 0.15 <= score < 0.3 — contextual, keep but lower threshold
-    # Tier D: score < 0.15 — weak/indirect, will be filtered by RELEVANCE_THRESHOLD
-    # No multiplier penalty — let the threshold handle Tier D rejection cleanly.
+    # Entity diversity penalty from provider metadata:
+    # If the provider identified many entities (e.g., 5+), and our ticker
+    # is just one of them, this is likely a comparison/market-roundup article.
+    # Reduce relevance to avoid treating incidental mentions as primary.
+    if article.entity_count >= 4 and article.entity_match_score > 0:
+        # Penalize proportionally: 4 entities → 0.85x, 5 → 0.8x, 8+ → 0.65x
+        diversity_penalty = max(0.65, 1.0 - (article.entity_count - 3) * 0.05)
+        score *= diversity_penalty
 
     return min(1.0, score)
 
@@ -944,6 +953,8 @@ def get_sentiment_snapshot(
                     finbert_neutral=article.finbert_neutral,
                     finbert_negative=article.finbert_negative,
                     source_quality=source_q,
+                    entity_match_score=article.entity_match_score,
+                    entity_count=article.entity_count,
                 ))
         elif unique_articles:
             # No FinBERT — use finance-specific rule engine
@@ -993,6 +1004,8 @@ def get_sentiment_snapshot(
                     finbert_negative=fb_neg,
                     finbert_neutral=fb_neu,
                     source_quality=source_q,
+                    entity_match_score=article.entity_match_score,
+                    entity_count=article.entity_count,
                 ))
 
         # 10. Aggregate
@@ -1068,9 +1081,15 @@ def get_sentiment_snapshot(
 # ─── Public API ─────────────────────────────────────────────────────────────
 
 def get_sentiment_for_api(ticker: str) -> Dict[str, Any]:
-    """Public API: returns snapshot as legacy-compatible dict."""
+    """Public API: returns snapshot as legacy-compatible dict with trend data."""
     snapshot = get_sentiment_snapshot(ticker)
-    return _to_legacy_dict_safe(snapshot)
+    result = _to_legacy_dict_safe(snapshot)
+    # Populate sentiment_trend_7d from history (always, not just in to_legacy_dict)
+    try:
+        result["sentiment_trend_7d"] = get_sentiment_history(ticker, "7d")
+    except Exception:
+        result["sentiment_trend_7d"] = []
+    return result
 
 
 def get_news_provider_status() -> Dict[str, Dict[str, Any]]:

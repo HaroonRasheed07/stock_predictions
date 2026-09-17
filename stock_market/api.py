@@ -27,6 +27,17 @@ from opportunity import scan_watchlist, calculate_opportunity_score
 from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
 from risk import assess_risk, calculate_trend_strength
 from watchlist_monitor import scan_watchlist_intelligent
+from market_status import get_market_status as _get_market_status, is_market_open as _is_market_open
+
+
+def _compute_market_status_str() -> str:
+    """Return human-readable market status for frontend compatibility."""
+    try:
+        ms = _get_market_status()
+        label = ms.get("label", "Unknown")
+        return label.replace("Market ", "")
+    except Exception:
+        return "Unknown"
 
 # Import cache manager and persistent dual-layer SWR engine
 from cache_manager import cache_manager
@@ -445,19 +456,6 @@ def watchlist_monitor(req: WatchlistScanRequest):
     Intelligent watchlist monitoring: detects meaningful price moves,
     volume spikes, RSI extremes, and trend changes across watchlist tickers.
     """
-from watchlist_monitor import scan_watchlist_intelligent
-from market_status import get_market_status as _get_market_status, is_market_open as _is_market_open
-
-
-def _compute_market_status_str() -> str:
-    """Return 'Open' or 'Closed' for frontend compatibility."""
-    try:
-        ms = _get_market_status()
-        label = ms.get("label", "Unknown")
-        return label.replace("Market ", "")
-    except Exception:
-        return "Unknown"
-
     if not req.tickers:
         req.tickers = get_default_watchlist()
 

@@ -243,7 +243,7 @@ export interface EnhancedSentiment {
   source_providers: string[];
   providers_attempted?: string[];
   news: Array<{ title: string; source: string; url: string; published_at: string; sentiment?: number }>;
-  sentiment_trend_7d: Array<{ date: string; score: number }>;
+  sentiment_trend_7d: Array<{ date: string; timestamp?: string; score: number; label?: string }>;
   news_impact_summary: string;
   market_mood: string;
   methodology_version?: string;

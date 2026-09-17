@@ -77,6 +77,8 @@ class NewsArticle:
     # Provider-provided sentiment metadata (for diagnostics)
     raw_sentiment_label: str = ""
     raw_sentiment_score: float = 0.0
+    entity_match_score: float = 0.0  # Provider entity relevance (0-1)
+    entity_count: int = 0  # How many entities the provider identified
 
     # FinBERT output (populated later)
     finbert_label: str = ""
@@ -125,6 +127,8 @@ class ArticleSentiment:
     finbert_negative: float
     weighted_score: float = 0.0
     source_quality: float = 0.5
+    entity_match_score: float = 0.0
+    entity_count: int = 0
 
 
 @dataclass
@@ -193,15 +197,16 @@ class SentimentSnapshot:
             self.news_impact_summary = self._compute_summary()
 
     def _compute_mood(self) -> str:
-        if self.score > 0.3:
+        """Compute mood label aligned with sentiment_label thresholds.
+        
+        Uses the same ±0.15 threshold as sentiment_label for consistency.
+        mood MUST agree with sentiment_label — never contradict it.
+        """
+        if self.score > 0.15:
             return "Bullish"
-        elif self.score > 0.1:
-            return "Slightly Bullish"
-        elif self.score < -0.3:
+        elif self.score < -0.15:
             return "Bearish"
-        elif self.score < -0.1:
-            return "Slightly Bearish"
-        return "Mixed/Neutral"
+        return "Neutral"
 
     def _compute_summary(self) -> str:
         return (
@@ -277,7 +282,7 @@ class SentimentSnapshot:
                 }
                 for a in self.articles[:20]
             ],
-            "sentiment_trend_7d": [],
+            "sentiment_trend_7d": [],  # Populated by get_sentiment_for_api() from history DB
             "news_impact_summary": self.news_impact_summary,
             "market_mood": self.market_mood,
             "methodology_version": self.methodology_version,

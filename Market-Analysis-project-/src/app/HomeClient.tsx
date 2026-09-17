@@ -414,7 +414,7 @@ export default function Home() {
                       'text-xs font-semibold mt-0.5',
                       getSentimentColorClass(selected.sentiment || '', selected.sentiment_status)
                     )}>
-                      {formatSentimentLabel(selected.market_mood || selected.sentiment || '', selected.sentiment_status)}
+                      {formatSentimentLabel(selected.sentiment || '', selected.sentiment_status)}
                     </p>
                   </div>
                   <div className="text-center">

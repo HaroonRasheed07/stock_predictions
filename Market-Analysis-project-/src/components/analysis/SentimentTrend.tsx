@@ -22,24 +22,28 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
     );
   }
 
-  const { sentiment_trend_7d, news_impact_summary, market_mood, score } = data;
+  const { sentiment_trend_7d, news_impact_summary, sentiment_label, sentiment_score, score, status } = data;
+
+  // Use canonical label from backend — never derive independently
+  const canonicalLabel = sentiment_label || 'Neutral';
+  const canonicalScore = sentiment_score ?? score ?? 0;
 
   // Prepare chart data
   const chartData = sentiment_trend_7d?.map((item) => ({
-    date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    score: item.score * 100, // Convert to percentage
+    date: new Date(item.date || item.timestamp || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    score: (item.score ?? 0) * 100, // Convert to percentage
   })) || [];
 
-  // Determine market mood icon and color
+  // Determine mood icon and color from canonical label
   let MoodIcon = Meh;
   let moodColor = 'text-muted-foreground';
   let moodBg = 'bg-muted/10';
 
-  if (market_mood === 'Bullish' || score > 0.3) {
+  if (canonicalLabel === 'Positive' || canonicalLabel === 'Bullish') {
     MoodIcon = Smile;
     moodColor = 'text-success';
     moodBg = 'bg-success/10';
-  } else if (market_mood === 'Bearish' || score < -0.3) {
+  } else if (canonicalLabel === 'Negative' || canonicalLabel === 'Bearish') {
     MoodIcon = Frown;
     moodColor = 'text-destructive';
     moodBg = 'bg-destructive/10';
@@ -59,14 +63,14 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
           </div>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${moodBg} border border-border/50`}>
             <MoodIcon className={`h-5 w-5 ${moodColor}`} />
-            <span className={`font-semibold ${moodColor}`}>{market_mood}</span>
+            <span className={`font-semibold ${moodColor}`}>{canonicalLabel}</span>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {/* Sentiment Trend Chart */}
-          {chartData.length > 0 ? (
+          {chartData.length >= 2 ? (
             <div className="h-[160px] sm:h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={chartMargins(isMobile)}>
@@ -98,8 +102,12 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-[160px] sm:h-[180px] flex items-center justify-center text-muted-foreground">
-              <p className="text-sm">No trend data available</p>
+            <div className="py-6 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-full bg-muted/30 flex items-center justify-center mb-3">
+                <TrendingUp className="h-5 w-5 text-muted-foreground/60" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Trend history is building</p>
+              <p className="text-xs text-muted-foreground/70 mt-1 max-w-[240px]">Sentiment changes will appear here as new snapshots are collected.</p>
             </div>
           )}
 
@@ -119,9 +127,9 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
           {/* Current Sentiment Indicator */}
           <div className="flex items-center justify-between pt-4 border-t border-border/50">
             <div className="flex items-center gap-3">
-              {score > 0.1 ? (
+              {canonicalLabel === 'Positive' || canonicalLabel === 'Bullish' ? (
                 <TrendingUp className="h-5 w-5 text-success" />
-              ) : score < -0.1 ? (
+              ) : canonicalLabel === 'Negative' || canonicalLabel === 'Bearish' ? (
                 <TrendingDown className="h-5 w-5 text-destructive" />
               ) : (
                 <Minus className="h-5 w-5 text-muted-foreground" />
@@ -129,12 +137,12 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
               <div>
                 <p className="text-xs text-muted-foreground">Current Sentiment</p>
                 <p className="text-sm font-semibold">
-                  {score > 0.1 ? 'Positive' : score < -0.1 ? 'Negative' : 'Neutral'}
+                  {canonicalLabel}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold">{(score * 100).toFixed(0)}%</p>
+              <p className="text-2xl font-bold">{(canonicalScore * 100).toFixed(0)}%</p>
               <p className="text-xs text-muted-foreground">Score</p>
             </div>
           </div>

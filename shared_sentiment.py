@@ -90,6 +90,14 @@ POSITIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     (r'strong\s+demand', 0.5, 1.0, 'EARNINGS'),
     (r'revenue\s+growth', 0.4, 0.5, 'EARNINGS'),
     (r'profit\s+growth', 0.4, 0.5, 'EARNINGS'),
+    (r'record\s+quarter', 0.7, 1.5, 'EARNINGS'),
+    (r'record\s+year', 0.7, 1.5, 'EARNINGS'),
+    (r'beats?\s+\w+\s+quarterly', 0.7, 1.5, 'EARNINGS'),
+    (r'raises?\s+outlook', 0.7, 1.5, 'GUIDANCE'),
+    (r'increases?\s+outlook', 0.7, 1.5, 'GUIDANCE'),
+    (r'expands?\s+(?:partnership|agreement|deal)', 0.4, 0.5, 'PRODUCT'),
+    (r'insider\s+buying', 0.4, 0.5, 'MANAGEMENT'),
+    (r'ceo\s+(?:buy|purchase)', 0.4, 0.5, 'MANAGEMENT'),
 ]
 
 # NEGATIVE PHRASES
@@ -144,6 +152,16 @@ NEGATIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     (r'eliminate.*(?:jobs|positions|workforce)', -0.6, 1.5, 'MANAGEMENT'),
     (r'lawsuit', -0.5, 1.0, 'LEGAL'),
     (r'sued', -0.5, 1.0, 'LEGAL'),
+    (r'credit\s+(?:downgrade|cut|watch)', -0.6, 1.5, 'ANALYST_ACTION'),
+    (r'downgraded?\s+by', -0.5, 1.0, 'ANALYST_ACTION'),
+    (r'insider\s+selling', -0.4, 0.5, 'MANAGEMENT'),
+    (r'ceo\s+(?:sell|resign|step)', -0.5, 1.0, 'MANAGEMENT'),
+    (r'revenue\s+miss', -0.8, 2.0, 'EARNINGS'),
+    (r'eps\s+miss', -0.8, 2.0, 'EARNINGS'),
+    (r'misses?\s+quarterly', -0.7, 1.5, 'EARNINGS'),
+    (r'lowers?\s+outlook', -0.7, 1.5, 'GUIDANCE'),
+    (r'reduces?\s+outlook', -0.7, 1.5, 'GUIDANCE'),
+    (r'disappointing\s+(?:results|earnings|revenue)', -0.6, 1.5, 'EARNINGS'),
     # Financial weakness
     (r'margin\s+contraction', -0.5, 1.0, 'EARNINGS'),
     (r'weak\s+demand', -0.5, 1.0, 'EARNINGS'),

@@ -263,14 +263,18 @@ class MarketauxProvider(NewsProvider):
                 raw_sentiment = ""
                 raw_score = 0.0
                 matched = []
+                best_match_score = 0.0
+                entity_cnt = len(entities)
                 if entities:
                     for ent in entities:
                         ent_symbol = ent.get("symbol", "").upper()
                         ent_name = ent.get("name", "")
+                        match_score = ent.get("match_score", 0.0)
                         matched.append(ent_name)
                         if ent_symbol == ticker.upper():
                             raw_sentiment = ent.get("sentiment", "")
                             raw_score = ent.get("sentiment_score", 0.0)
+                            best_match_score = max(best_match_score, match_score)
                 if not matched:
                     matched = [company.short_name] if company.short_name else []
 
@@ -287,6 +291,8 @@ class MarketauxProvider(NewsProvider):
                     matched_entities=matched,
                     raw_sentiment_label=raw_sentiment,
                     raw_sentiment_score=raw_score,
+                    entity_match_score=best_match_score,
+                    entity_count=entity_cnt,
                 ))
 
             latency = (time.perf_counter() - start) * 1000

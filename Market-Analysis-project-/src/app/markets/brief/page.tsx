@@ -447,7 +447,7 @@ export default function StockBriefPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Market Mood</span>
                   <Badge variant="secondary" className={cn('text-xs', getSentimentBadgeClass(sentiment.sentiment_label || '', sentiment.status))}>
-                    {formatSentimentLabel(sentiment.market_mood || sentiment.sentiment_label || '', sentiment.status)}
+                    {formatSentimentLabel(sentiment.sentiment_label || '', sentiment.status)}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
