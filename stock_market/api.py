@@ -282,7 +282,11 @@ async def health():
 @app.get("/api/news/providers")
 def get_news_providers_status():
     """Return health status and circuit breaker state of all news providers."""
-    return news_aggregator.get_provider_status()
+    try:
+        from news_engine import get_news_provider_status
+        return get_news_provider_status()
+    except ImportError:
+        return news_aggregator.get_provider_status()
 
 
 @app.post("/api/data/catalysts")
@@ -687,14 +691,29 @@ def _compute_market_overview_raw(ticker: str, period: str) -> Dict[str, Any]:
 
         def _compute_sentiment():
             try:
-                sent_full = analyze_sentiment(ticker)
+                sent_key = f"sentiment:{ticker}"
+                sent_payload, _ = cache_manager.get_swr(
+                    key=sent_key,
+                    refresh_func=lambda: analyze_sentiment(ticker),
+                    fresh_ttl_seconds=600.0,
+                    stale_ttl_seconds=86400.0,
+                    category="sentiment",
+                    ticker=ticker,
+                )
+                if sent_payload is None:
+                    sent_full = analyze_sentiment(ticker)
+                else:
+                    sent_full = sent_payload
                 return ("sentiment", {
                     "ticker": ticker,
                     "sentiment_score": sent_full["score"],
                     "sentiment_label": sent_full["label"],
+                    "status": sent_full.get("status", "sufficient"),
                     "positive_count": sent_full.get("positive_count", 0),
                     "negative_count": sent_full.get("negative_count", 0),
                     "news": sent_full["news"],
+                    "news_count": sent_full.get("news_count", len(sent_full.get("news", []))),
+                    "source_providers": sent_full.get("source_providers", []),
                     "score": sent_full["score"],
                     "label": sent_full["label"],
                     "sentiment_trend_7d": sent_full.get("sentiment_trend_7d", []),
@@ -968,9 +987,9 @@ def get_home_intelligence():
                     "score": (brief_payload.get("tradeConfirmation") or {}).get("opportunity_score", 50),
                     "risk": (brief_payload.get("risk") or {}).get("risk_level", "Unknown"),
                     "sentiment": (brief_payload.get("sentiment") or {}).get("sentiment_label", "Neutral"),
+                    "sentiment_status": (brief_payload.get("sentiment") or {}).get("status", "sufficient"),
                     "market_mood": (brief_payload.get("sentiment") or {}).get("market_mood", "Unknown"),
                     "volatility": (brief_payload.get("volatility") or {}).get("daily_volatility", 0),
-                    "marketStatus": brief_payload.get("marketStatus", "Unknown"),
                 }
             else:
                 result["selectedStock"] = None
@@ -1132,6 +1151,7 @@ def get_home_brief():
                     "score": (brief_payload.get("tradeConfirmation") or {}).get("opportunity_score", 50),
                     "risk": (brief_payload.get("risk") or {}).get("risk_level", "Unknown"),
                     "sentiment": (brief_payload.get("sentiment") or {}).get("sentiment_label", "Neutral"),
+                    "sentiment_status": (brief_payload.get("sentiment") or {}).get("status", "sufficient"),
                     "market_mood": (brief_payload.get("sentiment") or {}).get("market_mood", "Unknown"),
                     "volatility": (brief_payload.get("volatility") or {}).get("daily_volatility", 0),
                 }
@@ -1377,6 +1397,7 @@ def discover_scan(req: DiscoverScanRequest):
 
                 # Sentiment (use cached, never block)
                 sentiment_label = "Neutral"
+                sentiment_status = "insufficient"
                 try:
                     sent_key = f"sentiment:{ticker}"
                     sent_payload, _ = cache_manager.get_swr(
@@ -1389,6 +1410,7 @@ def discover_scan(req: DiscoverScanRequest):
                     )
                     if sent_payload:
                         sentiment_label = sent_payload.get("label", "Neutral")
+                        sentiment_status = sent_payload.get("status", "sufficient")
                 except Exception:
                     pass
 
@@ -1401,6 +1423,7 @@ def discover_scan(req: DiscoverScanRequest):
                     "signal": signal,
                     "risk": risk_level,
                     "sentiment": sentiment_label,
+                    "sentiment_status": sentiment_status,
                     "score": round(opp_score, 0),
                 })
             except Exception as e:
@@ -2058,9 +2081,12 @@ def get_sentiment(request: SentimentRequest):
             "ticker": request.ticker,
             "sentiment_score": result["score"],
             "sentiment_label": result["label"],
+            "status": result.get("status", "sufficient"),
             "positive_count": result.get("positive_count", 0),
             "negative_count": result.get("negative_count", 0),
             "news": result["news"],
+            "news_count": result.get("news_count", len(result.get("news", []))),
+            "source_providers": result.get("source_providers", []),
             "score": result["score"],
             "label": result["label"],
             "sentiment_trend_7d": result.get("sentiment_trend_7d", []),

@@ -227,11 +227,14 @@ export interface EnhancedSentiment {
   ticker?: string;
   sentiment_score: number;
   sentiment_label: string;
+  status: 'sufficient' | 'insufficient' | 'error';
   score: number;
   label: string;
   positive_count: number;
   negative_count: number;
-  news: Array<{ title: string; source: string; url: string; published_at: string }>;
+  news_count: number;
+  source_providers: string[];
+  news: Array<{ title: string; source: string; url: string; published_at: string; sentiment?: number }>;
   sentiment_trend_7d: Array<{ date: string; score: number }>;
   news_impact_summary: string;
   market_mood: string;
@@ -521,6 +524,7 @@ export interface DiscoverStock {
   signal: string;
   risk: string;
   sentiment: string;
+  sentiment_status: 'sufficient' | 'insufficient' | 'error';
   score: number;
 }
 
@@ -559,6 +563,7 @@ export interface HomeIntelligence {
     score: number;
     risk: string;
     sentiment: string;
+    sentiment_status: 'sufficient' | 'insufficient' | 'error';
     market_mood: string;
     volatility: number;
     marketStatus: string;
@@ -610,6 +615,7 @@ export interface HomeBrief {
     score: number;
     risk: string;
     sentiment: string;
+    sentiment_status: 'sufficient' | 'insufficient' | 'error';
     market_mood: string;
     volatility: number;
   } | null;

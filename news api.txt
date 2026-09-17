@@ -1,0 +1,3 @@
+marketaux news api tokon:   "VJ6TuI077qmjgg6HDOnqyjjog1pBzYGnHTkiM6zB"
+
+Currents news API tokon:  "YknDkuCwFHjVMcO2dC1UmSEcCSo5E13yLrihOtWaIFHTXJRp"

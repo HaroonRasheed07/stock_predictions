@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { fetchSentiment, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { useStockStore } from '@/store/stockStore';
+import { getSentimentColorClass, getSentimentScoreColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { SentimentTrend } from '@/components/analysis/SentimentTrend';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { TickerLogo } from '@/components/common/TickerLogo';
@@ -215,15 +216,11 @@ export default function SentimentAnalysis() {
                 <p className="text-xl sm:text-3xl font-bold">
                   {sentimentData?.sentiment_score ? sentimentData.sentiment_score.toFixed(2) : '0.00'}
                 </p>
-                <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${sentimentData?.sentiment_label === 'Positive' ? 'text-success' :
-                    sentimentData?.sentiment_label === 'Negative' ? 'text-destructive' : 'text-muted-foreground'
-                  }`}>
-                  {sentimentData?.sentiment_label || 'Neutral'}
+                <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`}>
+                  {formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}
                 </p>
               </div>
-              <TrendingUp className={`h-7 w-7 sm:h-10 sm:w-10 ${sentimentData?.sentiment_label === 'Positive' ? 'text-success' :
-                  sentimentData?.sentiment_label === 'Negative' ? 'text-destructive' : 'text-muted-foreground'
-                }`} />
+              <TrendingUp className={`h-7 w-7 sm:h-10 sm:w-10 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`} />
             </div>
           </CardContent>
         </Card>
@@ -233,7 +230,7 @@ export default function SentimentAnalysis() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Sentiment</p>
-                <p className="text-xl sm:text-3xl font-bold">{sentimentData?.sentiment_label || 'N/A'}</p>
+                <p className="text-xl sm:text-3xl font-bold">{formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Market Mood</p>
               </div>
               <MessageSquare className="h-7 w-7 sm:h-10 sm:w-10 text-primary" />
@@ -246,7 +243,7 @@ export default function SentimentAnalysis() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">News Count</p>
-                <p className="text-xl sm:text-3xl font-bold">{sentimentData?.news?.length || 0}</p>
+                <p className="text-xl sm:text-3xl font-bold">{sentimentData?.news_count ?? sentimentData?.news?.length ?? 0}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Articles analyzed</p>
               </div>
               <AlertCircle className="h-7 w-7 sm:h-10 sm:w-10 text-secondary" />

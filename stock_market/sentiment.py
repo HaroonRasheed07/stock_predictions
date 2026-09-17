@@ -1,124 +1,124 @@
+"""
+sentiment.py — Sentiment analysis facade.
+
+Routes through the new news_engine for canonical sentiment.
+Legacy callers continue to work unchanged.
+"""
+
 import time
 import sys
 import os
 import logging
 
-# Add parent directory to path for shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from shared_sentiment import analyze_news_sentiment
-
 logger = logging.getLogger(__name__)
 
-# --- Sentiment cache (10-minute TTL) ---
-_sentiment_cache: dict = {}
-_SENTIMENT_CACHE_TTL = 600  # 10 minutes
+# Add parent directory to path for shared modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def analyze_sentiment(ticker):
     """
-    Analyze sentiment for a ticker using multi-source news providers.
-    Falls back: NewsData.io -> GDELT -> Alpha Vantage.
-    Results are cached for 10 minutes.
-    Returns: dict with score, label, positive_count, negative_count, news
+    Analyze sentiment for a ticker using the new news_engine pipeline.
+    Returns the same dict structure as before for backward compatibility.
     """
-    cache_key = f"sentiment_{ticker}"
-    if cache_key in _sentiment_cache:
-        ts, cached = _sentiment_cache[cache_key]
-        if time.time() - ts < _SENTIMENT_CACHE_TTL:
-            return cached
-
     try:
-        # Use multi-source news aggregator (NewsData -> GDELT -> AlphaVantage)
-        from news_providers import news_aggregator
-        articles = news_aggregator.fetch_news(ticker, max_results=10)
-
-        if articles:
-            # Convert NormalizedArticle objects to dicts for shared_sentiment
-            news_items = [a.__dict__ for a in articles]
-
-            # Score sentiment using keyword-based analyzer
-            result = analyze_news_sentiment(news_items)
-
-            base_score = result["sentiment_score"]
-
-            # Synthesize 7-day trend (mocked — Phase 3 will replace with real history)
-            import random
-            trend_7d = [
-                {"date": f"Day {-i}", "score": max(-1.0, min(1.0, base_score + random.uniform(-0.2, 0.2)))}
-                for i in range(7, 0, -1)
-            ]
-
-            # Market mood
-            if base_score > 0.3:
-                mood = "Bullish"
-            elif base_score > 0.1:
-                mood = "Slightly Bullish"
-            elif base_score < -0.3:
-                mood = "Bearish"
-            elif base_score < -0.1:
-                mood = "Slightly Bearish"
-            else:
-                mood = "Mixed/Neutral"
-
-            sentiment_result = {
-                "score": base_score,
-                "label": result["sentiment_label"],
-                "positive_count": result["positive_count"],
-                "negative_count": result["negative_count"],
-                "news": result["news"],
-                "sentiment_trend_7d": trend_7d,
-                "news_impact_summary": (
-                    f"Recent headlines show a {mood.lower()} sentiment. "
-                    f"Positive mentions: {result['positive_count']}, "
-                    f"Negative mentions: {result['negative_count']}."
-                ),
-                "market_mood": mood,
-            }
-            _sentiment_cache[cache_key] = (time.time(), sentiment_result)
-            return sentiment_result
-        else:
-            neutral_result = {
-                "score": 0.0,
-                "label": "Neutral",
-                "positive_count": 0,
-                "negative_count": 0,
-                "news": [],
-                "sentiment_trend_7d": [],
-                "news_impact_summary": "No recent news found for this asset.",
-                "market_mood": "Unknown",
-            }
-            _sentiment_cache[cache_key] = (time.time(), neutral_result)
-            return neutral_result
-
+        from news_engine import get_sentiment_for_api
+        return get_sentiment_for_api(ticker)
+    except ImportError:
+        logger.warning("news_engine not available, falling back to legacy sentiment")
+        return _legacy_analyze_sentiment(ticker)
     except Exception as e:
-        logger.error(f"Sentiment analysis error for {ticker}: {e}")
+        logger.error(f"news_engine error for {ticker}: {e}")
         return {
             "score": 0.0,
-            "label": "Neutral",
+            "label": "Error",
+            "status": "error",
             "positive_count": 0,
             "negative_count": 0,
             "news": [],
+            "news_count": 0,
+            "source_providers": [],
             "sentiment_trend_7d": [],
-            "news_impact_summary": "Error fetching sentiment data.",
+            "news_impact_summary": f"Error: {e}",
             "market_mood": "Unknown",
         }
 
 
-def show_sentiment_analysis(ticker):
-    """Streamlit display function - not used by API."""
-    import streamlit as st
-    st.subheader("News Sentiment Analysis")
-    result = analyze_sentiment(ticker)
+def _legacy_analyze_sentiment(ticker):
+    """Fallback legacy sentiment analysis if news_engine is unavailable."""
+    from shared_sentiment import analyze_news_sentiment
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Sentiment", result["label"], f"{result['score']:.2f}")
-    col2.metric("Positive", result["positive_count"])
-    col3.metric("Negative", result["negative_count"])
+    cache_key = f"sentiment_{ticker}"
+    try:
+        from news_providers import news_aggregator
+        articles = news_aggregator.fetch_news(ticker, max_results=10)
 
-    if result["news"]:
-        st.write("### Headlines:")
-        for item in result["news"][:5]:
-            emoji = "🟢" if item.get("sentiment", 0) > 0.1 else "🔴" if item.get("sentiment", 0) < -0.1 else "🟡"
-            st.write(f"{emoji} {item['title']} ({item.get('source', 'Unknown')})")
-    else:
-        st.warning("No news data returned.")
+        if articles:
+            news_items = [a.__dict__ for a in articles]
+            result = analyze_news_sentiment(news_items, ticker=ticker)
+            base_score = result["sentiment_score"]
+            status = result["status"]
+            sources = list(set(a.provider for a in articles))
+
+            if status == "sufficient":
+                if base_score > 0.3:
+                    mood = "Bullish"
+                elif base_score > 0.1:
+                    mood = "Slightly Bullish"
+                elif base_score < -0.3:
+                    mood = "Bearish"
+                elif base_score < -0.1:
+                    mood = "Slightly Bearish"
+                else:
+                    mood = "Mixed/Neutral"
+                summary = (
+                    f"Recent headlines show a {mood.lower()} sentiment. "
+                    f"Positive mentions: {result['positive_count']}, "
+                    f"Negative mentions: {result['negative_count']}."
+                )
+            else:
+                mood = "Unknown"
+                summary = "No relevant news found for this asset."
+
+            return {
+                "score": base_score,
+                "label": result["sentiment_label"],
+                "status": status,
+                "positive_count": result["positive_count"],
+                "negative_count": result["negative_count"],
+                "news": result["news"],
+                "news_count": len(articles),
+                "source_providers": sources,
+                "sentiment_trend_7d": [],
+                "news_impact_summary": summary,
+                "market_mood": mood,
+            }
+        else:
+            return {
+                "score": 0.0,
+                "label": "Insufficient News",
+                "status": "insufficient",
+                "positive_count": 0,
+                "negative_count": 0,
+                "news": [],
+                "news_count": 0,
+                "source_providers": [],
+                "sentiment_trend_7d": [],
+                "news_impact_summary": "No news providers returned results for this asset.",
+                "market_mood": "Unknown",
+            }
+    except Exception as e:
+        logger.error(f"Legacy sentiment error for {ticker}: {e}")
+        return {
+            "score": 0.0,
+            "label": "Error",
+            "status": "error",
+            "positive_count": 0,
+            "negative_count": 0,
+            "news": [],
+            "news_count": 0,
+            "source_providers": [],
+            "sentiment_trend_7d": [],
+            "news_impact_summary": f"Error fetching sentiment data: {e}",
+            "market_mood": "Unknown",
+        }

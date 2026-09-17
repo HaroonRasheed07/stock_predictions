@@ -31,6 +31,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getSentimentColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 
@@ -39,7 +40,7 @@ function DiscoverStockCard({ data, onTap }: {
   data: DiscoverStock;
   onTap: () => void;
 }) {
-  const { ticker, name, price, change, changePercent, signal, risk, sentiment, score } = data;
+  const { ticker, name, price, change, changePercent, signal, risk, sentiment, sentiment_status, score } = data;
 
   return (
     <button
@@ -86,10 +87,9 @@ function DiscoverStockCard({ data, onTap }: {
           <p className="text-[10px] font-medium text-muted-foreground uppercase">Sentiment</p>
           <p className={cn(
             'text-xs font-semibold mt-0.5',
-            sentiment?.includes('Positive') || sentiment === 'Bullish' ? 'text-success' :
-            sentiment?.includes('Negative') || sentiment === 'Bearish' ? 'text-destructive' : 'text-muted-foreground'
+            getSentimentColorClass(sentiment || '', sentiment_status)
           )}>
-            {sentiment?.split(' ')[0] || '—'}
+            {formatSentimentLabel(sentiment || '', sentiment_status) || '—'}
           </p>
         </div>
         <div className="text-center">

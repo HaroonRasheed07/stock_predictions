@@ -15,6 +15,7 @@ import {
 import { useStockStore } from '@/store/stockStore';
 import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchDiscoverScan, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { getSentimentColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -411,10 +412,9 @@ export default function Home() {
                     <p className="text-[10px] font-medium text-muted-foreground uppercase">Sentiment</p>
                     <p className={cn(
                       'text-xs font-semibold mt-0.5',
-                      selected.sentiment?.includes('Positive') || selected.market_mood === 'Bullish' ? 'text-success' :
-                      selected.sentiment?.includes('Negative') || selected.market_mood === 'Bearish' ? 'text-destructive' : 'text-muted-foreground'
+                      getSentimentColorClass(selected.sentiment || '', selected.sentiment_status)
                     )}>
-                      {selected.market_mood || selected.sentiment || '—'}
+                      {formatSentimentLabel(selected.market_mood || selected.sentiment || '', selected.sentiment_status)}
                     </p>
                   </div>
                   <div className="text-center">
@@ -520,10 +520,8 @@ export default function Home() {
                         <p className="text-[10px] font-medium text-muted-foreground uppercase">Sentiment</p>
                         <p className={cn(
                           'text-xs font-semibold mt-0.5',
-                          stock.sentiment === 'Positive' ? 'text-success' :
-                          stock.sentiment === 'Negative' ? 'text-destructive' :
-                          stock.sentiment === 'Neutral' ? 'text-warning' : 'text-muted-foreground'
-                        )}>{stock.sentiment || '—'}</p>
+                          getSentimentColorClass(stock.sentiment || '', stock.sentiment_status)
+                        )}>{formatSentimentLabel(stock.sentiment || '', stock.sentiment_status) || '—'}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] font-medium text-muted-foreground uppercase">Risk</p>

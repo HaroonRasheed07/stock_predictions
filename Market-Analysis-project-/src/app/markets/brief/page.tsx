@@ -45,6 +45,7 @@ import {
   type SignalEvidenceResponse,
 } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { getSentimentScoreColorClass, formatSentimentLabel, getSentimentBadgeClass } from '@/lib/sentiment';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import dynamic from 'next/dynamic';
@@ -445,12 +446,14 @@ export default function StockBriefPage() {
               <>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Market Mood</span>
-                  <Badge variant="secondary" className="text-xs">{sentiment.market_mood || sentiment.sentiment_label}</Badge>
+                  <Badge variant="secondary" className={cn('text-xs', getSentimentBadgeClass(sentiment.sentiment_label || '', sentiment.status))}>
+                    {formatSentimentLabel(sentiment.market_mood || sentiment.sentiment_label || '', sentiment.status)}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Score</span>
-                  <span className={cn('text-sm font-semibold', sentiment.sentiment_score > 0.1 ? 'text-success' : sentiment.sentiment_score < -0.1 ? 'text-destructive' : 'text-muted-foreground')}>
-                    {sentiment.sentiment_score?.toFixed(2)}
+                  <span className={cn('text-sm font-semibold', getSentimentScoreColorClass(sentiment.sentiment_score || 0))}>
+                    {sentiment.status === 'insufficient' ? '—' : sentiment.sentiment_score?.toFixed(2)}
                   </span>
                 </div>
                 {sentiment.news_impact_summary && (

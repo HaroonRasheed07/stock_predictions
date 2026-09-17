@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useStockStore } from '@/store/stockStore';
+import { getSentimentColorClass } from '@/lib/sentiment';
 
 export default function StockOverview() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
@@ -193,6 +194,7 @@ export default function StockOverview() {
 
   const sentimentLabel = overview?.sentiment?.sentiment_label || 'Neutral';
   const sentimentScore = overview?.sentiment?.sentiment_score || 0;
+  const sentimentStatus = overview?.sentiment?.status || 'sufficient';
 
   const marketStats = [
     {
@@ -221,11 +223,11 @@ export default function StockOverview() {
     },
     {
       title: 'Sentiment',
-      value: sentimentLabel,
-      change: `${(sentimentScore * 100).toFixed(0)}% Score`,
-      trend: sentimentScore > 0.5 ? 'up' : 'down',
+      value: sentimentStatus === 'insufficient' ? 'No Data' : sentimentLabel,
+      change: sentimentStatus === 'insufficient' ? 'No recent news' : `${(sentimentScore * 100).toFixed(0)}% Score`,
+      trend: sentimentScore > 0.1 ? 'up' : sentimentScore < -0.1 ? 'down' : 'neutral',
       icon: Users,
-      color: sentimentLabel === 'Positive' ? 'text-success' : sentimentLabel === 'Negative' ? 'text-destructive' : 'text-muted-foreground',
+      color: getSentimentColorClass(sentimentLabel, sentimentStatus),
     },
   ];
 
