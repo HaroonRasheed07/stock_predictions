@@ -230,8 +230,14 @@ class SentimentSnapshot:
             "positive_pct": self.positive_pct,
             "neutral_pct": self.neutral_pct,
             "negative_pct": self.negative_pct,
+            "article_count": self.article_count,
+            "relevant_article_count": self.relevant_article_count,
+            "source_count": self.source_count,
             "news_count": self.relevant_article_count,
             "source_providers": self.source_providers,
+            "providers_attempted": self.providers_attempted,
+            "generated_at": self.generated_at,
+            "data_freshness": self.data_freshness,
             "news": [
                 {
                     "title": a.title,
@@ -242,8 +248,26 @@ class SentimentSnapshot:
                 }
                 for a in self.articles[:10]
             ],
+            "articles": [
+                {
+                    "article_id": a.article_id,
+                    "title": a.title,
+                    "url": a.url,
+                    "publisher": a.publisher,
+                    "published_at": a.published_at,
+                    "relevance_score": a.relevance_score,
+                    "finbert_label": a.finbert_label,
+                    "finbert_positive": a.finbert_positive,
+                    "finbert_neutral": a.finbert_neutral,
+                    "finbert_negative": a.finbert_negative,
+                    "weighted_score": a.weighted_score,
+                    "source_quality": a.source_quality,
+                }
+                for a in self.articles[:20]
+            ],
             "sentiment_trend_7d": [],
             "news_impact_summary": self.news_impact_summary,
             "market_mood": self.market_mood,
             "methodology_version": self.methodology_version,
+            "provider_summary": self.provider_summary,
         }
