@@ -129,6 +129,7 @@ class ArticleSentiment:
     source_quality: float = 0.5
     entity_match_score: float = 0.0
     entity_count: int = 0
+    rule_score: float = 0.0  # Raw rule-engine score before pseudo-prob conversion
 
 
 @dataclass
@@ -279,6 +280,7 @@ class SentimentSnapshot:
                     "finbert_negative": a.finbert_negative,
                     "weighted_score": a.weighted_score,
                     "source_quality": a.source_quality,
+                    "rule_score": getattr(a, 'rule_score', 0.0),
                 }
                 for a in self.articles[:20]
             ],

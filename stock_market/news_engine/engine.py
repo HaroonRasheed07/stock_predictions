@@ -37,7 +37,7 @@ MIN_RELEVANT_ARTICLES = 2        # Minimum for "sufficient" status
 SNAPSHOT_TTL_SECONDS = 900       # 15 minutes
 LOOKBACK_DAYS = 3                # How far back to look for news
 MAX_ARTICLES_PER_TICKER = 20     # Cap per ticker
-METHODOLOGY_VERSION = "4"        # Bump when rule engine changes materially
+METHODOLOGY_VERSION = "5"        # Bump when rule engine changes materially
 
 # Recency weights (hours since publication)
 RECENCY_WEIGHTS = [
@@ -214,6 +214,7 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
                 "source_quality": a.source_quality,
                 "entity_match_score": a.entity_match_score,
                 "entity_count": a.entity_count,
+                "rule_score": getattr(a, 'rule_score', 0.0),
             }
             for a in s.articles[:MAX_ARTICLES_PER_TICKER]
         ],
@@ -242,6 +243,7 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
             source_quality=a.get("source_quality", 0.5),
             entity_match_score=a.get("entity_match_score", 0.0),
             entity_count=a.get("entity_count", 0),
+            rule_score=a.get("rule_score", 0.0),
         )
         for a in d.get("articles", [])
     ]
@@ -493,8 +495,9 @@ def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, Senti
     Returns: (score, label, positive_pct, neutral_pct, negative_pct, positive_count, neutral_count, negative_count)
 
     DISTRIBUTION = simple article COUNTS (not weighted).
-    WEIGHTED SCORE = relevance × recency × source_quality × model_confidence.
-    These are intentionally separate concepts.
+    WEIGHTED SCORE = relevance × recency × source_quality × rule_score.
+    rule_score is the normalized rule-engine score (already in [-1, 1]).
+    When FinBERT is available, label_score = finbert_positive - finbert_negative.
     """
     if not articles:
         return 0.0, SentimentLabel.INSUFFICIENT, 0.0, 0.0, 0.0, 0, 0, 0
@@ -508,19 +511,19 @@ def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, Senti
     neutral_count = 0
 
     for article in articles:
-        # article_weight = relevance × recency × source_quality × model_confidence
         recency = _get_recency_weight(article.published_at)
         source_q = article.source_quality
-        confidence = max(article.finbert_positive, article.finbert_negative, article.finbert_neutral)
 
-        weight = article.relevance_score * recency * source_q * confidence
+        weight = article.relevance_score * recency * source_q
         if weight < 0.01:
             weight = 0.01  # Minimum weight for any retained article
 
         total_weight += weight
 
-        # FinBERT label → numeric score for weighted overall
-        label_score = article.finbert_positive - article.finbert_negative
+        # Use rule_score directly (it's the normalized rule engine score).
+        # If FinBERT was available, rule_score was set from finbert_label mapping.
+        # If not, it's the direct rule engine normalized score.
+        label_score = article.rule_score
         weighted_score += label_score * weight
 
         # Count-based distribution (one vote per article)
@@ -941,6 +944,21 @@ def get_sentiment_snapshot(
                 elif article.source_type == SourceType.REGULATORY:
                     source_q = 0.9
 
+                # Get rule engine score for this article too
+                _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if _parent_dir not in sys.path:
+                    sys.path.insert(0, _parent_dir)
+                try:
+                    from shared_sentiment import score_article as _score_article
+                    _rule_result = _score_article(article.title, article.description)
+                    _rule_score = _rule_result["score"]
+                except Exception:
+                    _rule_score = 0.0
+
+                # For aggregation: use FinBERT label_score (more reliable when FinBERT available)
+                # but also store rule_score for diagnostics
+                _label_score = fb["positive"] - fb["negative"]
+
                 article_sentiments.append(ArticleSentiment(
                     article_id=article.id,
                     title=article.title,
@@ -955,6 +973,7 @@ def get_sentiment_snapshot(
                     source_quality=source_q,
                     entity_match_score=article.entity_match_score,
                     entity_count=article.entity_count,
+                    rule_score=_label_score,
                 ))
         elif unique_articles:
             # No FinBERT — use finance-specific rule engine
@@ -976,20 +995,19 @@ def get_sentiment_snapshot(
 
             for article in unique_articles:
                 result = _score_article(article.title, article.description)
-                fb_label = result["label"]
-                fb_pos = max(0.1, 0.5 + result["score"] * 0.4)
-                fb_neg = max(0.1, 0.5 - result["score"] * 0.4)
+                rule_score = result["score"]  # Already normalized by shared_sentiment.py
+
+                # Convert rule_score to pseudo-FinBERT probabilities for label
+                # (label is used for count-based distribution)
+                fb_pos = max(0.1, 0.5 + rule_score * 0.4)
+                fb_neg = max(0.1, 0.5 - rule_score * 0.4)
                 fb_neu = max(0.1, 1.0 - fb_pos - fb_neg)
-                # Normalize
                 total = fb_pos + fb_neg + fb_neu
                 fb_pos /= total
                 fb_neg /= total
                 fb_neu /= total
 
-                article.finbert_label = fb_label
-                article.finbert_positive = round(fb_pos, 4)
-                article.finbert_negative = round(fb_neg, 4)
-                article.finbert_neutral = round(fb_neu, 4)
+                fb_label = result["label"]
 
                 source_q = SOURCE_QUALITY.get(article.provider, 0.5)
                 article_sentiments.append(ArticleSentiment(
@@ -1000,12 +1018,13 @@ def get_sentiment_snapshot(
                     published_at=article.published_at,
                     relevance_score=article.relevance_score,
                     finbert_label=fb_label,
-                    finbert_positive=fb_pos,
-                    finbert_negative=fb_neg,
-                    finbert_neutral=fb_neu,
+                    finbert_positive=round(fb_pos, 4),
+                    finbert_negative=round(fb_neg, 4),
+                    finbert_neutral=round(fb_neu, 4),
                     source_quality=source_q,
                     entity_match_score=article.entity_match_score,
                     entity_count=article.entity_count,
+                    rule_score=rule_score,  # Store the actual rule engine score
                 ))
 
         # 10. Aggregate

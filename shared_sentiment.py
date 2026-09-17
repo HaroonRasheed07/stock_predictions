@@ -78,8 +78,8 @@ POSITIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     # Product/approval
     (r'product\s+launch', 0.5, 1.0, 'PRODUCT'),
     (r'unveils?\s+(?:new|updated)', 0.5, 1.0, 'PRODUCT'),
-    (r'launches?\s+(?:new|updated)', 0.5, 1.0, 'PRODUCT'),
-    (r'announce.*(?:new|feature|product|partnership)', 0.4, 0.8, 'PRODUCT'),
+    (r'launches?\s+(?:product|updated)', 0.5, 1.0, 'PRODUCT'),
+    (r'announce.*(?:product|feature|partnership)', 0.4, 0.8, 'PRODUCT'),
     (r'regulatory\s+approval', 0.6, 1.0, 'REGULATORY'),
     (r'fda\s+(?:approval|clearance|authorizes)', 0.7, 1.5, 'REGULATORY'),
     (r'acqui(?:re|sition)', 0.4, 0.5, 'M_A'),
@@ -578,13 +578,13 @@ def score_article(title: str, description: str = "") -> Dict[str, Any]:
             final_score = all_scores[0] * 0.4 + all_scores[-1] * 0.6
 
     # Normalize score to [-1, 1]
-    # Use less aggressive scaling so phrase signals aren't washed out
+    # Direct clamping — no artificial attenuation
     if abs(final_score) > 3.0:
         final_score = max(-1.0, min(1.0, final_score / 3.0))
     elif abs(final_score) > 1.5:
         final_score = max(-1.0, min(1.0, final_score / 2.0))
     else:
-        final_score = max(-1.0, min(1.0, final_score * 0.7))
+        final_score = max(-1.0, min(1.0, final_score))
 
     # ── Step 5: Detect market reaction (separate from company event) ──
     market_reaction = _detect_market_reaction(text_lower)
