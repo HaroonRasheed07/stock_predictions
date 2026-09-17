@@ -227,17 +227,22 @@ export interface EnhancedSentiment {
   ticker?: string;
   sentiment_score: number;
   sentiment_label: string;
-  status: 'sufficient' | 'insufficient' | 'error';
+  status: 'sufficient' | 'insufficient' | 'error' | 'no_relevant_news' | 'news_unavailable';
   score: number;
   label: string;
   positive_count: number;
   negative_count: number;
+  neutral_count: number;
+  positive_pct: number;
+  neutral_pct: number;
+  negative_pct: number;
   news_count: number;
   source_providers: string[];
   news: Array<{ title: string; source: string; url: string; published_at: string; sentiment?: number }>;
   sentiment_trend_7d: Array<{ date: string; score: number }>;
   news_impact_summary: string;
   market_mood: string;
+  methodology_version?: string;
 }
 
 

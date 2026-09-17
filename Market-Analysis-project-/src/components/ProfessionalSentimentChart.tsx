@@ -6,6 +6,12 @@ import { useThemeStore } from '@/store/themeStore';
 interface SentimentData {
   sentiment_label: string;
   sentiment_score: number;
+  positive_count?: number;
+  negative_count?: number;
+  neutral_count?: number;
+  positive_pct?: number;
+  neutral_pct?: number;
+  negative_pct?: number;
   news?: any[];
 }
 
@@ -27,11 +33,23 @@ export default function ProfessionalSentimentChart({ data }: ProfessionalSentime
 
   const score = data?.sentiment_score || 0;
 
+  // Use actual article counts from backend (NOT score-derived percentages)
+  // This ensures the donut chart matches the article distribution exactly
+  const backendPosCount = data?.positive_count ?? 0;
+  const backendNegCount = data?.negative_count ?? 0;
+  const backendNeuCount = data?.neutral_count ?? (data?.news?.length ?? 0) - backendPosCount - backendNegCount;
+  const totalCount = backendPosCount + backendNegCount + backendNeuCount;
+
   let positivePercent = 0;
   let neutralPercent = 0;
   let negativePercent = 0;
 
-  if (score > 0.3) {
+  if (totalCount > 0) {
+    // Direct article count distribution — MUST match counts
+    positivePercent = Math.round((backendPosCount / totalCount) * 100);
+    negativePercent = Math.round((backendNegCount / totalCount) * 100);
+    neutralPercent = 100 - positivePercent - negativePercent; // Ensure sum = 100
+  } else if (score > 0.3) {
     positivePercent = Math.round((score + 1) / 2 * 100);
     neutralPercent = Math.round((1 - score) / 2 * 50);
     negativePercent = 100 - positivePercent - neutralPercent;

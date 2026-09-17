@@ -1254,6 +1254,8 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
             signal = "Hold"
             opp_score = 50.0
             risk_level = "Unknown"
+            sentiment_label = "Neutral"
+            sentiment_status = "insufficient"
             try:
                 indicators = calculate_indicators(df)
                 df_ind = pd.DataFrame(indicators)
@@ -1274,6 +1276,14 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
+            # Get sentiment from canonical snapshot (shared with sentiment page)
+            try:
+                sent = analyze_sentiment(ticker)
+                sentiment_label = sent.get("label", "Neutral")
+                sentiment_status = sent.get("status", "insufficient")
+            except Exception:
+                pass
+
             return (ticker, {
                 "ticker": ticker,
                 "name": asset_info.get("name", ticker),
@@ -1282,6 +1292,8 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
                 "signal": signal,
                 "risk": risk_level,
                 "score": round(opp_score, 0),
+                "sentiment": sentiment_label,
+                "sentiment_status": sentiment_status,
             })
         except Exception:
             return (ticker, None)

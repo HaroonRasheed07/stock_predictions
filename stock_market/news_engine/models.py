@@ -151,6 +151,7 @@ class SentimentSnapshot:
     generated_at: str = ""
     expires_at: str = ""
     data_freshness: str = "fresh"
+    methodology_version: str = "3"
 
     provider_summary: Dict[str, Any] = field(default_factory=dict)
 
@@ -212,7 +213,10 @@ class SentimentSnapshot:
         )
 
     def to_legacy_dict(self) -> Dict[str, Any]:
-        """Return dict matching the existing frontend EnhancedSentiment interface."""
+        """Return dict matching the existing frontend EnhancedSentiment interface.
+        Includes article count distribution (positive_count, neutral_count, negative_count)
+        and distribution percentages that match the counts."""
+        neutral_count = self.relevant_article_count - self.positive_count - self.negative_count
         return {
             "ticker": self.ticker,
             "sentiment_score": self.score,
@@ -222,6 +226,10 @@ class SentimentSnapshot:
             "label": self.sentiment_label,
             "positive_count": self.positive_count,
             "negative_count": self.negative_count,
+            "neutral_count": neutral_count,
+            "positive_pct": self.positive_pct,
+            "neutral_pct": self.neutral_pct,
+            "negative_pct": self.negative_pct,
             "news_count": self.relevant_article_count,
             "source_providers": self.source_providers,
             "news": [
@@ -237,4 +245,5 @@ class SentimentSnapshot:
             "sentiment_trend_7d": [],
             "news_impact_summary": self.news_impact_summary,
             "market_mood": self.market_mood,
+            "methodology_version": self.methodology_version,
         }

@@ -127,7 +127,7 @@ export default function SentimentAnalysis() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Sentiment Analysis</h1>
-          <p className="text-sm text-muted-foreground">Real-time market sentiment for {ticker}</p>
+          <p className="text-sm text-muted-foreground">Recent market sentiment for {ticker}</p>
         </div>
         <div className="flex items-center gap-2">
           <WatchlistButton ticker={ticker} />
@@ -278,8 +278,8 @@ export default function SentimentAnalysis() {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <CardTitle className="flex items-center gap-2">
-                    <span>Sentiment Distribution</span>
-                    <Badge variant="secondary" className="font-medium">Live</Badge>
+                    <span>News Distribution</span>
+                    <Badge variant="secondary" className="font-medium">Recent</Badge>
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">Breakdown from the latest analyzed headlines</p>
                 </div>

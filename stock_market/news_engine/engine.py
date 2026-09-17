@@ -32,6 +32,7 @@ MIN_RELEVANT_ARTICLES = 2        # Minimum for "sufficient" status
 SNAPSHOT_TTL_SECONDS = 900       # 15 minutes
 LOOKBACK_DAYS = 3                # How far back to look for news
 MAX_ARTICLES_PER_TICKER = 20     # Cap per ticker
+METHODOLOGY_VERSION = "3"        # Bump when rule engine changes materially
 
 # Recency weights (hours since publication)
 RECENCY_WEIGHTS = [
@@ -114,7 +115,7 @@ def _init_db():
 
 
 def _sqlite_get_snapshot(ticker: str) -> Optional[SentimentSnapshot]:
-    """Get cached snapshot from SQLite."""
+    """Get cached snapshot from SQLite. Rejects stale methodology versions."""
     try:
         conn = sqlite3.connect(_DB_PATH)
         row = conn.execute(
@@ -127,6 +128,11 @@ def _sqlite_get_snapshot(ticker: str) -> Optional[SentimentSnapshot]:
             expires_at = datetime.fromisoformat(row[1])
             if datetime.now(timezone.utc) < expires_at:
                 data = json.loads(row[0])
+                # Reject old methodology versions
+                cached_version = data.get("methodology_version", "1")
+                if cached_version != METHODOLOGY_VERSION:
+                    logger.info(f"[CACHE] {ticker} rejecting old methodology v{cached_version} (current=v{METHODOLOGY_VERSION})")
+                    return None
                 return _dict_to_snapshot(data)
     except Exception as e:
         logger.debug(f"[CACHE] SQLite read error for {ticker}: {e}")
@@ -183,6 +189,7 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
         ],
         "generated_at": s.generated_at,
         "data_freshness": s.data_freshness,
+        "methodology_version": s.methodology_version,
         "provider_summary": s.provider_summary,
     }
 
@@ -235,6 +242,7 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
         articles=articles,
         generated_at=d.get("generated_at", ""),
         data_freshness=d.get("data_freshness", "fresh"),
+        methodology_version=d.get("methodology_version", "3"),
         provider_summary=d.get("provider_summary", {}),
     )
 
@@ -436,19 +444,25 @@ import hashlib
 
 # ─── Weighted Aggregation ───────────────────────────────────────────────────
 
-def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, SentimentLabel, float, float, float]:
+def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, SentimentLabel, float, float, float, int, int, int]:
     """
     Compute weighted canonical sentiment from scored articles.
-    Returns: (score, label, positive_pct, neutral_pct, negative_pct)
+    Returns: (score, label, positive_pct, neutral_pct, negative_pct, positive_count, neutral_count, negative_count)
+
+    DISTRIBUTION = simple article COUNTS (not weighted).
+    WEIGHTED SCORE = relevance × recency × source_quality × model_confidence.
+    These are intentionally separate concepts.
     """
     if not articles:
-        return 0.0, SentimentLabel.INSUFFICIENT, 0.0, 0.0, 0.0
+        return 0.0, SentimentLabel.INSUFFICIENT, 0.0, 0.0, 0.0, 0, 0, 0
 
     total_weight = 0.0
     weighted_score = 0.0
-    positive_weight = 0.0
-    negative_weight = 0.0
-    neutral_weight = 0.0
+
+    # Article COUNT distribution (simple, not weighted)
+    positive_count = 0
+    negative_count = 0
+    neutral_count = 0
 
     for article in articles:
         # article_weight = relevance × recency × source_quality × model_confidence
@@ -462,24 +476,31 @@ def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, Senti
 
         total_weight += weight
 
-        # FinBERT label → numeric score
+        # FinBERT label → numeric score for weighted overall
         label_score = article.finbert_positive - article.finbert_negative
         weighted_score += label_score * weight
 
+        # Count-based distribution (one vote per article)
         if article.finbert_label == "positive":
-            positive_weight += weight
+            positive_count += 1
         elif article.finbert_label == "negative":
-            negative_weight += weight
+            negative_count += 1
         else:
-            neutral_weight += weight
+            neutral_count += 1
 
     if total_weight == 0:
-        return 0.0, SentimentLabel.INSUFFICIENT, 0.0, 0.0, 0.0
+        return 0.0, SentimentLabel.INSUFFICIENT, 0.0, 0.0, 0.0, 0, 0, 0
 
     final_score = max(-1.0, min(1.0, weighted_score / total_weight))
-    positive_pct = (positive_weight / total_weight) * 100
-    negative_pct = (negative_weight / total_weight) * 100
-    neutral_pct = (neutral_weight / total_weight) * 100
+
+    # Distribution = simple article count percentages (MUST sum to 100%)
+    total = positive_count + neutral_count + negative_count
+    if total > 0:
+        positive_pct = round((positive_count / total) * 100, 1)
+        negative_pct = round((negative_count / total) * 100, 1)
+        neutral_pct = round(100.0 - positive_pct - negative_pct, 1)  # Ensure sum = 100
+    else:
+        positive_pct = neutral_pct = negative_pct = 0.0
 
     # Label determination with minimum evidence
     if len(articles) < MIN_RELEVANT_ARTICLES:
@@ -491,7 +512,7 @@ def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, Senti
     else:
         label = SentimentLabel.NEUTRAL
 
-    return final_score, label, positive_pct, neutral_pct, negative_pct
+    return final_score, label, positive_pct, neutral_pct, negative_pct, positive_count, neutral_count, negative_count
 
 
 # ─── Main Pipeline ──────────────────────────────────────────────────────────
@@ -650,40 +671,39 @@ def get_sentiment_snapshot(
                     source_quality=source_q,
                 ))
         elif unique_articles:
-            # No FinBERT — use keyword fallback
+            # No FinBERT — use finance-specific rule engine
             _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             if _parent_dir not in sys.path:
                 sys.path.insert(0, _parent_dir)
             try:
-                from shared_sentiment import score_text_keywords
+                from shared_sentiment import score_article as _score_article
             except ImportError:
-                # Fallback: define inline if shared_sentiment not found
-                def score_text_keywords(text):
-                    pos = ['surge','soar','rally','boom','bull','bullish','gain','rise','jump','growth','strong','record','high','beat','profit','upgrade','buy','success']
-                    neg = ['crash','fall','drop','plunge','bear','bearish','down','loss','weak','miss','negative','fear','panic','sell','correction','recession','hack','fraud']
-                    t = text.lower()
-                    p = sum(1 for k in pos if k in t)
-                    n = sum(1 for k in neg if k in t)
-                    total = p + n
-                    if total == 0: return 0.0
-                    return max(-1.0, min(1.0, ((p - n) / total) * 1.5))
+                # Fallback: inline minimal scoring
+                def _score_article(title, description=""):
+                    t = (title + " " + description).lower()
+                    pos = sum(1 for k in ['beats', 'raises', 'record', 'upgrade', 'growth', 'profit', 'surge'] if k in t)
+                    neg = sum(1 for k in ['misses', 'cuts', 'downgrade', 'weak', 'loss', 'crash', 'decline'] if k in t)
+                    total = pos + neg
+                    if total == 0: return {"label": "neutral", "score": 0.0, "positive_count": 0, "negative_count": 0, "events": ["GENERAL"]}
+                    s = (pos - neg) / total
+                    return {"label": "positive" if s > 0.15 else "negative" if s < -0.15 else "neutral", "score": s, "positive_count": pos, "negative_count": neg, "events": ["GENERAL"]}
 
             for article in unique_articles:
-                keyword_score = score_text_keywords(f"{article.title} {article.description}")
-                if keyword_score > 0.1:
-                    fb_label = "positive"
-                    fb_pos, fb_neg, fb_neu = 0.6, 0.2, 0.2
-                elif keyword_score < -0.1:
-                    fb_label = "negative"
-                    fb_pos, fb_neg, fb_neu = 0.2, 0.6, 0.2
-                else:
-                    fb_label = "neutral"
-                    fb_pos, fb_neg, fb_neu = 0.33, 0.33, 0.34
+                result = _score_article(article.title, article.description)
+                fb_label = result["label"]
+                fb_pos = max(0.1, 0.5 + result["score"] * 0.4)
+                fb_neg = max(0.1, 0.5 - result["score"] * 0.4)
+                fb_neu = max(0.1, 1.0 - fb_pos - fb_neg)
+                # Normalize
+                total = fb_pos + fb_neg + fb_neu
+                fb_pos /= total
+                fb_neg /= total
+                fb_neu /= total
 
                 article.finbert_label = fb_label
-                article.finbert_positive = fb_pos
-                article.finbert_negative = fb_neg
-                article.finbert_neutral = fb_neu
+                article.finbert_positive = round(fb_pos, 4)
+                article.finbert_negative = round(fb_neg, 4)
+                article.finbert_neutral = round(fb_neu, 4)
 
                 source_q = SOURCE_QUALITY.get(article.provider, 0.5)
                 article_sentiments.append(ArticleSentiment(
@@ -695,20 +715,21 @@ def get_sentiment_snapshot(
                     relevance_score=article.relevance_score,
                     finbert_label=fb_label,
                     finbert_positive=fb_pos,
-                    finbert_neutral=fb_neu,
                     finbert_negative=fb_neg,
+                    finbert_neutral=fb_neu,
                     source_quality=source_q,
                 ))
 
         # 10. Aggregate
         if article_sentiments:
-            score, agg_label, pos_pct, neu_pct, neg_pct = _aggregate_sentiment(article_sentiments)
+            score, agg_label, pos_pct, neu_pct, neg_pct, pos_count, neu_count, neg_count = _aggregate_sentiment(article_sentiments)
             if status == SentimentStatus.SUFFICIENT:
                 label = agg_label
         else:
             score = 0.0
             agg_label = SentimentLabel.INSUFFICIENT
             pos_pct = neu_pct = neg_pct = 0.0
+            pos_count = neu_count = neg_count = 0
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
 
@@ -736,6 +757,7 @@ def get_sentiment_snapshot(
             ],
             data_freshness="fresh",
             provider_summary=provider_results,
+            methodology_version=METHODOLOGY_VERSION,
         )
         snapshot.news_impact_summary += f" Processing time: {elapsed_ms:.0f}ms."
 

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-export type SentimentStatus = 'sufficient' | 'insufficient' | 'error';
+export type SentimentStatus = 'sufficient' | 'insufficient' | 'error' | 'no_relevant_news' | 'news_unavailable';
 
 /**
  * Unified sentiment color logic used across all pages.
