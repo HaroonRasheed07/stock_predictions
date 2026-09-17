@@ -260,6 +260,7 @@ class SentimentSnapshot:
     expires_at: str = ""
     data_freshness: str = "fresh"
     methodology_version: str = "3"
+    coverage_status: str = "unknown"  # FULL, PARTIAL, INSUFFICIENT, NONE
 
     provider_summary: Dict[str, Any] = field(default_factory=dict)
 
@@ -303,12 +304,12 @@ class SentimentSnapshot:
     def _compute_mood(self) -> str:
         """Compute mood label aligned with sentiment_label thresholds.
         
-        Uses the same ±0.15 threshold as sentiment_label for consistency.
-        mood MUST agree with sentiment_label — never contradict it.
+        Uses the same +/-0.15 threshold as sentiment_label for consistency.
+        mood MUST agree with sentiment_label -- never contradict it.
         """
-        if self.score > 0.15:
+        if self.score >= 0.15:
             return "Bullish"
-        elif self.score < -0.15:
+        elif self.score <= -0.15:
             return "Bearish"
         return "Neutral"
 

@@ -96,8 +96,21 @@ POSITIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     (r'raises?\s+outlook', 0.7, 1.5, 'GUIDANCE'),
     (r'increases?\s+outlook', 0.7, 1.5, 'GUIDANCE'),
     (r'expands?\s+(?:partnership|agreement|deal)', 0.4, 0.5, 'PRODUCT'),
+    (r'(?:billion|million)\s+(?:investment|invest)\s+in', 0.4, 0.5, 'CAPITAL_RETURN'),
+    (r'invests?\s+(?:\$|billion|million|heavily|significantly)', 0.4, 0.5, 'CAPITAL_RETURN'),
+    (r'investment\s+in\s+(?:ai|infrastructure|growth|expansion)', 0.4, 0.5, 'CAPITAL_RETURN'),
     (r'insider\s+buying', 0.4, 0.5, 'MANAGEMENT'),
     (r'ceo\s+(?:buy|purchase)', 0.4, 0.5, 'MANAGEMENT'),
+    # Rate cuts / dovish Fed
+    (r'(?:fed|federal\s+reserve)\s+(?:signals?|hints?|suggests?|indicates?)\s+(?:potential|possible|likely)?\s*(?:rate\s+cuts?|easing|dovish)', 0.5, 1.0, 'MACRO'),
+    (r'rate\s+cuts?\s+(?:in|coming|expected|signaled|potential)', 0.4, 0.5, 'MACRO'),
+    (r'dovish\s+(?:signal|stance|shift|outlook)', 0.4, 0.5, 'MACRO'),
+    # Revenue growth
+    (r'revenue\s+(?:grows?|growing|growth)\s+(?:\d+%|percent|year)', 0.5, 1.0, 'EARNINGS'),
+    (r'(?:\d+%|percent)\s+revenue\s+growth', 0.5, 1.0, 'EARNINGS'),
+    # Stock split
+    (r'stock\s+split', 0.3, 0.5, 'CAPITAL_RETURN'),
+    (r'(?:\d+[- ]for[- ]\d+)\s+stock\s+split', 0.4, 0.5, 'CAPITAL_RETURN'),
 ]
 
 # NEGATIVE PHRASES
@@ -151,7 +164,7 @@ NEGATIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     (r'workforce\s+(?:reduction|eliminate|cut)', -0.6, 1.5, 'MANAGEMENT'),
     (r'eliminate.*(?:jobs|positions|workforce)', -0.6, 1.5, 'MANAGEMENT'),
     (r'lawsuit', -0.5, 1.0, 'LEGAL'),
-    (r'sued', -0.5, 1.0, 'LEGAL'),
+    (r'\bsued\b', -0.5, 1.0, 'LEGAL'),
     (r'credit\s+(?:downgrade|cut|watch)', -0.6, 1.5, 'ANALYST_ACTION'),
     (r'downgraded?\s+by', -0.5, 1.0, 'ANALYST_ACTION'),
     (r'insider\s+selling', -0.4, 0.5, 'MANAGEMENT'),
@@ -181,6 +194,23 @@ NEGATIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     (r'resigns', -0.4, 0.5, 'MANAGEMENT'),
     (r'price\s+target\s+cut', -0.5, 1.0, 'ANALYST_ACTION'),
     (r'price\s+target\s+(?:reduced|lowered)', -0.5, 1.0, 'ANALYST_ACTION'),
+    # Scrutiny / investigation
+    (r'(?:faces?|under)\s+(?:faa|sec|doj|ftc|eu|regulatory|congressional|government)?\s*scrutiny', -0.6, 1.5, 'REGULATORY'),
+    (r'scrutiny', -0.4, 0.5, 'REGULATORY'),
+    # Trading losses
+    (r'(?:trading|record)\s+losses', -0.6, 1.5, 'EARNINGS'),
+    (r'losses?\s+(?:of|totaling|amounting)', -0.5, 1.0, 'EARNINGS'),
+    # Price drops / declines
+    (r'(?:oil|gas|commodity)\s+futures?\s+(?:drop|fall|decline|slip|tumble|plunge)', -0.4, 1.0, 'MARKET_REACTION'),
+    (r'futures?\s+(?:drop|fall|decline|slip|tumble|plunge)', -0.4, 1.0, 'MARKET_REACTION'),
+    (r'(?:stock|share|index)\s+(?:drop|decline|fall)', -0.3, 0.5, 'MARKET_REACTION'),
+    (r'drops?\s+(?:\d+%|percent|more|sharply|significantly)', -0.4, 1.0, 'MARKET_REACTION'),
+    # Weak economic data
+    (r'weak\s+(?:economic|data|sales|report|figures|numbers|performance)', -0.4, 0.5, 'GENERAL'),
+    (r'(?:disappointing|weak|soft)\s+(?:economic|data|sales|report)', -0.4, 0.5, 'GENERAL'),
+    # Deliveries miss
+    (r'deliveries?\s+miss', -0.7, 1.5, 'EARNINGS'),
+    (r'delivers?\s+miss', -0.7, 1.5, 'EARNINGS'),
 ]
 
 # SINGLE-WORD fallback (lower priority than phrases)
@@ -373,7 +403,7 @@ def _classify_events(text: str) -> List[str]:
     if any(kw in text_lower for kw in ['regulatory', 'sec', 'antitrust', 'investigation', 'probe', 'compliance', 'fda']):
         events.append('REGULATORY')
     # Legal
-    if any(kw in text_lower for kw in ['lawsuit', 'sued', 'legal', 'court', 'settlement', 'litigation']):
+    if any(kw in text_lower for kw in ['lawsuit', 'sued', 'legal', 'court', 'settlement', 'litigation', 'bankruptcy', 'chapter 11', 'chapter 7', 'default']):
         events.append('LEGAL')
     # Product
     if any(kw in text_lower for kw in ['launch', 'unveil', 'release', 'announce', 'product', 'feature', 'update']):
@@ -385,7 +415,7 @@ def _classify_events(text: str) -> List[str]:
     if any(kw in text_lower for kw in ['ceo', 'cfo', 'chairman', 'appoint', 'resign', 'depart', 'executive']):
         events.append('MANAGEMENT')
     # Capital return
-    if any(kw in text_lower for kw in ['dividend', 'buyback', 'repurchase', 'capital return']):
+    if any(kw in text_lower for kw in ['dividend', 'buyback', 'repurchase', 'capital return', 'stock split']):
         events.append('CAPITAL_RETURN')
     # Cybersecurity
     if any(kw in text_lower for kw in ['breach', 'hack', 'cyber', 'ransomware', 'data leak']):
@@ -591,9 +621,9 @@ def score_article(title: str, description: str = "") -> Dict[str, Any]:
 
     # ── Step 6: Classify ──
     total_count = pos_count + neg_count
-    if final_score > 0.15:
+    if final_score >= 0.15:
         label = "positive"
-    elif final_score < -0.15:
+    elif final_score <= -0.15:
         label = "negative"
     else:
         label = "neutral"
@@ -737,9 +767,9 @@ def analyze_news_sentiment(
 
     avg_sentiment = sum(n["sentiment"] for n in scored_news) / len(scored_news) if scored_news else 0.0
 
-    if avg_sentiment > 0.15:
+    if avg_sentiment >= 0.15:
         label = "Positive"
-    elif avg_sentiment < -0.15:
+    elif avg_sentiment <= -0.15:
         label = "Negative"
     else:
         label = "Neutral"

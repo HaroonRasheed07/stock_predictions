@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared_sentiment import analyze_news_sentiment
 
 ticker = 'TSLA'
-api_key = "pub_d4ca502ff69e478d991d8d30f9557d64"
+api_key = os.environ.get("NEWSDATA_API_KEY", "")
 url = f"https://newsdata.io/api/1/news?apikey={api_key}&q={ticker}&language=en&size=10"
 
 print(f"Fetching: {url}")

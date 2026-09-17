@@ -175,10 +175,7 @@ class NewsDataProvider(NewsProvider):
     """NewsData.io provider — primary news source."""
     def __init__(self):
         super().__init__("newsdata")
-        self._api_key = os.environ.get(
-            "NEWSDATA_API_KEY",
-            "pub_d4ca502ff69e478d991d8d30f9557d64"  # fallback to existing key
-        )
+        self._api_key = os.environ.get("NEWSDATA_API_KEY", "")
         self._timeout = 10
 
     def fetch(self, query: str, max_results: int = 10) -> List[NormalizedArticle]:

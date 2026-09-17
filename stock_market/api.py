@@ -294,6 +294,16 @@ def get_news_providers_status():
         return news_aggregator.get_provider_status()
 
 
+@app.get("/api/news/budget")
+def get_news_budget_status():
+    """Return provider quota/budget status for observability."""
+    try:
+        from news_engine.provider_budget import budget_manager
+        return budget_manager.get_all_status()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.post("/api/data/catalysts")
 def get_catalysts(req: SentimentRequest):
     """

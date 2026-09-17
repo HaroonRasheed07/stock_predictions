@@ -27,6 +27,8 @@ from .models import (
 from .company_resolver import resolve_company, get_search_queries
 from .providers import get_all_providers, get_provider_status, NewsProvider
 from .finbert_sentiment import analyze_sentiment_batch, is_model_available
+from .provider_budget import budget_manager
+from .provider_router import provider_router, fetch_metrics, TARGET_ARTICLES
 
 logger = logging.getLogger(__name__)
 
@@ -217,11 +219,12 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
                 "rule_score": getattr(a, 'rule_score', 0.0),
                 "events": getattr(a, 'events', []),
             }
-            for a in s.articles[:MAX_ARTICLES_PER_TICKER]
+            for a in s.articles[:TARGET_ARTICLES]
         ],
         "generated_at": s.generated_at,
         "data_freshness": s.data_freshness,
         "methodology_version": s.methodology_version,
+        "coverage_status": getattr(s, 'coverage_status', 'unknown'),
         "provider_summary": s.provider_summary,
         "drivers": getattr(s, 'drivers', []),
         "explanation": getattr(s, 'explanation', ''),
@@ -284,6 +287,7 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
         provider_summary=d.get("provider_summary", {}),
         drivers=d.get("drivers", []),
         explanation=d.get("explanation", ""),
+        coverage_status=d.get("coverage_status", "unknown"),
     )
 
 
@@ -557,9 +561,9 @@ def _aggregate_sentiment(articles: List[ArticleSentiment]) -> Tuple[float, Senti
     # Label determination with minimum evidence
     if len(articles) < MIN_RELEVANT_ARTICLES:
         label = SentimentLabel.INSUFFICIENT
-    elif final_score > 0.15:
+    elif final_score >= 0.15:
         label = SentimentLabel.POSITIVE
-    elif final_score < -0.15:
+    elif final_score <= -0.15:
         label = SentimentLabel.NEGATIVE
     else:
         label = SentimentLabel.NEUTRAL
@@ -805,6 +809,71 @@ def _to_legacy_dict_safe(snapshot: SentimentSnapshot) -> Dict[str, Any]:
     return base
 
 
+def _rank_and_select_articles(articles: List[NewsArticle], target: int = TARGET_ARTICLES) -> List[NewsArticle]:
+    """
+    Rank articles by quality and select top N with source diversity.
+    
+    Ranking criteria (in order):
+    1. Relevance score (higher = better)
+    2. Source quality (financial publishers > general)
+    3. Recency (newer = better)
+    4. Entity match confidence
+    
+    Diversity: No more than 40% from same publisher in final selection.
+    DO NOT rank by sentiment — that would bias the distribution.
+    """
+    if len(articles) <= target:
+        return articles
+
+    # Score each article for ranking
+    scored = []
+    for a in articles:
+        rank_score = 0.0
+        # Relevance (0-1) — weight 0.4
+        rank_score += (a.relevance_score or 0) * 0.4
+        # Source quality (0-1) — weight 0.2
+        rank_score += SOURCE_QUALITY.get(a.provider, 0.5) * 0.2
+        # Recency — weight 0.25
+        try:
+            pub_time = datetime.fromisoformat(a.published_at.replace("Z", "+00:00"))
+            hours_old = (datetime.now(timezone.utc) - pub_time).total_seconds() / 3600
+            recency = max(0, 1.0 - (hours_old / 168))  # Decay over 7 days
+            rank_score += recency * 0.25
+        except (ValueError, TypeError):
+            rank_score += 0.1  # Default if parsing fails
+        # Entity match — weight 0.15
+        rank_score += min(1.0, (a.entity_match_score or 0)) * 0.15
+
+        scored.append((a, rank_score))
+
+    # Sort by rank score descending
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    # Select with source diversity (max 40% from same publisher)
+    max_per_source = max(2, int(target * 0.4))
+    source_counts: Dict[str, int] = {}
+    selected = []
+
+    for article, rank_score in scored:
+        publisher = article.publisher or "unknown"
+        current_count = source_counts.get(publisher, 0)
+        if current_count < max_per_source:
+            selected.append(article)
+            source_counts[publisher] = current_count + 1
+            if len(selected) >= target:
+                break
+
+    # If we still need more (due to diversity constraint), add remaining
+    if len(selected) < target:
+        for article, rank_score in scored:
+            if article not in selected:
+                selected.append(article)
+                if len(selected) >= target:
+                    break
+
+    return selected
+
+
 # ─── Main Pipeline ──────────────────────────────────────────────────────────
 
 def get_sentiment_snapshot(
@@ -862,43 +931,80 @@ def get_sentiment_snapshot(
         company = resolve_company(ticker)
         logger.info(f"[ENGINE] {ticker} resolved to {company.canonical_name}")
 
-        # 5. Fetch from providers
-        providers = get_all_providers()
-        all_articles: List[NewsArticle] = []
-        provider_results: Dict[str, Any] = {}
+        # 5. Fetch from providers (quota-aware routing)
+        metrics = fetch_metrics
+        metrics.start()
 
-        for provider in providers:
-            if not provider.is_available():
-                provider_results[provider.name] = {"status": "skipped", "count": 0}
+        # Get cache count from any existing data (for routing decisions)
+        cached_count = 0  # We're here because cache was empty/stale
+
+        # Select providers based on quota and needs
+        selected_providers = provider_router.select_providers(
+            cached_article_count=cached_count,
+            target_count=TARGET_ARTICLES,
+        )
+
+        all_providers = {p.name: p for p in get_all_providers()}
+        all_articles: List[NewsArticle] = []
+        provider_results: Dict[str, Any] = []
+
+        for provider_name in selected_providers:
+            provider = all_providers.get(provider_name)
+            if not provider or not provider.is_available():
+                provider_results.append({"provider": provider_name, "status": "skipped", "count": 0})
                 continue
 
             try:
+                # Check budget before calling
+                if not budget_manager.can_call(provider_name):
+                    provider_results.append({"provider": provider_name, "status": "quota_exhausted", "count": 0})
+                    logger.info(f"[ENGINE] {ticker} skipping {provider_name} (quota exhausted)")
+                    continue
+
                 result = provider.fetch(
                     ticker=ticker,
                     company=company,
                     lookback_days=LOOKBACK_DAYS,
                     max_results=10,
                 )
-                provider_results[provider.name] = {
+
+                # Record budget usage
+                if result.success:
+                    budget_manager.record_success(provider_name, getattr(result, 'quota_remaining', None))
+                    metrics.record_provider_call(provider_name, True)
+                else:
+                    budget_manager.record_failure(provider_name, result.error or "unknown")
+                    metrics.record_provider_call(provider_name, False)
+
+                provider_results.append({
+                    "provider": provider_name,
                     "status": "success" if result.success else f"error: {result.error}",
                     "count": len(result.articles),
                     "latency_ms": round(result.latency_ms, 1),
-                }
+                })
+
                 if result.articles:
                     all_articles.extend(result.articles)
-                    logger.info(f"[ENGINE] {provider.name} returned {len(result.articles)} articles for {ticker}")
+                    metrics.articles_fetched += len(result.articles)
+                    logger.info(f"[ENGINE] {provider_name} returned {len(result.articles)} articles for {ticker}")
 
-                # Sufficiency check: if we have enough, stop expensive providers
-                if len(all_articles) >= 15:
-                    logger.info(f"[ENGINE] {ticker} sufficient articles ({len(all_articles)}), stopping provider fan-out")
+                # Check if we should stop
+                if provider_router.should_stop_fetching(
+                    articles_collected=len(all_articles),
+                    target_count=TARGET_ARTICLES,
+                    providers_called=len(provider_results),
+                ):
+                    logger.info(f"[ENGINE] {ticker} sufficient candidates ({len(all_articles)}), stopping provider fan-out")
                     break
 
             except Exception as e:
-                provider_results[provider.name] = {"status": f"error: {e}", "count": 0}
-                logger.warning(f"[ENGINE] {provider.name} error for {ticker}: {e}")
-                continue  # Always continue to next provider
+                budget_manager.record_failure(provider_name, str(e))
+                metrics.record_provider_call(provider_name, False)
+                provider_results.append({"provider": provider_name, "status": f"error: {e}", "count": 0})
+                logger.warning(f"[ENGINE] {provider_name} error for {ticker}: {e}")
+                continue
 
-        logger.info(f"[ENGINE] {ticker} collected {len(all_articles)} raw articles from {len([p for p in providers if p.is_available()])} providers")
+        logger.info(f"[ENGINE] {ticker} collected {len(all_articles)} raw articles from {len(provider_results)} providers")
 
         # 6. Score relevance
         for article in all_articles:
@@ -912,19 +1018,35 @@ def get_sentiment_snapshot(
         unique_articles = _deduplicate_articles(relevant)
         logger.info(f"[ENGINE] {ticker} {len(unique_articles)} unique articles after dedup")
 
-        # 8. Determine status
+        # 7b. Rank and select top articles with source diversity
+        unique_articles = _rank_and_select_articles(unique_articles, TARGET_ARTICLES)
+        logger.info(f"[ENGINE] {ticker} {len(unique_articles)} articles after ranking and diversity selection")
+
+        # Track metrics
+        metrics.articles_after_relevance = len(relevant)
+        metrics.articles_after_dedup = len(unique_articles)
+
+        # 8. Determine status and coverage
         if not all_articles:
             status = SentimentStatus.NEWS_UNAVAILABLE
             label = SentimentLabel.UNAVAILABLE
+            coverage = "NONE"
         elif not unique_articles:
             status = SentimentStatus.NO_RELEVANT_NEWS
             label = SentimentLabel.INSUFFICIENT
+            coverage = "NONE"
         elif len(unique_articles) < MIN_RELEVANT_ARTICLES:
             status = SentimentStatus.INSUFFICIENT
             label = SentimentLabel.INSUFFICIENT
+            coverage = "INSUFFICIENT"
+        elif len(unique_articles) >= TARGET_ARTICLES:
+            status = SentimentStatus.SUFFICIENT
+            label = SentimentLabel.NEUTRAL
+            coverage = "FULL"
         else:
             status = SentimentStatus.SUFFICIENT
-            label = SentimentLabel.NEUTRAL  # Will be updated after FinBERT
+            label = SentimentLabel.NEUTRAL
+            coverage = "PARTIAL"
 
         # 9. Run FinBERT (only if we have enough articles)
         article_sentiments: List[ArticleSentiment] = []
@@ -1049,8 +1171,9 @@ def get_sentiment_snapshot(
         elapsed_ms = (time.perf_counter() - start_time) * 1000
 
         # 11. Build snapshot
-        providers_attempted = [name for name, r in provider_results.items() if r.get("status") != "skipped"]
+        providers_attempted = [r["provider"] for r in provider_results if r.get("status") != "skipped"]
         sources = list(set(a.publisher for a in unique_articles if a.publisher))
+        provider_summary = {r["provider"]: r for r in provider_results}
 
         snapshot = SentimentSnapshot(
             ticker=ticker,
@@ -1065,14 +1188,15 @@ def get_sentiment_snapshot(
             relevant_article_count=len(unique_articles),
             source_count=len(sources),
             providers_attempted=providers_attempted,
-            articles=article_sentiments[:MAX_ARTICLES_PER_TICKER],
+            articles=article_sentiments[:TARGET_ARTICLES],
             news_headlines=[
                 {"title": a.title, "source": a.publisher, "url": a.url, "published_at": a.published_at}
-                for a in article_sentiments[:10]
+                for a in article_sentiments[:TARGET_ARTICLES]
             ],
             data_freshness="fresh",
-            provider_summary=provider_results,
+            provider_summary=provider_summary,
             methodology_version=METHODOLOGY_VERSION,
+            coverage_status=coverage,
         )
 
         # 11b. Extract drivers and generate explanation
