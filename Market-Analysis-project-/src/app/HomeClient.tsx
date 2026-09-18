@@ -180,6 +180,7 @@ export default function Home() {
     const scanStock = scanData1?.stocks?.[stock.ticker] || scanData2?.stocks?.[stock.ticker];
     return {
       ...stock,
+      technical: stock.technical || scanStock?.technical || '',
       sentiment: stock.sentiment || scanStock?.sentiment || '',
     };
   });
@@ -517,11 +518,13 @@ export default function Home() {
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/40">
                       <div className="text-center">
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase">Sentiment</p>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase">Technical</p>
                         <p className={cn(
                           'text-xs font-semibold mt-0.5',
-                          getSentimentColorClass(stock.sentiment || '', stock.sentiment_status)
-                        )}>{formatSentimentLabel(stock.sentiment || '', stock.sentiment_status) || '—'}</p>
+                          stock.technical?.includes('Bullish') ? 'text-success' :
+                          stock.technical?.includes('Bearish') ? 'text-destructive' :
+                          'text-muted-foreground'
+                        )}>{stock.technical || '—'}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] font-medium text-muted-foreground uppercase">Risk</p>

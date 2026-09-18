@@ -1247,6 +1247,7 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
             signal = "Hold"
             opp_score = 50.0
             risk_level = "Unknown"
+            technical_label = "Neutral"
             sentiment_label = "Neutral"
             sentiment_status = "insufficient"
             try:
@@ -1262,6 +1263,22 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
                     sell_s = sum([ts < 40, rsi_val > 70, macd_val <= sig_val])
                     if buy_s >= 2: signal = "Buy"
                     elif sell_s >= 2: signal = "Sell"
+
+                    # Derive canonical technical label from existing indicators
+                    # Uses the same inputs as signal but produces a directional label
+                    bull_signals = sum([ts > 60, rsi_val < 70, macd_val > sig_val])
+                    bear_signals = sum([ts < 40, rsi_val > 30, macd_val <= sig_val])
+                    if bull_signals >= 3 and ts >= 65:
+                        technical_label = "Strong Bullish"
+                    elif bull_signals >= 2 and ts >= 55:
+                        technical_label = "Bullish"
+                    elif bear_signals >= 3 and ts <= 35:
+                        technical_label = "Strong Bearish"
+                    elif bear_signals >= 2 and ts <= 45:
+                        technical_label = "Bearish"
+                    else:
+                        technical_label = "Neutral"
+
                     rd = assess_risk(df_ind, ticker)
                     risk_level = rd.get("risk_level", "Unknown")
                     opp = calculate_opportunity_score(ticker, period, skip_sentiment=True)
@@ -1285,6 +1302,7 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
                 "signal": signal,
                 "risk": risk_level,
                 "score": round(opp_score, 0),
+                "technical": technical_label,
                 "sentiment": sentiment_label,
                 "sentiment_status": sentiment_status,
             })
@@ -1372,10 +1390,10 @@ def discover_scan(req: DiscoverScanRequest):
                 # Trend + Signal
                 signal = "Hold"
                 opp_score = 50.0
+                technical_label = "Neutral"
                 try:
                     if not df_ind.empty:
                         ts = calculate_trend_strength(df_ind)
-                        trend_label = "Bullish" if ts > 60 else "Bearish" if ts < 40 else "Neutral"
                         latest = df_ind.iloc[-1]
                         rsi_val = float(latest.get("RSI", 50))
                         macd_val = float(latest.get("MACD", 0))
@@ -1394,6 +1412,20 @@ def discover_scan(req: DiscoverScanRequest):
                         if buy_signals >= 2: signal = "Buy"
                         elif sell_signals >= 2: signal = "Sell"
                         else: signal = "Hold"
+
+                        # Canonical technical label from existing indicators
+                        bull_signals = sum([ts > 60, rsi_val < 70, macd_val > sig_val])
+                        bear_signals = sum([ts < 40, rsi_val > 30, macd_val <= sig_val])
+                        if bull_signals >= 3 and ts >= 65:
+                            technical_label = "Strong Bullish"
+                        elif bull_signals >= 2 and ts >= 55:
+                            technical_label = "Bullish"
+                        elif bear_signals >= 3 and ts <= 35:
+                            technical_label = "Strong Bearish"
+                        elif bear_signals >= 2 and ts <= 45:
+                            technical_label = "Bearish"
+                        else:
+                            technical_label = "Neutral"
 
                         opp = calculate_opportunity_score(ticker, req.period, skip_sentiment=True)
                         opp_score = opp["score"] if opp else 50.0
@@ -1427,6 +1459,7 @@ def discover_scan(req: DiscoverScanRequest):
                     "changePercent": round(price_change_pct, 2),
                     "signal": signal,
                     "risk": risk_level,
+                    "technical": technical_label,
                     "sentiment": sentiment_label,
                     "sentiment_status": sentiment_status,
                     "score": round(opp_score, 0),

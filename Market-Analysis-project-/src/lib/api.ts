@@ -540,6 +540,7 @@ export interface DiscoverStock {
   changePercent: number;
   signal: string;
   risk: string;
+  technical: string;
   sentiment: string;
   sentiment_status: 'sufficient' | 'insufficient' | 'error';
   score: number;
