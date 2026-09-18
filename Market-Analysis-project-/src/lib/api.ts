@@ -251,6 +251,10 @@ export interface EnhancedSentiment {
   methodology_version?: string;
   data_freshness?: string;
   score_available?: boolean;
+  coverage_status?: string;
+  freshest_article_at?: string;
+  oldest_article_at?: string;
+  target_count?: number;
 }
 
 

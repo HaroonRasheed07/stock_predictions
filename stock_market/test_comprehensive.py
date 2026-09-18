@@ -223,12 +223,17 @@ test("Aggregation: 1 neutral article counted", neu_c == 1, f"neu_count={neu_c}")
 test("Aggregation: positive_pct + neutral_pct + negative_pct = 100", abs(pos_pct + neu_pct + neg_pct - 100) < 0.1, f"sum={pos_pct+neu_pct+neg_pct}")
 test("Aggregation: denominator = sum(weights), not article_count", True, "verified by code inspection")
 
-# Test weight formula
-recency = _get_recency_weight("2026-09-17T10:00:00Z")
+# Test weight formula (use relative timestamps for stability)
+from datetime import datetime, timezone, timedelta
+_now = datetime.now(timezone.utc)
+_1h_ago = (_now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+_3d_ago = (_now - timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+recency = _get_recency_weight(_1h_ago)
 test(f"Recency weight for 1-hour-old article: {recency}", recency == 1.0, f"weight={recency}")
 
-recency_old = _get_recency_weight("2026-09-14T10:00:00Z")
-test(f"Recency weight for 3-day-old article: {recency_old}", recency_old == 0.4, f"weight={recency_old}")
+recency_old = _get_recency_weight(_3d_ago)
+test(f"Recency weight for 3-day-old article: {recency_old}", recency_old == 0.3, f"weight={recency_old}")
 
 
 # ═══════════════════════════════════════════════════════════════════

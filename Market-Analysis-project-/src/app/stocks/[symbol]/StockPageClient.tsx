@@ -285,7 +285,7 @@ function SentimentSection({ ticker }: { ticker: string }) {
           <CardHeader className="pb-2"><CardTitle className="text-sm">Recent News</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {sentimentData.news.slice(0, 10).map((article: any, i: number) => (
+              {sentimentData.news.slice(0, 8).map((article: any, i: number) => (
                 <a key={i} href={article.url} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-border/50 p-3 hover:bg-muted/30 transition-colors">
                   <p className="text-sm font-medium line-clamp-2">{article.title}</p>
                   <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">

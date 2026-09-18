@@ -1,14 +1,20 @@
 """
 provider_router.py — Quota-aware provider selection and orchestration.
 
-Decides WHICH providers to call, in WHAT order, and WHEN to stop.
+Waterfall strategy (freshness-first):
+1. Cache / existing recent articles
+2. RSS (free, fresh)
+3. Currents (fresh coverage)
+4. Marketaux (high-precision enrichment, scarce)
+5. NewsData (gap-fill, may be delayed)
+6. GDELT (free supplement)
 
 Key principles:
-- Marketaux is scarce: use only when primary sources are insufficient
+- Target 8 articles after relevance + dedup
+- Fetch more candidates than needed (2x target)
+- Stop immediately when adequate coverage exists
+- Marketaux is scarce: enrich only, never dependency
 - RSS is free: always try first
-- GDELT is free: use as supplement
-- Stop fetching when target article count is reached
-- Never call exhausted providers
 """
 
 import logging
@@ -23,23 +29,38 @@ logger = logging.getLogger(__name__)
 
 # ─── Configuration ──────────────────────────────────────────────────────────
 
-TARGET_ARTICLES = 10          # Desired final article count
-CANDIDATE_MULTIPLIER = 2.5    # Fetch 2.5x candidates to ensure 10 after dedup
-MAX_CANDIDATES = 25           # Cap on raw candidates per ticker
+TARGET_NEWS_COUNT = 8           # Canonical target after relevance + dedup
+CANDIDATE_MULTIPLIER = 2.5      # Fetch 2.5x candidates to ensure 8 after pipeline
+MAX_CANDIDATES = 25             # Cap on raw candidates per ticker
+
+# Freshness windows (hours)
+FRESHNESS_WINDOW_PRIMARY = 24    # First try: last 24 hours
+FRESHNESS_WINDOW_SECONDARY = 72  # Expand to 72 hours if needed
+FRESHNESS_WINDOW_MAX = 168       # Maximum: 7 days
 
 # Provider roles
-ROLE_RSS = "rss"              # Free, always try
-ROLE_PRIMARY = "primary"      # Main API source (NewsData/Currents)
+ROLE_RSS = "rss"              # Free, always try first (fresh)
+ROLE_FRESH = "fresh"          # Primary fresh source (Currents)
 ROLE_ENRICHMENT = "enrichment" # Scarce source (Marketaux)
+ROLE_GAP_FILL = "gap_fill"    # Delayed/fallback (NewsData)
 ROLE_SUPPLEMENT = "supplement" # Backup (GDELT)
 
-# Provider role assignments
+# Provider role assignments — WATERFALL ORDER
 PROVIDER_ROLES = {
     "rss": ROLE_RSS,
-    "gdelt": ROLE_SUPPLEMENT,
-    "newsdata": ROLE_PRIMARY,
-    "currents": ROLE_PRIMARY,
+    "currents": ROLE_FRESH,
     "marketaux": ROLE_ENRICHMENT,
+    "newsdata": ROLE_GAP_FILL,
+    "gdelt": ROLE_SUPPLEMENT,
+}
+
+# Provider waterfall priority (lower = earlier)
+PROVIDER_WATERFALL_PRIORITY = {
+    "rss": 0,
+    "currents": 1,
+    "marketaux": 2,
+    "newsdata": 3,
+    "gdelt": 4,
 }
 
 
@@ -47,11 +68,15 @@ PROVIDER_ROLES = {
 
 class ProviderRouter:
     """
-    Selects providers based on:
-    - Cached article count
-    - Target count
-    - Provider health/quota
-    - Provider role priority
+    Selects providers based on waterfall strategy:
+    1. Cache (already have articles)
+    2. RSS (free, fresh)
+    3. Currents (fresh API)
+    4. Marketaux (enrichment, if quota allows)
+    5. NewsData (gap-fill)
+    6. GDELT (supplement)
+    
+    Stops when target count reached.
     """
 
     def __init__(self):
@@ -60,17 +85,19 @@ class ProviderRouter:
     def select_providers(
         self,
         cached_article_count: int = 0,
-        target_count: int = TARGET_ARTICLES,
+        target_count: int = TARGET_NEWS_COUNT,
         ticker_type: str = "stock",
     ) -> List[str]:
         """
-        Return ordered list of provider names to call.
+        Return ordered list of provider names to call (waterfall order).
 
         Strategy:
         1. If cache already has enough -> no providers needed
-        2. Always include free sources (RSS, GDELT)
-        3. Add primary sources if needed
-        4. Add Marketaux ONLY if still below target and quota allows
+        2. RSS first (free, fresh)
+        3. Currents (fresh coverage)
+        4. Marketaux ONLY if still below target and quota allows
+        5. NewsData for gap-fill
+        6. GDELT as last resort
         """
         needed = target_count - cached_article_count
         if needed <= 0:
@@ -80,37 +107,32 @@ class ProviderRouter:
         available = {p.name: p for p in all_providers if p.is_available()}
         selected = []
 
-        # Phase 1: Free sources first (RSS + GDELT)
-        for name in ["rss", "gdelt"]:
-            if name in available and budget_manager.can_call(name):
-                selected.append(name)
+        # Waterfall: follow the priority order strictly
+        for name in sorted(
+            available.keys(),
+            key=lambda n: PROVIDER_WATERFALL_PRIORITY.get(n, 99)
+        ):
+            if not budget_manager.can_call(name):
+                logger.info(f"[ROUTER] Skipping {name} (quota exhausted or cooldown)")
+                continue
 
-        # Phase 2: Primary sources (NewsData, Currents)
-        # Add until we think we have enough candidates
-        estimated_from_free = cached_article_count + (5 * len(selected))  # rough estimate
-        if estimated_from_free < target_count * CANDIDATE_MULTIPLIER:
-            for name in ["newsdata", "currents"]:
-                if name in available and budget_manager.can_call(name):
-                    selected.append(name)
-                    # Re-estimate after adding
-                    estimated_from_free += 8  # rough estimate per primary
+            role = PROVIDER_ROLES.get(name, ROLE_SUPPLEMENT)
 
-        # Phase 3: Marketaux only if still need more
-        # Check: do we have enough from free + primary?
-        estimated_total = cached_article_count + (5 * len([n for n in selected if PROVIDER_ROLES.get(n) != ROLE_ENRICHMENT]))
-        if estimated_total < target_count and "marketaux" in available:
-            if budget_manager.can_call("marketaux"):
-                selected.append("marketaux")
-                logger.info(f"[ROUTER] Adding Marketaux for enrichment (estimated {estimated_total} < target {target_count})")
-            else:
-                logger.info(f"[ROUTER] Marketaux skipped (quota exhausted or cooldown)")
+            # Marketaux: only add if still need more after free + fresh sources
+            if role == ROLE_ENRICHMENT:
+                estimated_from_earlier = cached_article_count + (8 * len(selected))
+                if estimated_from_earlier >= target_count * CANDIDATE_MULTIPLIER:
+                    logger.info(f"[ROUTER] Skipping {name} (estimated {estimated_from_earlier} >= target {target_count})")
+                    continue
+
+            selected.append(name)
 
         return selected
 
     def should_stop_fetching(
         self,
         articles_collected: int,
-        target_count: int = TARGET_ARTICLES,
+        target_count: int = TARGET_NEWS_COUNT,
         providers_called: int = 0,
     ) -> bool:
         """Determine if we should stop calling providers."""
@@ -124,14 +146,7 @@ class ProviderRouter:
 
     def get_provider_priority(self, provider_name: str) -> int:
         """Lower number = higher priority. Used for ordering."""
-        role = PROVIDER_ROLES.get(provider_name, ROLE_SUPPLEMENT)
-        priority_map = {
-            ROLE_RSS: 0,         # Always first (free)
-            ROLE_SUPPLEMENT: 1,  # GDELT (free)
-            ROLE_PRIMARY: 2,     # NewsData/Currents (limited)
-            ROLE_ENRICHMENT: 3,  # Marketaux (scarce)
-        }
-        return priority_map.get(role, 99)
+        return PROVIDER_WATERFALL_PRIORITY.get(provider_name, 99)
 
 
 # ─── Observability ──────────────────────────────────────────────────────────

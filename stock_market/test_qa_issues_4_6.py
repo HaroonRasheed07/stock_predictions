@@ -6,7 +6,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared_sentiment import score_article, analyze_news_sentiment, _classify_events
-from stock_market.news_engine.engine import _aggregate_sentiment, MIN_RELEVANT_ARTICLES
+from stock_market.news_engine.engine import _aggregate_sentiment, MIN_RELEVANT_ARTICLES, TARGET_NEWS_COUNT
 from stock_market.news_engine.models import ArticleSentiment, SentimentLabel
 from datetime import datetime, timezone, timedelta
 

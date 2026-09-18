@@ -28,7 +28,10 @@ from .company_resolver import resolve_company, get_search_queries
 from .providers import get_all_providers, get_provider_status, NewsProvider
 from .finbert_sentiment import analyze_sentiment_batch, is_model_available
 from .provider_budget import budget_manager
-from .provider_router import provider_router, fetch_metrics, TARGET_ARTICLES
+from .provider_router import (
+    provider_router, fetch_metrics, TARGET_NEWS_COUNT,
+    FRESHNESS_WINDOW_PRIMARY, FRESHNESS_WINDOW_SECONDARY, FRESHNESS_WINDOW_MAX
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +46,10 @@ METHODOLOGY_VERSION = "5"        # Bump when rule engine changes materially
 
 # Recency weights (hours since publication)
 RECENCY_WEIGHTS = [
-    (24, 1.0),      # < 24 hours: full weight
-    (72, 0.7),      # 1-3 days: strong
-    (168, 0.4),     # 3-7 days: moderate
-    (336, 0.2),     # 7-14 days: weak
+    (6, 1.0),       # < 6 hours: very fresh
+    (24, 0.85),     # 6-24 hours: fresh
+    (72, 0.6),      # 1-3 days: recent
+    (168, 0.3),     # 3-7 days: older fallback
 ]
 
 # Source quality weights
@@ -219,12 +222,14 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
                 "rule_score": getattr(a, 'rule_score', 0.0),
                 "events": getattr(a, 'events', []),
             }
-            for a in s.articles[:TARGET_ARTICLES]
+            for a in s.articles[:TARGET_NEWS_COUNT]
         ],
         "generated_at": s.generated_at,
         "data_freshness": s.data_freshness,
         "methodology_version": s.methodology_version,
         "coverage_status": getattr(s, 'coverage_status', 'unknown'),
+        "freshest_article_at": getattr(s, 'freshest_article_at', ''),
+        "oldest_article_at": getattr(s, 'oldest_article_at', ''),
         "provider_summary": s.provider_summary,
         "drivers": getattr(s, 'drivers', []),
         "explanation": getattr(s, 'explanation', ''),
@@ -288,6 +293,8 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
         drivers=d.get("drivers", []),
         explanation=d.get("explanation", ""),
         coverage_status=d.get("coverage_status", "unknown"),
+        freshest_article_at=d.get("freshest_article_at", ""),
+        oldest_article_at=d.get("oldest_article_at", ""),
     )
 
 
@@ -809,44 +816,67 @@ def _to_legacy_dict_safe(snapshot: SentimentSnapshot) -> Dict[str, Any]:
     return base
 
 
-def _rank_and_select_articles(articles: List[NewsArticle], target: int = TARGET_ARTICLES) -> List[NewsArticle]:
+def _rank_and_select_articles(articles: List[NewsArticle], target: int = TARGET_NEWS_COUNT) -> List[NewsArticle]:
     """
-    Rank articles by quality and select top N with source diversity.
-    
-    Ranking criteria (in order):
-    1. Relevance score (higher = better)
-    2. Source quality (financial publishers > general)
-    3. Recency (newer = better)
-    4. Entity match confidence
-    
-    Diversity: No more than 40% from same publisher in final selection.
-    DO NOT rank by sentiment — that would bias the distribution.
+    Rank articles by RELEVANCE + FRESHNESS and select top N with source diversity.
+
+    Ranking formula (deterministic):
+        rank = (relevance * 0.45) + (freshness * 0.30) + (source_quality * 0.15) + (entity_match * 0.10)
+
+    Freshness decay (monotonic):
+        < 6 hours:   1.0
+        6-24 hours:  0.85
+        1-3 days:    0.6
+        3-7 days:    0.3
+        > 7 days:    0.1
+
+    Diversity: max 40% from same publisher.
+    DO NOT rank by sentiment — that biases the distribution.
     """
     if len(articles) <= target:
         return articles
 
-    # Score each article for ranking
+    now = datetime.now(timezone.utc)
+
+    def _freshness_score(published_at: str) -> float:
+        """Monotonic freshness decay. Newer = higher."""
+        try:
+            pub_time = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+            hours_old = max(0, (now - pub_time).total_seconds() / 3600)
+            if hours_old < 6:
+                return 1.0
+            elif hours_old < 24:
+                return 0.85
+            elif hours_old < 72:
+                return 0.6
+            elif hours_old < 168:
+                return 0.3
+            else:
+                return 0.1
+        except (ValueError, TypeError):
+            return 0.3  # Default for unparseable dates
+
+    def _article_age_hours(published_at: str) -> float:
+        try:
+            pub_time = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+            return max(0, (now - pub_time).total_seconds() / 3600)
+        except (ValueError, TypeError):
+            return 168.0  # Default: old
+
+    # Score each article
     scored = []
     for a in articles:
-        rank_score = 0.0
-        # Relevance (0-1) — weight 0.4
-        rank_score += (a.relevance_score or 0) * 0.4
-        # Source quality (0-1) — weight 0.2
-        rank_score += SOURCE_QUALITY.get(a.provider, 0.5) * 0.2
-        # Recency — weight 0.25
-        try:
-            pub_time = datetime.fromisoformat(a.published_at.replace("Z", "+00:00"))
-            hours_old = (datetime.now(timezone.utc) - pub_time).total_seconds() / 3600
-            recency = max(0, 1.0 - (hours_old / 168))  # Decay over 7 days
-            rank_score += recency * 0.25
-        except (ValueError, TypeError):
-            rank_score += 0.1  # Default if parsing fails
-        # Entity match — weight 0.15
-        rank_score += min(1.0, (a.entity_match_score or 0)) * 0.15
+        relevance = min(1.0, max(0.0, (a.relevance_score or 0)))
+        freshness = _freshness_score(a.published_at)
+        source_q = SOURCE_QUALITY.get(a.provider, 0.5)
+        entity = min(1.0, max(0.0, (a.entity_match_score or 0)))
 
-        scored.append((a, rank_score))
+        rank = (relevance * 0.45) + (freshness * 0.30) + (source_q * 0.15) + (entity * 0.10)
+        age_hours = _article_age_hours(a.published_at)
 
-    # Sort by rank score descending
+        scored.append((a, rank, age_hours))
+
+    # Sort by rank descending
     scored.sort(key=lambda x: x[1], reverse=True)
 
     # Select with source diversity (max 40% from same publisher)
@@ -854,7 +884,7 @@ def _rank_and_select_articles(articles: List[NewsArticle], target: int = TARGET_
     source_counts: Dict[str, int] = {}
     selected = []
 
-    for article, rank_score in scored:
+    for article, rank, age_hours in scored:
         publisher = article.publisher or "unknown"
         current_count = source_counts.get(publisher, 0)
         if current_count < max_per_source:
@@ -863,9 +893,9 @@ def _rank_and_select_articles(articles: List[NewsArticle], target: int = TARGET_
             if len(selected) >= target:
                 break
 
-    # If we still need more (due to diversity constraint), add remaining
+    # If we still need more (diversity constraint), add remaining
     if len(selected) < target:
-        for article, rank_score in scored:
+        for article, rank, age_hours in scored:
             if article not in selected:
                 selected.append(article)
                 if len(selected) >= target:
@@ -941,7 +971,7 @@ def get_sentiment_snapshot(
         # Select providers based on quota and needs
         selected_providers = provider_router.select_providers(
             cached_article_count=cached_count,
-            target_count=TARGET_ARTICLES,
+            target_count=TARGET_NEWS_COUNT,
         )
 
         all_providers = {p.name: p for p in get_all_providers()}
@@ -991,7 +1021,7 @@ def get_sentiment_snapshot(
                 # Check if we should stop
                 if provider_router.should_stop_fetching(
                     articles_collected=len(all_articles),
-                    target_count=TARGET_ARTICLES,
+                    target_count=TARGET_NEWS_COUNT,
                     providers_called=len(provider_results),
                 ):
                     logger.info(f"[ENGINE] {ticker} sufficient candidates ({len(all_articles)}), stopping provider fan-out")
@@ -1019,7 +1049,7 @@ def get_sentiment_snapshot(
         logger.info(f"[ENGINE] {ticker} {len(unique_articles)} unique articles after dedup")
 
         # 7b. Rank and select top articles with source diversity
-        unique_articles = _rank_and_select_articles(unique_articles, TARGET_ARTICLES)
+        unique_articles = _rank_and_select_articles(unique_articles, TARGET_NEWS_COUNT)
         logger.info(f"[ENGINE] {ticker} {len(unique_articles)} articles after ranking and diversity selection")
 
         # Track metrics
@@ -1039,7 +1069,7 @@ def get_sentiment_snapshot(
             status = SentimentStatus.INSUFFICIENT
             label = SentimentLabel.INSUFFICIENT
             coverage = "INSUFFICIENT"
-        elif len(unique_articles) >= TARGET_ARTICLES:
+        elif len(unique_articles) >= TARGET_NEWS_COUNT:
             status = SentimentStatus.SUFFICIENT
             label = SentimentLabel.NEUTRAL
             coverage = "FULL"
@@ -1175,6 +1205,20 @@ def get_sentiment_snapshot(
         sources = list(set(a.publisher for a in unique_articles if a.publisher))
         provider_summary = {r["provider"]: r for r in provider_results}
 
+        # Compute freshness metadata from final article set
+        freshest_at = ""
+        oldest_at = ""
+        if article_sentiments:
+            pub_dates = []
+            for a in article_sentiments[:TARGET_NEWS_COUNT]:
+                try:
+                    pub_dates.append(a.published_at)
+                except Exception:
+                    pass
+            if pub_dates:
+                freshest_at = min(pub_dates)  # ISO string min = most recent
+                oldest_at = max(pub_dates)
+
         snapshot = SentimentSnapshot(
             ticker=ticker,
             company_name=company.canonical_name,
@@ -1188,15 +1232,17 @@ def get_sentiment_snapshot(
             relevant_article_count=len(unique_articles),
             source_count=len(sources),
             providers_attempted=providers_attempted,
-            articles=article_sentiments[:TARGET_ARTICLES],
+            articles=article_sentiments[:TARGET_NEWS_COUNT],
             news_headlines=[
                 {"title": a.title, "source": a.publisher, "url": a.url, "published_at": a.published_at}
-                for a in article_sentiments[:TARGET_ARTICLES]
+                for a in article_sentiments[:TARGET_NEWS_COUNT]
             ],
             data_freshness="fresh",
             provider_summary=provider_summary,
             methodology_version=METHODOLOGY_VERSION,
             coverage_status=coverage,
+            freshest_article_at=freshest_at,
+            oldest_article_at=oldest_at,
         )
 
         # 11b. Extract drivers and generate explanation

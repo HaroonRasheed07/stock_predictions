@@ -261,6 +261,8 @@ class SentimentSnapshot:
     data_freshness: str = "fresh"
     methodology_version: str = "3"
     coverage_status: str = "unknown"  # FULL, PARTIAL, INSUFFICIENT, NONE
+    freshest_article_at: str = ""
+    oldest_article_at: str = ""
 
     provider_summary: Dict[str, Any] = field(default_factory=dict)
 
@@ -370,7 +372,7 @@ class SentimentSnapshot:
                     "published_at": a.published_at,
                     "sentiment": a.weighted_score,
                 }
-                for a in self.articles[:10]
+                for a in self.articles[:8]
             ],
             "articles": [
                 {
@@ -394,6 +396,10 @@ class SentimentSnapshot:
             "drivers": self.drivers,
             "explanation": self.explanation or self._compute_summary(),
             "news_impact_summary": self.news_impact_summary,
+            "coverage_status": getattr(self, 'coverage_status', 'unknown'),
+            "freshest_article_at": getattr(self, 'freshest_article_at', ''),
+            "oldest_article_at": getattr(self, 'oldest_article_at', ''),
+            "target_count": 8,
             "market_mood": self.market_mood,
             "methodology_version": self.methodology_version,
             "provider_summary": self.provider_summary,

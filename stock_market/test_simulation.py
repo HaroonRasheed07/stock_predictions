@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from stock_market.news_engine.engine import (
     get_sentiment_snapshot, _l1_cache, _l1_set, _l1_get,
-    SNAPSHOT_TTL_SECONDS, TARGET_ARTICLES
+    SNAPSHOT_TTL_SECONDS, TARGET_NEWS_COUNT
 )
 from stock_market.news_engine.models import SentimentSnapshot, SentimentStatus, SentimentLabel
 from stock_market.news_engine.provider_budget import budget_manager
@@ -143,13 +143,13 @@ def test_provider_budget_consumption():
 
 def test_marketaux_scarcity():
     print("\n5. MARKETAUX SCARCITY TEST")
-    selected = provider_router.select_providers(cached_article_count=7, target_count=10)
-    print("   Cache has 7, target 10 -> providers: " + str(selected))
+    selected = provider_router.select_providers(cached_article_count=7, target_count=8)
+    print("   Cache has 7, target 8 -> providers: " + str(selected))
     has_marketaux = "marketaux" in selected
     print("   Marketaux selected: " + str(has_marketaux))
 
-    selected = provider_router.select_providers(cached_article_count=0, target_count=10)
-    print("   Cache has 0, target 10 -> providers: " + str(selected))
+    selected = provider_router.select_providers(cached_article_count=0, target_count=8)
+    print("   Cache has 0, target 8 -> providers: " + str(selected))
     print("   PASS: Marketaux scarcity logic working")
 
 
@@ -170,8 +170,8 @@ def test_quota_exhaustion_fallback():
     print("   PASS: Fallback providers available after Marketaux exhaustion")
 
 
-def test_target_10_articles():
-    print("\n7. TARGET 10 ARTICLE TEST")
+def test_target_8_articles():
+    print("\n7. TARGET 8 ARTICLE TEST")
     from stock_market.news_engine.engine import _rank_and_select_articles
     from stock_market.news_engine.models import NewsArticle
 
@@ -191,18 +191,18 @@ def test_target_10_articles():
         a.entity_match_score = 0.5 + random.random() * 0.5
         articles.append(a)
 
-    selected = _rank_and_select_articles(articles, target=10)
+    selected = _rank_and_select_articles(articles, target=8)
     print("   Input articles: " + str(len(articles)))
     print("   Selected articles: " + str(len(selected)))
-    assert len(selected) == 10, "Expected 10, got " + str(len(selected))
+    assert len(selected) == 8, "Expected 8, got " + str(len(selected))
 
     publishers = [a.publisher for a in selected]
     publisher_counts = {p: publishers.count(p) for p in set(publishers)}
     max_per_publisher = max(publisher_counts.values())
     print("   Source distribution: " + str(publisher_counts))
     print("   Max from same publisher: " + str(max_per_publisher))
-    assert max_per_publisher <= 5, "Too many from same publisher: " + str(max_per_publisher)
-    print("   PASS: Target 10 with diversity working")
+    assert max_per_publisher <= 4, "Too many from same publisher: " + str(max_per_publisher)
+    print("   PASS: Target 8 with diversity working")
 
 
 def test_coverage_status():
@@ -213,7 +213,7 @@ def test_coverage_status():
         (0, "NONE"),
         (1, "INSUFFICIENT"),
         (5, "PARTIAL"),
-        (10, "FULL"),
+        (8, "FULL"),
         (15, "FULL"),
     ]
     for count, expected in test_cases:
@@ -221,12 +221,12 @@ def test_coverage_status():
                              publisher="pub_" + str(i), provider="test",
                              published_at=datetime.now(timezone.utc).isoformat())
                    for i in range(count)]
-        selected = _rank_and_select_articles(articles, target=10)
+        selected = _rank_and_select_articles(articles, target=8)
         if count == 0:
             status = "NONE"
         elif count < 2:
             status = "INSUFFICIENT"
-        elif count < 10:
+        elif count < 8:
             status = "PARTIAL"
         else:
             status = "FULL"
@@ -263,7 +263,7 @@ def test_article_ranking():
             a.entity_match_score = 0.4
         articles.append(a)
 
-    selected = _rank_and_select_articles(articles, target=10)
+    selected = _rank_and_select_articles(articles, target=8)
     top_3_relevance = [a.relevance_score for a in selected[:3]]
     print("   Top 3 relevance scores: " + str(top_3_relevance))
     assert all(r >= 0.7 for r in top_3_relevance), "Top articles should be high quality"
@@ -281,7 +281,7 @@ if __name__ == "__main__":
         test_provider_budget_consumption()
         test_marketaux_scarcity()
         test_quota_exhaustion_fallback()
-        test_target_10_articles()
+        test_target_8_articles()
         test_coverage_status()
         test_article_ranking()
         print("\n" + "=" * 70)
