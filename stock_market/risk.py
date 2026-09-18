@@ -54,6 +54,19 @@ def calculate_trend_strength(df: pd.DataFrame) -> float:
     return max(0.0, min(100.0, score))
 
 
+def get_technical_label(trend_score: float) -> str:
+    """
+    Canonical technical label from trend strength score.
+    Shared by Technical Analysis page and homepage 'Stocks Worth Investigating'.
+    """
+    if trend_score > 60:
+        return "Bullish"
+    elif trend_score < 40:
+        return "Bearish"
+    else:
+        return "Neutral"
+
+
 def assess_risk(df: pd.DataFrame, ticker: str = "Unknown") -> Dict[str, Any]:
     """
     Evaluate the risk level of an asset.

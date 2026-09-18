@@ -42,7 +42,7 @@ MIN_RELEVANT_ARTICLES = 2        # Minimum for "sufficient" status
 SNAPSHOT_TTL_SECONDS = 900       # 15 minutes
 LOOKBACK_DAYS = 3                # How far back to look for news
 MAX_ARTICLES_PER_TICKER = 20     # Cap per ticker
-METHODOLOGY_VERSION = "5"        # Bump when rule engine changes materially
+METHODOLOGY_VERSION = "6"        # Bump when rule engine changes materially
 
 # Recency weights (hours since publication)
 RECENCY_WEIGHTS = [

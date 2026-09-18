@@ -18,6 +18,7 @@ from stock_market.news_engine.engine import (
     _aggregate_sentiment, METHODOLOGY_VERSION,
     _get_recency_weight, SOURCE_QUALITY,
 )
+from risk import calculate_trend_strength, get_technical_label
 from stock_market.validation_fixture import VALIDATION_HEADLINES, CATEGORY_GROUPS
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
@@ -437,6 +438,43 @@ test("Cross-page: sentiment_score == score", legacy_c["sentiment_score"] == lega
 test("Cross-page: label is 'Neutral'", legacy_c["label"] == "Neutral")
 test("Cross-page: market_mood is 'Neutral'", legacy_c["market_mood"] == "Neutral")
 test("Cross-page: positive_pct + neutral_pct + negative_pct = ~100", abs(legacy_c["positive_pct"] + legacy_c["neutral_pct"] + legacy_c["negative_pct"] - 100) < 1)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SECTION 12: CANONICAL TECHNICAL CONSISTENCY
+# ═══════════════════════════════════════════════════════════════════
+print("\n" + "=" * 70)
+print("SECTION 12: CANONICAL TECHNICAL CONSISTENCY")
+print("=" * 70)
+
+import pandas as pd
+from indicators import calculate_indicators as _calc_ind
+from utils import load_data as _load_data
+
+TECH_TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "CSCO"]
+
+for ticker in TECH_TICKERS:
+    try:
+        df = _load_data(ticker, "3mo")
+        if df is None or df.empty:
+            test(f"Tech {ticker}: data loaded", False)
+            continue
+        ind_records = _calc_ind(df)
+        df_ind = pd.DataFrame(ind_records)
+        ts = calculate_trend_strength(df_ind)
+        label = get_technical_label(ts)
+        test(f"Tech {ticker}: trend_score={ts:.1f} label={label}", True)
+
+        # Verify canonical thresholds
+        if ts > 60:
+            expected = "Bullish"
+        elif ts < 40:
+            expected = "Bearish"
+        else:
+            expected = "Neutral"
+        test(f"Tech {ticker}: label matches canonical (expected={expected})", label == expected)
+    except Exception as e:
+        test(f"Tech {ticker}: exception {e!s:.30s}", False)
 
 
 # ═══════════════════════════════════════════════════════════════════

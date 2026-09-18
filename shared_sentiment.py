@@ -111,6 +111,31 @@ POSITIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     # Stock split
     (r'stock\s+split', 0.3, 0.5, 'CAPITAL_RETURN'),
     (r'(?:\d+[- ]for[- ]\d+)\s+stock\s+split', 0.4, 0.5, 'CAPITAL_RETURN'),
+    # ── NEW: Forward-looking statements (MISSED_POSITIVE) ──
+    (r'forecasts?\s+.*(?:double|triple|surge|soar|jump)', 0.7, 1.5, 'GUIDANCE'),
+    (r'forecasts?\s+.*(?:shipments?|production|output|volume)\s+to\s+(?:double|triple|increase)', 0.7, 1.5, 'GUIDANCE'),
+    (r'expects?\s+.*(?:strong|significant|substantial)\s+(?:growth|demand|increase)', 0.6, 1.0, 'GUIDANCE'),
+    (r'backlog\s+(?:reaching|exceeding|surpassing|hits?)\s+(?:\$|billion|million)', 0.7, 1.5, 'BACKLOG'),
+    (r'(?:record|strong|growing)\s+backlog', 0.5, 1.0, 'BACKLOG'),
+    # ── NEW: Contracts/Awards (MISSED_POSITIVE) ──
+    (r'finalizes?\s+.*(?:award|contract|deal|agreement)', 0.6, 1.0, 'CONTRACT'),
+    (r'(?:\$|billion|million)\s+(?:award|contract|grant)\s+(?:from|with|by)', 0.7, 1.5, 'CONTRACT'),
+    (r'(?:government|federal|defense|military)\s+(?:award|contract|grant)', 0.6, 1.0, 'CONTRACT'),
+    # ── NEW: Partnerships (MISSED_POSITIVE) ──
+    (r'strategic\s+alliance', 0.5, 1.0, 'PARTNERSHIP'),
+    (r'enter\s+into\s+(?:strategic\s+)?alliance', 0.5, 1.0, 'PARTNERSHIP'),
+    (r'partner\s+with.*(?:launch|introduce|deliver)', 0.5, 1.0, 'PARTNERSHIP'),
+    (r'(?:nationwide|global|international)\s+(?:launch|delivery|expansion)', 0.4, 0.5, 'PARTNERSHIP'),
+    # ── NEW: Adoption/Growth (MISSED_POSITIVE) ──
+    (r'(?:nearly|about|over|more\s+than)?\s*(?:\d+%|percent)\s+of\s+(?:the\s+)?(?:fortune|s&p|top)\s+\d+\s+(?:now\s+)?(?:use|adopt|deploy)', 0.6, 1.0, 'ADOPTION'),
+    (r'(?:strong|robust|rapid)\s+adoption', 0.5, 1.0, 'ADOPTION'),
+    (r'(?:enterprise|customer|user)\s+adoption', 0.4, 0.5, 'ADOPTION'),
+    # ── NEW: Orders (MISSED_POSITIVE) ──
+    (r'nears?\s+(?:order|deal|agreement)\s+for', 0.5, 1.0, 'CONTRACT'),
+    (r'(?:order|deal)\s+(?:from|with)\s+(?:airline|carrier|military|government)', 0.5, 1.0, 'CONTRACT'),
+    # ── NEW: Investment/Facility (MISSED_POSITIVE) ──
+    (r'(?:\$|billion|million)\s+(?:solar|factory|plant|facility)\s+(?:approved|clear)', 0.5, 1.0, 'CAPITAL_RETURN'),
+    (r'(?:tax\s+break|incentive)\s+(?:approved|granted|for)', 0.4, 0.5, 'CAPITAL_RETURN'),
 ]
 
 # NEGATIVE PHRASES
@@ -211,6 +236,20 @@ NEGATIVE_PHRASES: List[Tuple[str, float, float, str]] = [
     # Deliveries miss
     (r'deliveries?\s+miss', -0.7, 1.5, 'EARNINGS'),
     (r'delivers?\s+miss', -0.7, 1.5, 'EARNINGS'),
+    # ── NEW: Legal costs/settlements (MISSED_NEGATIVE) ──
+    (r'set\s+to\s+pay.*(?:million|billion)', -0.6, 1.5, 'LEGAL'),
+    (r'settlement.*(?:million|billion|\$)', -0.5, 1.0, 'LEGAL'),
+    (r'overhaul.*after.*settlement', -0.5, 1.0, 'LEGAL'),
+    (r'(?:pay|pays?|paying)\s+(?:million|billion|\$)', -0.5, 1.0, 'LEGAL'),
+    (r'(?:\$\d+|million|billion)\s+settlement', -0.6, 1.5, 'LEGAL'),
+    # ── NEW: Competitive threats (MISSED_NEGATIVE) ──
+    (r'secret\s+weapon\s+against', -0.4, 0.5, 'COMPETITION'),
+    (r'production\s+problems?', -0.5, 1.0, 'OPERATIONAL'),
+    (r'(?:raises?|raising)\s+concern', -0.3, 0.5, 'GENERAL'),
+    # ── NEW: Operational issues (MISSED_NEGATIVE) ──
+    (r'outage\s+(?:raises?|raising)\s+concern', -0.4, 0.5, 'OPERATIONAL'),
+    (r'(?:global|major)\s+outage', -0.5, 1.0, 'OPERATIONAL'),
+    (r'(?:product|production|manufacturing)\s+(?:delay|issue|problem|halt)', -0.5, 1.0, 'OPERATIONAL'),
 ]
 
 # SINGLE-WORD fallback (lower priority than phrases)
@@ -409,7 +448,7 @@ def _classify_events(text: str) -> List[str]:
     if any(kw in text_lower for kw in ['launch', 'unveil', 'release', 'announce', 'product', 'feature', 'update']):
         events.append('PRODUCT')
     # Contract
-    if any(kw in text_lower for kw in ['contract', 'deal', 'partnership', 'agreement', 'award']):
+    if any(kw in text_lower for kw in ['contract', 'deal', 'partnership', 'agreement', 'award', 'alliance']):
         events.append('CONTRACT')
     # Management
     if any(kw in text_lower for kw in ['ceo', 'cfo', 'chairman', 'appoint', 'resign', 'depart', 'executive']):
@@ -417,6 +456,18 @@ def _classify_events(text: str) -> List[str]:
     # Capital return
     if any(kw in text_lower for kw in ['dividend', 'buyback', 'repurchase', 'capital return', 'stock split']):
         events.append('CAPITAL_RETURN')
+    # Backlog
+    if any(kw in text_lower for kw in ['backlog', 'order book', 'bookings']):
+        events.append('BACKLOG')
+    # Adoption
+    if any(kw in text_lower for kw in ['adoption', 'deploy', 'implement', 'fortune 100', 'fortune 500']):
+        events.append('ADOPTION')
+    # Competition
+    if any(kw in text_lower for kw in ['competitor', 'competition', 'rival', 'market share', 'threat']):
+        events.append('COMPETITION')
+    # Operational
+    if any(kw in text_lower for kw in ['outage', 'delay', 'halt', 'disruption', 'production']):
+        events.append('OPERATIONAL')
     # Cybersecurity
     if any(kw in text_lower for kw in ['breach', 'hack', 'cyber', 'ransomware', 'data leak']):
         events.append('CYBERSECURITY')

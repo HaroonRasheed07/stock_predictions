@@ -25,7 +25,7 @@ from forecast_onnx import load_forecast_model, forecast_stock
 from multi_asset import get_asset_info, search_assets, get_default_watchlist, get_watchlist_by_category
 from opportunity import scan_watchlist, calculate_opportunity_score
 from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
-from risk import assess_risk, calculate_trend_strength
+from risk import assess_risk, calculate_trend_strength, get_technical_label
 from watchlist_monitor import scan_watchlist_intelligent
 from market_status import get_market_status as _get_market_status, is_market_open as _is_market_open
 
@@ -1264,20 +1264,8 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
                     if buy_s >= 2: signal = "Buy"
                     elif sell_s >= 2: signal = "Sell"
 
-                    # Derive canonical technical label from existing indicators
-                    # Uses the same inputs as signal but produces a directional label
-                    bull_signals = sum([ts > 60, rsi_val < 70, macd_val > sig_val])
-                    bear_signals = sum([ts < 40, rsi_val > 30, macd_val <= sig_val])
-                    if bull_signals >= 3 and ts >= 65:
-                        technical_label = "Strong Bullish"
-                    elif bull_signals >= 2 and ts >= 55:
-                        technical_label = "Bullish"
-                    elif bear_signals >= 3 and ts <= 35:
-                        technical_label = "Strong Bearish"
-                    elif bear_signals >= 2 and ts <= 45:
-                        technical_label = "Bearish"
-                    else:
-                        technical_label = "Neutral"
+                    # Canonical technical label — same as Technical Analysis page
+                    technical_label = get_technical_label(ts)
 
                     rd = assess_risk(df_ind, ticker)
                     risk_level = rd.get("risk_level", "Unknown")
@@ -1413,19 +1401,8 @@ def discover_scan(req: DiscoverScanRequest):
                         elif sell_signals >= 2: signal = "Sell"
                         else: signal = "Hold"
 
-                        # Canonical technical label from existing indicators
-                        bull_signals = sum([ts > 60, rsi_val < 70, macd_val > sig_val])
-                        bear_signals = sum([ts < 40, rsi_val > 30, macd_val <= sig_val])
-                        if bull_signals >= 3 and ts >= 65:
-                            technical_label = "Strong Bullish"
-                        elif bull_signals >= 2 and ts >= 55:
-                            technical_label = "Bullish"
-                        elif bear_signals >= 3 and ts <= 35:
-                            technical_label = "Strong Bearish"
-                        elif bear_signals >= 2 and ts <= 45:
-                            technical_label = "Bearish"
-                        else:
-                            technical_label = "Neutral"
+                        # Canonical technical label — same as Technical Analysis page
+                        technical_label = get_technical_label(ts)
 
                         opp = calculate_opportunity_score(ticker, req.period, skip_sentiment=True)
                         opp_score = opp["score"] if opp else 50.0
@@ -1715,7 +1692,7 @@ def trend_strength(req: SingleAssetRequest):
         df_ind_records = calculate_indicators(df)
         df_ind = pd.DataFrame(df_ind_records)
         score = calculate_trend_strength(df_ind)
-        label = "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
+        label = get_technical_label(score)
         return {"ticker": req.ticker, "trend_score": round(score, 1), "trend_label": label}
 
     payload, meta = cache_manager.get_swr(
