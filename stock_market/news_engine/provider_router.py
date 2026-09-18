@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 # ─── Configuration ──────────────────────────────────────────────────────────
 
 TARGET_NEWS_COUNT = 8           # Canonical target after relevance + dedup
-CANDIDATE_MULTIPLIER = 2.5      # Fetch 2.5x candidates to ensure 8 after pipeline
-MAX_CANDIDATES = 25             # Cap on raw candidates per ticker
+CANDIDATE_MULTIPLIER = 5.0      # Fetch 5x candidates — relevance filter removes 70-90%
+MAX_CANDIDATES = 60             # Cap on raw candidates per ticker (increased for better coverage)
 
 # Freshness windows (hours)
 FRESHNESS_WINDOW_PRIMARY = 24    # First try: last 24 hours
@@ -134,8 +134,21 @@ class ProviderRouter:
         articles_collected: int,
         target_count: int = TARGET_NEWS_COUNT,
         providers_called: int = 0,
+        current_provider: str = "",
     ) -> bool:
-        """Determine if we should stop calling providers."""
+        """Determine if we should stop calling providers.
+
+        Free providers (rss, gdelt) are NEVER stopped — they cost nothing.
+        Stop only after collecting enough raw candidates from paid sources.
+        """
+        # Never stop before calling at least 3 providers (need diverse sources)
+        if providers_called < 3:
+            return False
+
+        # Never stop free providers — they cost nothing
+        if current_provider in ("rss", "gdelt"):
+            return False
+
         # Stop if we have enough raw candidates
         if articles_collected >= target_count * CANDIDATE_MULTIPLIER:
             return True

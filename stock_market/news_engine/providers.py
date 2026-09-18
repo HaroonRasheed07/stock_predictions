@@ -160,32 +160,47 @@ class NewsDataProvider(NewsProvider):
 
         start = time.perf_counter()
         try:
-            queries = get_search_queries(company)
-            query = queries[0] if queries else ticker
-            encoded = quote(query, safe="")
-            url = (
-                f"{self._base_url}?apikey={self._api_key}&q={encoded}"
-                f"&language=en&category=business&size={min(max_results, 10)}"
-            )
-            resp = requests.get(url, timeout=self._timeout)
-            resp.raise_for_status()
-            data = resp.json()
+            # Try company short name first (most specific), then canonical name
+            queries_to_try = []
+            if company.short_name:
+                queries_to_try.append(company.short_name)
+            queries_to_try.append(company.canonical_name)
 
-            articles = []
-            for item in data.get("results", [])[:max_results]:
-                title = item.get("title", "") or ""
-                desc = item.get("description", "") or ""
-                articles.append(NewsArticle(
-                    title=title,
-                    description=desc,
-                    url=item.get("link", "#"),
-                    publisher=item.get("source_id", "Unknown"),
-                    published_at=item.get("pubDate", ""),
-                    provider=self.name,
-                    provider_article_id=item.get("article_id", ""),
-                    source_type=SourceType.AGGREGATOR,
-                    ticker=ticker,
-                ))
+            all_articles = []
+            seen_urls = set()
+
+            for query in queries_to_try[:2]:
+                encoded = quote(query, safe="")
+                url = (
+                    f"{self._base_url}?apikey={self._api_key}&q={encoded}"
+                    f"&language=en&category=business&size={min(max_results, 10)}"
+                )
+                resp = requests.get(url, timeout=self._timeout)
+                resp.raise_for_status()
+                data = resp.json()
+
+                for item in data.get("results", [])[:max_results]:
+                    link = item.get("link", "#")
+                    if link in seen_urls:
+                        continue
+                    seen_urls.add(link)
+
+                    title = item.get("title", "") or ""
+                    desc = item.get("description", "") or ""
+                    all_articles.append(NewsArticle(
+                        title=title,
+                        description=desc,
+                        url=link,
+                        publisher=item.get("source_id", "Unknown"),
+                        published_at=item.get("pubDate", ""),
+                        provider=self.name,
+                        provider_article_id=item.get("article_id", ""),
+                        source_type=SourceType.AGGREGATOR,
+                        ticker=ticker,
+                    ))
+
+                if len(all_articles) >= max_results:
+                    break
 
             latency = (time.perf_counter() - start) * 1000
             self.circuit_breaker.record_success()
@@ -195,10 +210,10 @@ class NewsDataProvider(NewsProvider):
 
             return ProviderResult(
                 provider=self.name,
-                articles=articles,
+                articles=all_articles[:max_results],
                 success=True,
                 latency_ms=latency,
-                raw_count=len(articles),
+                raw_count=len(all_articles),
             )
 
         except requests.exceptions.Timeout:
@@ -353,35 +368,55 @@ class CurrentsProvider(NewsProvider):
 
         start = time.perf_counter()
         try:
-            published_after = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%S")
-            queries = get_search_queries(company)
-            keyword = queries[0] if queries else ticker
-            params = {
-                "apiKey": self._api_key,
-                "keyword": keyword,
-                "language": "en",
-                "published_after": published_after,
-            }
-            resp = requests.get(f"{self._base_url}/search", params=params, timeout=self._timeout)
-            resp.raise_for_status()
-            resp.encoding = 'utf-8'
-            data = resp.json()
+            start_date = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            articles = []
-            for item in data.get("news", [])[:max_results]:
-                title = item.get("title", "") or ""
-                desc = item.get("description", "") or ""
-                articles.append(NewsArticle(
-                    title=title,
-                    description=desc,
-                    url=item.get("url", "#"),
-                    publisher=item.get("source", "Unknown"),
-                    published_at=item.get("published", ""),
-                    provider=self.name,
-                    provider_article_id=item.get("id", ""),
-                    source_type=SourceType.AGGREGATOR,
-                    ticker=ticker,
-                ))
+            # Try multiple queries for better coverage: short_name, ticker+stock, canonical name
+            queries_to_try = []
+            if company.short_name:
+                queries_to_try.append(company.short_name)
+            queries_to_try.append(f"{ticker} stock")
+            if company.canonical_name and company.canonical_name != company.short_name:
+                queries_to_try.append(company.canonical_name)
+
+            all_articles = []
+            seen_urls = set()
+
+            for query in queries_to_try[:2]:  # Limit to 2 queries to preserve quota
+                # Currents API uses "keywords" (plural) and start_date/end_date (RFC3339)
+                params = {
+                    "apiKey": self._api_key,
+                    "keywords": query,
+                    "language": "en",
+                    "start_date": start_date,
+                    "category": "business",
+                }
+                resp = requests.get(f"{self._base_url}/search", params=params, timeout=self._timeout)
+                resp.raise_for_status()
+                resp.encoding = 'utf-8'
+                data = resp.json()
+
+                for item in data.get("news", [])[:max_results]:
+                    url = item.get("url", "#")
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+
+                    title = item.get("title", "") or ""
+                    desc = item.get("description", "") or ""
+                    all_articles.append(NewsArticle(
+                        title=title,
+                        description=desc,
+                        url=url,
+                        publisher=item.get("author", "Unknown") or item.get("source", "Unknown"),
+                        published_at=item.get("published", ""),
+                        provider=self.name,
+                        provider_article_id=item.get("id", ""),
+                        source_type=SourceType.AGGREGATOR,
+                        ticker=ticker,
+                    ))
+
+                if len(all_articles) >= max_results:
+                    break
 
             latency = (time.perf_counter() - start) * 1000
             self.circuit_breaker.record_success()
@@ -391,10 +426,10 @@ class CurrentsProvider(NewsProvider):
 
             return ProviderResult(
                 provider=self.name,
-                articles=articles,
+                articles=all_articles[:max_results],
                 success=True,
                 latency_ms=latency,
-                raw_count=len(articles),
+                raw_count=len(all_articles),
             )
 
         except requests.exceptions.Timeout:
@@ -402,6 +437,11 @@ class CurrentsProvider(NewsProvider):
             self._metrics["total_calls"] += 1
             self._metrics["failures"] += 1
             return ProviderResult(provider=self.name, success=False, error="timeout")
+        except requests.exceptions.HTTPError as e:
+            self.circuit_breaker.record_failure()
+            self._metrics["total_calls"] += 1
+            self._metrics["failures"] += 1
+            return ProviderResult(provider=self.name, success=False, error=f"HTTP {e.response.status_code}")
         except Exception as e:
             self.circuit_breaker.record_failure()
             self._metrics["total_calls"] += 1
@@ -415,8 +455,8 @@ class GDELTProvider(NewsProvider):
     def __init__(self):
         super().__init__("gdelt")
         self._base_url = "https://api.gdeltproject.org/api/v2/doc/doc"
-        self._timeout = 12
-        self.rate_limiter = RateLimiter(max_calls=10, window_seconds=30.0)
+        self._timeout = 15
+        self.rate_limiter = RateLimiter(max_calls=10, window_seconds=60.0)
 
     def fetch(
         self,
@@ -430,7 +470,8 @@ class GDELTProvider(NewsProvider):
 
         start = time.perf_counter()
         try:
-            query = company.short_name or company.ticker
+            # Use short_name for better search (e.g., "Apple" not "Apple Inc.")
+            query = company.short_name or company.canonical_name or ticker
             params = {
                 "query": query,
                 "mode": "ArtList",
@@ -572,7 +613,7 @@ for _sector, _tickers in _SECTOR_MAP.items():
 class RSSProvider(NewsProvider):
     def __init__(self):
         super().__init__("rss")
-        self._timeout = 8
+        self._timeout = 12
         self.rate_limiter = RateLimiter(max_calls=100, window_seconds=60.0)
 
     def fetch(
@@ -625,7 +666,7 @@ class RSSProvider(NewsProvider):
         sector = _TICKER_SECTOR.get(ticker.upper(), "")
         sector_terms = _SECTOR_KEYWORDS.get(sector, []) if sector else []
 
-        for item_xml in items[:50]:
+        for item_xml in items[:100]:
             title_match = re.search(r'<title[^>]*>(.*?)</title>', item_xml, re.DOTALL)
             link_match = re.search(r'<link[^>]*>(.*?)</link>', item_xml, re.DOTALL)
             desc_match = re.search(r'<description[^>]*>(.*?)</description>', item_xml, re.DOTALL)

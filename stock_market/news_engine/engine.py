@@ -452,7 +452,9 @@ def _deduplicate_articles(articles: List[NewsArticle]) -> List[NewsArticle]:
             groups[group_counter] = [article]
             group_counter += 1
 
-    # Fuzzy dedup: only merge if titles are VERY similar AND from same publisher
+    # Fuzzy dedup: merge if titles are VERY similar
+    # Cross-publisher: if Jaccard > 0.85 (nearly identical titles) → same story syndicated
+    # Same-publisher: if Jaccard > 0.7 → same story updated
     titles = [(i, re.sub(r'[^a-z0-9]', '', a.title.lower()), a.publisher.lower()) for i, a in enumerate(articles)]
     for i in range(len(titles)):
         for j in range(i + 1, len(titles)):
@@ -460,8 +462,12 @@ def _deduplicate_articles(articles: List[NewsArticle]) -> List[NewsArticle]:
             t2 = titles[j][1]
             pub1 = titles[i][2]
             pub2 = titles[j][2]
-            # Only merge if same publisher AND high title similarity
-            if t1 and t2 and pub1 == pub2 and _jaccard_similarity(t1, t2) > 0.7:
+            if not t1 or not t2:
+                continue
+            sim = _jaccard_similarity(t1, t2)
+            # Cross-publisher dedup: very high similarity = same syndicated story
+            should_merge = (sim > 0.85) or (sim > 0.7 and pub1 == pub2)
+            if should_merge:
                 gid1 = seen_fingerprints.get(
                     hashlib.md5(f"{t1}|{re.sub(r'[?#].*', '', articles[titles[i][0]].url.lower())}".encode()).hexdigest(),
                     -1
@@ -692,18 +698,31 @@ def get_sentiment_history(ticker: str, period: str = "7d") -> List[Dict[str, Any
 def get_provider_diagnostics(ticker: str) -> Dict[str, Any]:
     """Return detailed provider diagnostic info for a ticker. DEV ONLY.
 
-    Traces the full pipeline and returns:
-    - resolved company identity
-    - each provider's status, raw count, accepted count
-    - relevance rejected count
-    - dedupe removed count
-    - final count
+    Traces the full pipeline and returns structured diagnostics:
+    {
+      "ticker": "NVDA",
+      "cache_candidates": 0,
+      "providers": { "rss": {"attempted": true, "status": "success", "returned": 5}, ... },
+      "raw_total": 27,
+      "normalized": 26,
+      "relevance_pass": 14,
+      "dedupe_pass": 11,
+      "age_pass": 11,
+      "final_selected": 8
+    }
     """
     ticker = ticker.upper().strip()
     diagnostics: Dict[str, Any] = {
         "ticker": ticker,
         "resolved_company": {},
         "providers": {},
+        "cache_candidates": 0,
+        "raw_total": 0,
+        "normalized": 0,
+        "relevance_pass": 0,
+        "dedupe_pass": 0,
+        "age_pass": 0,
+        "final_selected": 0,
         "relevance_rejected": 0,
         "dedupe_removed": 0,
         "final_count": 0,
@@ -723,13 +742,17 @@ def get_provider_diagnostics(ticker: str) -> Dict[str, Any]:
 
         for provider in providers:
             provider_diag: Dict[str, Any] = {
+                "attempted": True,
                 "status": "skipped",
+                "returned": 0,
                 "raw_count": 0,
                 "accepted_count": 0,
                 "latency_ms": 0,
             }
 
             if not provider.is_available():
+                provider_diag["attempted"] = False
+                provider_diag["status"] = "unavailable"
                 diagnostics["providers"][provider.name] = provider_diag
                 continue
 
@@ -741,11 +764,11 @@ def get_provider_diagnostics(ticker: str) -> Dict[str, Any]:
                     max_results=10,
                 )
                 provider_diag["status"] = "success" if result.success else f"error: {result.error}"
+                provider_diag["returned"] = len(result.articles)
                 provider_diag["raw_count"] = len(result.articles)
                 provider_diag["latency_ms"] = round(result.latency_ms, 1)
 
                 if result.articles:
-                    # Score relevance for diagnostic count
                     accepted = 0
                     for article in result.articles:
                         article.relevance_score = _score_relevance(article, company)
@@ -761,15 +784,26 @@ def get_provider_diagnostics(ticker: str) -> Dict[str, Any]:
 
         # Score all and count rejected
         total_raw = len(all_articles)
+        diagnostics["raw_total"] = total_raw
         for article in all_articles:
             article.relevance_score = _score_relevance(article, company)
         relevant = [a for a in all_articles if a.relevance_score >= RELEVANCE_THRESHOLD]
+        diagnostics["normalized"] = total_raw
+        diagnostics["relevance_pass"] = len(relevant)
         diagnostics["relevance_rejected"] = total_raw - len(relevant)
 
         # Dedup
         unique = _deduplicate_articles(relevant)
+        diagnostics["dedupe_pass"] = len(unique)
         diagnostics["dedupe_removed"] = len(relevant) - len(unique)
-        diagnostics["final_count"] = len(unique)
+
+        # Age pass (all articles pass — age is used for ranking, not rejection)
+        diagnostics["age_pass"] = len(unique)
+
+        # Final rank and select
+        final = _rank_and_select_articles(unique, TARGET_NEWS_COUNT)
+        diagnostics["final_selected"] = len(final)
+        diagnostics["final_count"] = len(final)
 
     except Exception as e:
         diagnostics["error"] = str(e)
@@ -940,13 +974,18 @@ def get_sentiment_snapshot(
     if not force_refresh:
         sqlite_cached = _sqlite_get_snapshot(ticker)
         if sqlite_cached:
-            if sqlite_cached.data_freshness == "fresh":
+            # Reject broken snapshots (1 article = likely provider failure, not genuine low coverage)
+            if (sqlite_cached.relevant_article_count <= 1 and
+                    sqlite_cached.status != SentimentStatus.SUFFICIENT):
+                logger.info(f"[CACHE] {ticker} rejecting broken snapshot ({sqlite_cached.relevant_article_count} articles) — will re-fetch")
+            elif sqlite_cached.data_freshness == "fresh":
                 _l1_set(ticker, sqlite_cached)
-                logger.info(f"[ENGINE] {ticker} SQLite cache HIT (fresh)")
+                logger.info(f"[CACHE] {ticker} SQLite cache HIT (fresh)")
+                return sqlite_cached
             else:
                 # Stale but still usable — return with stale freshness
-                logger.info(f"[ENGINE] {ticker} SQLite cache HIT (stale, returning as-is)")
-            return sqlite_cached
+                logger.info(f"[CACHE] {ticker} SQLite cache HIT (stale, returning as-is)")
+                return sqlite_cached
 
     # 3. Single-flight: if another request is computing, wait
     if not _acquire_inflight(ticker):
@@ -965,10 +1004,29 @@ def get_sentiment_snapshot(
         metrics = fetch_metrics
         metrics.start()
 
-        # Get cache count from any existing data (for routing decisions)
-        cached_count = 0  # We're here because cache was empty/stale
+        # Load any existing valid articles from stale cache for merge
+        old_valid_articles: List[NewsArticle] = []
+        sqlite_stale = None
+        try:
+            sqlite_stale = _sqlite_get_snapshot(ticker)
+            if sqlite_stale and sqlite_stale.articles and sqlite_stale.data_freshness == "stale":
+                # Reconstruct NewsArticle objects from cached ArticleSentiment
+                for asent in sqlite_stale.articles:
+                    old_valid_articles.append(NewsArticle(
+                        title=asent.title,
+                        url=asent.url,
+                        publisher=asent.publisher,
+                        published_at=asent.published_at,
+                        provider="cached",
+                        ticker=ticker,
+                        relevance_score=asent.relevance_score,
+                    ))
+                logger.info(f"[ENGINE] {ticker} loaded {len(old_valid_articles)} stale cached articles for merge")
+        except Exception:
+            pass
 
         # Select providers based on quota and needs
+        cached_count = len(old_valid_articles)
         selected_providers = provider_router.select_providers(
             cached_article_count=cached_count,
             target_count=TARGET_NEWS_COUNT,
@@ -1023,6 +1081,7 @@ def get_sentiment_snapshot(
                     articles_collected=len(all_articles),
                     target_count=TARGET_NEWS_COUNT,
                     providers_called=len(provider_results),
+                    current_provider=provider_name,
                 ):
                     logger.info(f"[ENGINE] {ticker} sufficient candidates ({len(all_articles)}), stopping provider fan-out")
                     break
@@ -1036,16 +1095,63 @@ def get_sentiment_snapshot(
 
         logger.info(f"[ENGINE] {ticker} collected {len(all_articles)} raw articles from {len(provider_results)} providers")
 
-        # 6. Score relevance
+        # 6. Score relevance on new articles
         for article in all_articles:
             article.relevance_score = _score_relevance(article, company)
 
-        # Filter by relevance
-        relevant = [a for a in all_articles if a.relevance_score >= RELEVANCE_THRESHOLD]
-        logger.info(f"[ENGINE] {ticker} {len(relevant)} relevant articles after filtering (threshold={RELEVANCE_THRESHOLD})")
+        # Filter new articles by relevance
+        new_relevant = [a for a in all_articles if a.relevance_score >= RELEVANCE_THRESHOLD]
+        logger.info(f"[ENGINE] {ticker} {len(new_relevant)} new relevant articles (threshold={RELEVANCE_THRESHOLD})")
+
+        # 6b. Merge with old valid cached articles
+        # Old cached articles already had relevance scores; keep them if still valid
+        merged_articles = list(new_relevant)
+        merged_urls = {a.url for a in new_relevant}
+
+        for old_article in old_valid_articles:
+            if old_article.url in merged_urls:
+                continue  # Already have this from new fetch
+            # Re-score old article with current company identity
+            old_article.relevance_score = _score_relevance(old_article, company)
+            if old_article.relevance_score >= RELEVANCE_THRESHOLD:
+                merged_articles.append(old_article)
+                merged_urls.add(old_article.url)
+
+        logger.info(f"[ENGINE] {ticker} {len(merged_articles)} total relevant after merge (new={len(new_relevant)}, old={len(merged_articles) - len(new_relevant)})")
+
+        # 6c. Progressive time window expansion: if still < target, try wider lookback
+        if len(merged_articles) < TARGET_NEWS_COUNT and LOOKBACK_DAYS < 7:
+            for expanded_days in [7, 14]:
+                if len(merged_articles) >= TARGET_NEWS_COUNT:
+                    break
+                logger.info(f"[ENGINE] {ticker} only {len(merged_articles)} relevant, expanding lookback to {expanded_days}d")
+                for provider_name in selected_providers:
+                    provider = all_providers.get(provider_name)
+                    if not provider or not provider.is_available():
+                        continue
+                    if not budget_manager.can_call(provider_name):
+                        continue
+                    try:
+                        result = provider.fetch(
+                            ticker=ticker,
+                            company=company,
+                            lookback_days=expanded_days,
+                            max_results=15,
+                        )
+                        if result.success and result.articles:
+                            for article in result.articles:
+                                if article.url not in merged_urls:
+                                    article.relevance_score = _score_relevance(article, company)
+                                    if article.relevance_score >= RELEVANCE_THRESHOLD:
+                                        merged_articles.append(article)
+                                        merged_urls.add(article.url)
+                                    all_articles.append(article)
+                            metrics.articles_fetched += len(result.articles)
+                    except Exception:
+                        continue
 
         # 7. Deduplicate
-        unique_articles = _deduplicate_articles(relevant)
+        unique_articles = _deduplicate_articles(merged_articles)
         logger.info(f"[ENGINE] {ticker} {len(unique_articles)} unique articles after dedup")
 
         # 7b. Rank and select top articles with source diversity
@@ -1053,7 +1159,7 @@ def get_sentiment_snapshot(
         logger.info(f"[ENGINE] {ticker} {len(unique_articles)} articles after ranking and diversity selection")
 
         # Track metrics
-        metrics.articles_after_relevance = len(relevant)
+        metrics.articles_after_relevance = len(merged_articles)
         metrics.articles_after_dedup = len(unique_articles)
 
         # 8. Determine status and coverage
