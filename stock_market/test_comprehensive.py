@@ -356,7 +356,7 @@ print("\n" + "=" * 70)
 print("SECTION 8: METHODOLOGY VERSION")
 print("=" * 70)
 
-test(f"Methodology version is {METHODOLOGY_VERSION}", METHODOLOGY_VERSION == "5", f"version={METHODOLOGY_VERSION}")
+test(f"Methodology version is {METHODOLOGY_VERSION}", METHODOLOGY_VERSION == "6", f"version={METHODOLOGY_VERSION}")
 
 
 # ═══════════════════════════════════════════════════════════════════

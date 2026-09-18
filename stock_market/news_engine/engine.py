@@ -1053,7 +1053,7 @@ def get_sentiment_snapshot(
                     ticker=ticker,
                     company=company,
                     lookback_days=LOOKBACK_DAYS,
-                    max_results=10,
+                    max_results=15,
                 )
 
                 # Record budget usage
