@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -177,11 +176,8 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
                 const label = getVolatilityLabel(value, viewMode);
                 
                 return (
-                  <motion.tr
+                  <tr
                     key={item.ticker}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03 }}
                     className="hover:bg-muted/50 cursor-pointer"
                     onClick={() => onAssetClick?.(item.ticker)}
                   >
@@ -200,7 +196,7 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
                         {label}
                       </Badge>
                     </TableCell>
-                  </motion.tr>
+                  </tr>
                 );
               })}
             </TableBody>
@@ -221,11 +217,9 @@ export function VolatilityMonitor({ data, isLoading, onRefresh, onAssetClick }: 
                 <div key={item.ticker} className="flex items-center gap-2 sm:gap-3">
                   <span className="text-[10px] sm:text-xs font-medium w-12 sm:w-16 truncate">{item.ticker}</span>
                   <div className="flex-1 h-4 sm:h-6 bg-muted/30 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${percentage}%` }}
-                      transition={{ delay: index * 0.1, duration: 0.5 }}
+                    <div
                       className={`h-full ${colorClass.split(' ')[1] || 'bg-primary'}`}
+                      style={{ width: `${percentage}%` }}
                     />
                   </div>
                   <span className="text-[10px] sm:text-xs font-medium w-10 sm:w-12 text-right">{value.toFixed(1)}%</span>

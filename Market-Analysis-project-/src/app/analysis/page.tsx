@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Brain, TrendingUp, Activity, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
@@ -42,9 +41,7 @@ export default function Analysis() {
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
@@ -53,15 +50,12 @@ export default function Analysis() {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Professional-grade analytics and forecasting tools for data-driven trading decisions
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
           {tools.map((tool, idx) => (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.1 }}
             >
               <Link href={tool.link}>
                 <Card className="glass hover:glow-primary transition-all duration-300 cursor-pointer h-full group">
@@ -76,14 +70,11 @@ export default function Analysis() {
                   </CardContent>
                 </Card>
               </Link>
-            </motion.div>
+            </div>
           ))}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+        <div
           className="mt-16 glass rounded-2xl p-8 max-w-3xl mx-auto text-center"
         >
           <h3 className="text-2xl font-bold mb-4">Coming Soon</h3>
@@ -101,7 +92,7 @@ export default function Analysis() {
               <p className="font-semibold">Backtesting Engine</p>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
@@ -13,11 +12,7 @@ interface Signal {
 
 export default function SignalsPanel({ signals }: { signals: Signal }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.1 }}
-    >
+    <div>
       <Card className="glass h-full">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -116,12 +111,10 @@ export default function SignalsPanel({ signals }: { signals: Signal }) {
               </span>
             </div>
             <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${signals.signalStrength}%` }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
+              <div
                 className="h-full bg-gradient-to-r from-primary to-secondary"
-              ></motion.div>
+                style={{ width: `${signals.signalStrength}%` }}
+              ></div>
             </div>
           </div>
 
@@ -133,6 +126,6 @@ export default function SignalsPanel({ signals }: { signals: Signal }) {
           )}
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }

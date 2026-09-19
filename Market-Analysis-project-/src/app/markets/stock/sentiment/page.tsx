@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@tanstack/react-query';
@@ -120,10 +119,7 @@ export default function SentimentAnalysis() {
 
   // ALWAYS show the search header — never block it behind a skeleton
   const headerSection = (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
+    <div>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Sentiment Analysis</h1>
@@ -174,7 +170,7 @@ export default function SentimentAnalysis() {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 
   // Show header + loading state for sentiment data
@@ -259,25 +255,17 @@ export default function SentimentAnalysis() {
       </div>
 
       {/* Sentiment Trend */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-      >
+      <div>
         <SentimentTrend 
           data={sentimentData || null} 
           isLoading={isLoading} 
         />
-      </motion.div>
+      </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Sentiment Distribution */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-        >
+        <div>
           <Card className="glass relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
             <CardHeader className="relative">
@@ -308,14 +296,10 @@ export default function SentimentAnalysis() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
         {/* News Feed */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-        >
+        <div>
           <Card className="glass relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-secondary/12 via-transparent to-transparent" />
             <CardHeader className="relative">
@@ -394,7 +378,7 @@ export default function SentimentAnalysis() {
               </ScrollArea>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

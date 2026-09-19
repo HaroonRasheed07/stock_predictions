@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendStrength as TrendStrengthData } from '@/lib/api';
 import { Activity, ArrowRight, TrendingDown, TrendingUp, Minus } from 'lucide-react';

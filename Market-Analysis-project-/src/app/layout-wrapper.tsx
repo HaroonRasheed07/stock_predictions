@@ -3,7 +3,6 @@
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { BottomNav } from '@/components/layout/BottomNav';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useThemeStore } from '@/store/themeStore';
@@ -40,63 +39,45 @@ export function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { theme } = useThemeStore();
   const { selectedTicker } = useStockStore();
-  const [mounted, setMounted] = useState(false);
+  const [pageKey, setPageKey] = useState(pathname);
   const queryClient = useMemo(() => getQueryClient(), []);
 
   useEffect(() => {
-    setMounted(true);
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
   useEffect(() => {
-    if (!mounted) return;
+    setPageKey(pathname);
+  }, [pathname]);
+
+  useEffect(() => {
     const ticker = (selectedTicker || '').toUpperCase().trim();
     if (!ticker) return;
 
     const defaultPeriod = '1y';
 
-    // Prefetch the market overview (used by Brief, Overview pages)
     queryClient.prefetchQuery({
       queryKey: ['market-overview', ticker, defaultPeriod],
       queryFn: () => fetchMarketOverview(ticker, defaultPeriod),
     });
 
-    // Prefetch discover data (used by Discover page)
     const defaultTickers = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'JPM', 'V', 'JNJ'];
     queryClient.prefetchQuery({
       queryKey: ['discover-scan', defaultPeriod, ...defaultTickers],
       queryFn: () => fetchDiscoverScan(defaultTickers, defaultPeriod),
     });
-  }, [mounted, queryClient, selectedTicker]);
-
-  if (!mounted) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <div className="flex flex-col min-h-screen">
-          <Navbar />
-          <div className="flex-1">{children}</div>
-          <div className="pb-20 md:pb-0"><Footer /></div>
-        </div>
-      </QueryClientProvider>
-    );
-  }
+  }, [queryClient, selectedTicker]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col min-h-screen">
         <Navbar />
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="flex-1"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        <div
+          key={pageKey}
+          className="flex-1 page-enter"
+        >
+          {children}
+        </div>
         <div className="pb-20 md:pb-0"><Footer /></div>
       </div>
       <BottomNav />

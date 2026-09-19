@@ -1,6 +1,3 @@
-'use client';
-
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,26 +5,15 @@ import {
   ArrowRight, Eye, Zap, LineChart, Target, Sparkles,
 } from 'lucide-react';
 
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true } as const,
-};
-
 export function AboutClient() {
   return (
     <div className="min-h-screen">
 
-      {/* ═══ HERO ═══ */}
+      {/* HERO */}
       <section className="relative overflow-hidden gradient-hero py-20 md:py-28">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="container mx-auto px-4 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-3xl mx-auto"
-          >
+          <div className="text-center max-w-3xl mx-auto">
             <p className="text-sm font-semibold text-primary uppercase tracking-widest mb-4">About Stock Vanta</p>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
               A clearer way to{' '}
@@ -38,21 +24,16 @@ export function AboutClient() {
             <p className="text-lg md:text-xl text-foreground/70 max-w-2xl mx-auto">
               Stock Vanta brings technical analysis, market sentiment, AI-assisted forecasting and risk intelligence into one focused stock-research experience.
             </p>
-          </motion.div>
+          </div>
 
           {/* Abstract signal cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="mt-12 flex justify-center gap-3 md:gap-4 flex-wrap max-w-2xl mx-auto"
-          >
+          <div className="mt-12 flex justify-center gap-3 md:gap-4 flex-wrap max-w-2xl mx-auto">
             {[
               { icon: BarChart3, label: 'Technical', color: 'from-blue-500/20 to-blue-600/10', iconColor: 'text-blue-500' },
               { icon: Activity, label: 'Sentiment', color: 'from-green-500/20 to-green-600/10', iconColor: 'text-green-500' },
               { icon: Brain, label: 'Forecast', color: 'from-purple-500/20 to-purple-600/10', iconColor: 'text-purple-500' },
               { icon: Shield, label: 'Risk', color: 'from-amber-500/20 to-amber-600/10', iconColor: 'text-amber-500' },
-            ].map((item, i) => (
+            ].map((item) => (
               <div
                 key={item.label}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br ${item.color} border border-border/40 backdrop-blur-sm`}
@@ -61,21 +42,21 @@ export function AboutClient() {
                 <span className="text-sm font-medium">{item.label}</span>
               </div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ═══ WHY STOCK VANTA ═══ */}
+      {/* WHY STOCK VANTA */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 max-w-4xl">
-          <motion.div {...fadeUp} className="text-center mb-12">
+          <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
               Built to turn market data into context.
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Investors and traders often need to interpret price action, technical indicators, news sentiment, volatility and risk across separate tools. Stock Vanta brings these analytical layers together.
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
@@ -94,11 +75,9 @@ export function AboutClient() {
                 title: 'Form your own view',
                 desc: 'Stock Vanta presents evidence layers so you can evaluate a stock from multiple perspectives — not rely on a single number.',
               },
-            ].map((item, i) => (
-              <motion.div
+            ].map((item) => (
+              <div
                 key={item.title}
-                {...fadeUp}
-                transition={{ delay: i * 0.1 }}
                 className="rounded-2xl border border-border/60 bg-card p-6 text-center"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary/10 mx-auto mb-4 flex items-center justify-center">
@@ -106,26 +85,25 @@ export function AboutClient() {
                 </div>
                 <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
                 <p className="text-sm text-muted-foreground">{item.desc}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ CORE INTELLIGENCE ═══ */}
+      {/* CORE INTELLIGENCE */}
       <section className="py-16 md:py-24 bg-muted/20">
         <div className="container mx-auto px-4 max-w-5xl">
-          <motion.div {...fadeUp} className="text-center mb-12">
+          <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Core Intelligence</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Three primary analysis layers, each built on real market data.
             </p>
-          </motion.div>
+          </div>
 
-          {/* Primary features — large cards */}
           <div className="space-y-6 mb-8">
             {/* Technical Analysis */}
-            <motion.div {...fadeUp}>
+            <div>
               <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8 hover:shadow-lg hover:border-primary/20 transition-all">
                 <div className="flex flex-col md:flex-row md:items-center gap-6">
                   <div className="flex-shrink-0">
@@ -149,10 +127,10 @@ export function AboutClient() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
             {/* Sentiment Analysis */}
-            <motion.div {...fadeUp}>
+            <div>
               <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8 hover:shadow-lg hover:border-primary/20 transition-all">
                 <div className="flex flex-col md:flex-row md:items-center gap-6">
                   <div className="flex-shrink-0">
@@ -176,10 +154,10 @@ export function AboutClient() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
             {/* AI Forecasting */}
-            <motion.div {...fadeUp}>
+            <div>
               <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8 hover:shadow-lg hover:border-primary/20 transition-all">
                 <div className="flex flex-col md:flex-row md:items-center gap-6">
                   <div className="flex-shrink-0">
@@ -203,37 +181,35 @@ export function AboutClient() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
 
-          {/* Secondary features — smaller cards */}
+          {/* Secondary features */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { icon: Shield, title: 'Risk Intelligence', desc: 'Volatility, drawdown, trend stability and downside exposure analysis.', link: '/markets/stock' },
               { icon: Search, title: 'Opportunity Discovery', desc: 'Screen and filter stocks by signal, momentum, risk level and more.', link: '/markets/discover' },
               { icon: LineChart, title: 'Stock Brief', desc: 'A single unified view combining signal, sentiment, catalysts and risk.', link: '/markets/brief' },
-            ].map((item, i) => (
-              <motion.div key={item.title} {...fadeUp} transition={{ delay: i * 0.08 }}>
-                <Link href={item.link} className="block rounded-xl border border-border/60 bg-card p-5 hover:shadow-md hover:border-primary/20 transition-all h-full">
-                  <item.icon className="h-5 w-5 text-primary mb-3" />
-                  <h4 className="font-semibold text-sm mb-1">{item.title}</h4>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
-                </Link>
-              </motion.div>
+            ].map((item) => (
+              <Link key={item.title} href={item.link} className="block rounded-xl border border-border/60 bg-card p-5 hover:shadow-md hover:border-primary/20 transition-all h-full">
+                <item.icon className="h-5 w-5 text-primary mb-3" />
+                <h4 className="font-semibold text-sm mb-1">{item.title}</h4>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ HOW STOCK VANTA WORKS ═══ */}
+      {/* HOW STOCK VANTA WORKS */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 max-w-4xl">
-          <motion.div {...fadeUp} className="text-center mb-12">
+          <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">How Stock Vanta Works</h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
               A focused research workflow — from discovery to evidence-based analysis.
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
@@ -261,8 +237,8 @@ export function AboutClient() {
                 desc: 'Use technical, sentiment, forecasting and risk information together rather than relying on one isolated signal.',
                 icon: Target,
               },
-            ].map((item, i) => (
-              <motion.div key={item.step} {...fadeUp} transition={{ delay: i * 0.1 }}>
+            ].map((item) => (
+              <div key={item.step}>
                 <div className="flex gap-4 p-5 rounded-xl border border-border/60 bg-card/50 h-full">
                   <div className="flex-shrink-0">
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -274,52 +250,50 @@ export function AboutClient() {
                     <p className="text-sm text-muted-foreground">{item.desc}</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ TECHNOLOGY ═══ */}
+      {/* TECHNOLOGY */}
       <section className="py-16 md:py-24 bg-muted/20">
         <div className="container mx-auto px-4 max-w-4xl">
-          <motion.div {...fadeUp} className="text-center mb-10">
+          <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Built with modern analytical infrastructure</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               A full-stack research platform combining real-time market data processing with machine-learning analysis.
             </p>
-          </motion.div>
+          </div>
 
-          <motion.div {...fadeUp}>
-            <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { name: 'Next.js', category: 'Frontend' },
-                  { name: 'React', category: 'Frontend' },
-                  { name: 'TypeScript', category: 'Frontend' },
-                  { name: 'Tailwind CSS', category: 'Frontend' },
-                  { name: 'FastAPI', category: 'Backend' },
-                  { name: 'Python', category: 'Backend' },
-                  { name: 'ONNX Runtime', category: 'ML Inference' },
-                  { name: 'Custom LSTM', category: 'Forecasting' },
-                  { name: 'Financial NLP', category: 'Sentiment' },
-                  { name: 'Yahoo Query', category: 'Market Data' },
-                ].map((tech) => (
-                  <div key={tech.name} className="text-center p-3 rounded-xl bg-muted/30">
-                    <p className="text-sm font-semibold">{tech.name}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{tech.category}</p>
-                  </div>
-                ))}
-              </div>
+          <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: 'Next.js', category: 'Frontend' },
+                { name: 'React', category: 'Frontend' },
+                { name: 'TypeScript', category: 'Frontend' },
+                { name: 'Tailwind CSS', category: 'Frontend' },
+                { name: 'FastAPI', category: 'Backend' },
+                { name: 'Python', category: 'Backend' },
+                { name: 'ONNX Runtime', category: 'ML Inference' },
+                { name: 'Custom LSTM', category: 'Forecasting' },
+                { name: 'Financial NLP', category: 'Sentiment' },
+                { name: 'Yahoo Query', category: 'Market Data' },
+              ].map((tech) => (
+                <div key={tech.name} className="text-center p-3 rounded-xl bg-muted/30">
+                  <p className="text-sm font-semibold">{tech.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{tech.category}</p>
+                </div>
+              ))}
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ═══ TRANSPARENCY ═══ */}
+      {/* TRANSPARENCY */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 max-w-3xl">
-          <motion.div {...fadeUp} className="text-center">
+          <div className="text-center">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-6 flex items-center justify-center">
               <Eye className="h-7 w-7 text-primary" />
             </div>
@@ -332,39 +306,34 @@ export function AboutClient() {
                 Explore Our Methodology <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ═══ CREATOR ═══ */}
+      {/* CREATOR */}
       <section className="py-16 md:py-20 bg-muted/20">
         <div className="container mx-auto px-4 max-w-3xl">
-          <motion.div {...fadeUp}>
-            <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-2xl border border-border/60 bg-card">
-              <div className="flex-shrink-0">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white">HR</span>
-                </div>
-              </div>
-              <div className="text-center md:text-left">
-                <p className="text-xs uppercase font-semibold text-muted-foreground tracking-wider mb-2">Built from research into a real product</p>
-                <h3 className="text-xl font-bold mb-2">Haroon Rasheed</h3>
-                <p className="text-sm text-muted-foreground">
-                  AI Developer &amp; Creator of Stock Vanta. Stock Vanta began as an AI-focused market-analysis project and evolved into a broader stock research platform combining technical analysis, sentiment intelligence, forecasting and risk context.
-                </p>
+          <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-2xl border border-border/60 bg-card">
+            <div className="flex-shrink-0">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">HR</span>
               </div>
             </div>
-          </motion.div>
+            <div className="text-center md:text-left">
+              <p className="text-xs uppercase font-semibold text-muted-foreground tracking-wider mb-2">Built from research into a real product</p>
+              <h3 className="text-xl font-bold mb-2">Haroon Rasheed</h3>
+              <p className="text-sm text-muted-foreground">
+                AI Developer &amp; Creator of Stock Vanta. Stock Vanta began as an AI-focused market-analysis project and evolved into a broader stock research platform combining technical analysis, sentiment intelligence, forecasting and risk context.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ═══ FINAL CTA ═══ */}
+      {/* FINAL CTA */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4">
-          <motion.div
-            {...fadeUp}
-            className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto glow-primary"
-          >
+          <div className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto glow-primary">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3">
               See the market from more than one angle.
             </h2>
@@ -385,11 +354,11 @@ export function AboutClient() {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ═══ DISCLAIMER ═══ */}
+      {/* DISCLAIMER */}
       <section className="pb-16 md:pb-24">
         <div className="container mx-auto px-4 max-w-3xl">
           <div className="rounded-xl border border-border/40 bg-card/30 p-5">

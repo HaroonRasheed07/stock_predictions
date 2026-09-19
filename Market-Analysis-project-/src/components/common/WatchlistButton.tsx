@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Star } from 'lucide-react';
 import { useWatchlistStore } from '@/store/watchlistStore';
-import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface WatchlistButtonProps {
@@ -35,14 +34,9 @@ export function WatchlistButton({
       onClick={toggleWatchlist}
       className={isWatched ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground hover:text-foreground'}
     >
-      <motion.div
-        whileTap={{ scale: 0.8 }}
-        whileHover={{ scale: 1.1 }}
-      >
-        <Star
+      <Star
           className={`${size === 'icon' ? 'h-5 w-5' : 'h-4 w-4'} ${isWatched ? 'fill-current' : ''}`}
         />
-      </motion.div>
       {showLabel && (
         <span className="ml-2">
           {isWatched ? 'Remove from Watchlist' : 'Add to Watchlist'}

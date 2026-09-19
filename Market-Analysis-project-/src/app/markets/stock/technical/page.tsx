@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { motion } from 'framer-motion';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { fetchIndicators, fetchTrendStrength, fetchVolatilitySummary } from '@/lib/api';
@@ -162,7 +162,7 @@ export default function TechnicalAnalysis() {
 
   if (isLoading) return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <div>
         <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Technical Analysis</h1>
@@ -181,7 +181,7 @@ export default function TechnicalAnalysis() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
       <LoadingSkeleton type="chart" />
     </div>
   );
@@ -191,10 +191,7 @@ export default function TechnicalAnalysis() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <div>
         <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Technical Analysis</h1>
@@ -245,7 +242,7 @@ export default function TechnicalAnalysis() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Indicators Summary — 2-col mobile, 3-col desktop */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
@@ -297,35 +294,23 @@ export default function TechnicalAnalysis() {
 
       {/* Trend Strength and Expected Range */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
+        <div>
           <TrendStrength 
             data={trendStrengthData || { ticker, trend_score: 50, trend_label: 'Neutral' }} 
             isLoading={isLoadingTrendStrength} 
           />
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        <div>
           <ExpectedRange 
             data={volatilitySummaryData?.expected_range || { current_price: 0, atr: 0, expected_high: 0, expected_low: 0, range_percent: 0 }} 
             isLoading={isLoadingVolatilitySummary} 
           />
-        </motion.div>
+        </div>
       </div>
 
       {/* Professional Candlestick Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      <div>
         <Card className="glass">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
@@ -359,14 +344,10 @@ export default function TechnicalAnalysis() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Price Action & Volume Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      <div>
         <Card className="glass">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
@@ -407,14 +388,10 @@ export default function TechnicalAnalysis() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Bollinger Bands */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
+      <div>
         <Card className="glass">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
@@ -454,7 +431,7 @@ export default function TechnicalAnalysis() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 }

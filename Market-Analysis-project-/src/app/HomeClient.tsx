@@ -1,6 +1,5 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useCallback, useRef } from 'react';
@@ -98,13 +97,7 @@ function SignalBadge({ signal, compact = false }: { signal: string; compact?: bo
 export default function Home() {
   const router = useRouter();
   const { setSelectedTicker } = useStockStore();
-  const prefersReduced = useReducedMotion();
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // THREE INDEPENDENT QUERIES — start in parallel, resolve independently
-  // ═══════════════════════════════════════════════════════════════════════
-
-  // Query 1: Ticker (fastest — just top stocks + market status)
   const { data: tickerData } = useQuery({
     queryKey: ['home-ticker'],
     queryFn: fetchHomeTicker,
@@ -118,7 +111,6 @@ export default function Home() {
     },
   });
 
-  // Query 2: Brief preview (independent — can be slower)
   const { data: briefData } = useQuery({
     queryKey: ['home-brief'],
     queryFn: fetchHomeBrief,
@@ -132,7 +124,6 @@ export default function Home() {
     },
   });
 
-  // Query 3: Discover preview (independent — can be slower)
   const { data: discoverData } = useQuery({
     queryKey: ['home-discover'],
     queryFn: fetchHomeDiscover,
@@ -156,8 +147,6 @@ export default function Home() {
   const discover = discoverData?.discover || [];
   const marketStatus = tickerData?.marketStatus || 'Unknown';
 
-  // Query 3b: Enrich discover stocks with sentiment from discover/scan
-  // Backend times out at 6+ tickers, so batch in groups of 5
   const discoverTickers = discover.slice(0, 6).map((s) => s.ticker);
   const batch1 = discoverTickers.slice(0, 5);
   const batch2 = discoverTickers.slice(5);
@@ -258,18 +247,11 @@ export default function Home() {
   return (
     <div className="min-h-screen">
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 1 — HERO (instant render, ZERO data dependency)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 1 — HERO */}
       <section className="relative overflow-hidden gradient-hero py-16 md:py-24 lg:py-28">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="container mx-auto px-4 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-4xl mx-auto"
-          >
+          <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
@@ -312,20 +294,14 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 2 — LIVE TICKER BAR (loads independently from Query 1)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 2 — LIVE TICKER BAR */}
       {topStocks.length > 0 && (
         <div className="bg-card/50 border-y border-border/40 backdrop-blur-sm py-3 overflow-hidden">
-          <motion.div
-            animate={prefersReduced ? undefined : { x: ['0%', '-50%'] }}
-            transition={prefersReduced ? undefined : { duration: 30, repeat: Infinity, ease: 'linear' }}
-            className="flex space-x-8 whitespace-nowrap"
-          >
+          <div className="flex space-x-8 whitespace-nowrap ticker-scroll">
             {[...topStocks.slice(0, 8), ...topStocks.slice(0, 8)].map((stock, idx) => (
               <button
                 key={`${stock.symbol}-${idx}`}
@@ -339,34 +315,22 @@ export default function Home() {
                 </span>
               </button>
             ))}
-          </motion.div>
+          </div>
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3 — TODAY'S STOCK INTELLIGENCE (loads independently from Query 2)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 3 — TODAY'S STOCK INTELLIGENCE */}
       {selected ? (
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-8"
-            >
+            <div className="text-center mb-8">
               <h2 className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
               <p className="text-muted-foreground max-w-xl mx-auto">
                 A real snapshot from our engine not a recommendation, just an evidence layer.
               </p>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="max-w-2xl mx-auto"
-            >
+            <div className="max-w-2xl mx-auto">
               <button
                 onClick={() => goToStock(selected.ticker)}
                 className="w-full text-left rounded-2xl border border-border/60 bg-card p-6 transition-all duration-200 hover:shadow-lg hover:border-primary/20 active:scale-[0.99]"
@@ -437,11 +401,10 @@ export default function Home() {
                   View Full Brief <ArrowRight className="h-3 w-3" />
                 </div>
               </button>
-            </motion.div>
+            </div>
           </div>
         </section>
       ) : briefData === undefined ? (
-        /* Brief loading skeleton — only shows while Query 2 is in flight */
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
             <div className="text-center mb-8">
@@ -457,17 +420,10 @@ export default function Home() {
         </section>
       ) : null}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 4 — STOCKS WORTH INVESTIGATING (loads independently from Query 3)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 4 — STOCKS WORTH INVESTIGATING */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="flex items-center justify-between mb-6"
-          >
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold">Stocks Worth Investigating</h2>
               <p className="text-muted-foreground mt-1">A daily universe based on real screening conditions.</p>
@@ -475,10 +431,9 @@ export default function Home() {
             <Link href="/markets/discover" className="text-sm text-primary hover:underline flex items-center gap-1 shrink-0">
               See All <ChevronRight className="h-4 w-4" />
             </Link>
-          </motion.div>
+          </div>
 
           {discoverData === undefined ? (
-            /* Discover loading skeleton — only shows while Query 3 is in flight */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-36 rounded-2xl bg-muted/30 animate-pulse" />
@@ -486,63 +441,56 @@ export default function Home() {
             </div>
           ) : discoverWithSentiment.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {discoverWithSentiment.slice(0, 6).map((stock, idx) => (
-                <motion.div
+              {discoverWithSentiment.slice(0, 6).map((stock) => (
+                <button
                   key={stock.ticker}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => goToStock(stock.ticker)}
+                  className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.99]"
                 >
-                  <button
-                    onClick={() => goToStock(stock.ticker)}
-                    className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.99]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <TickerLogo ticker={stock.ticker} size="md" />
-                        <div>
-                          <p className="text-sm font-semibold">{stock.ticker}</p>
-                          <p className="text-lg font-bold">${stock.price.toFixed(2)}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={cn(
-                          'text-sm font-semibold',
-                          stock.changePercent > 0 ? 'text-success' : stock.changePercent < 0 ? 'text-destructive' : 'text-muted-foreground'
-                        )}>
-                          {stock.changePercent > 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                        </p>
-                        <SignalBadge signal={stock.signal} compact />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <TickerLogo ticker={stock.ticker} size="md" />
+                      <div>
+                        <p className="text-sm font-semibold">{stock.ticker}</p>
+                        <p className="text-lg font-bold">${stock.price.toFixed(2)}</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/40">
-                      <div className="text-center">
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase">Technical</p>
-                        <p className={cn(
-                          'text-xs font-semibold mt-0.5',
-                          stock.technical?.includes('Bullish') ? 'text-success' :
-                          stock.technical?.includes('Bearish') ? 'text-destructive' :
-                          'text-muted-foreground'
-                        )}>{stock.technical || '—'}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase">Risk</p>
-                        <p className={cn(
-                          'text-xs font-semibold mt-0.5',
-                          stock.risk === 'High' ? 'text-destructive' : stock.risk === 'Low' ? 'text-success' : 'text-warning'
-                        )}>{stock.risk || '—'}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase">Score</p>
-                        <p className={cn(
-                          'text-xs font-semibold mt-0.5',
-                          (stock.score || 0) >= 70 ? 'text-success' : (stock.score || 0) >= 40 ? 'text-warning' : 'text-destructive'
-                        )}>{stock.score?.toFixed(0) || '—'}</p>
-                      </div>
+                    <div className="text-right">
+                      <p className={cn(
+                        'text-sm font-semibold',
+                        stock.changePercent > 0 ? 'text-success' : stock.changePercent < 0 ? 'text-destructive' : 'text-muted-foreground'
+                      )}>
+                        {stock.changePercent > 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                      </p>
+                      <SignalBadge signal={stock.signal} compact />
                     </div>
-                  </button>
-                </motion.div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/40">
+                    <div className="text-center">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Technical</p>
+                      <p className={cn(
+                        'text-xs font-semibold mt-0.5',
+                        stock.technical?.includes('Bullish') ? 'text-success' :
+                        stock.technical?.includes('Bearish') ? 'text-destructive' :
+                        'text-muted-foreground'
+                      )}>{stock.technical || '—'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Risk</p>
+                      <p className={cn(
+                        'text-xs font-semibold mt-0.5',
+                        stock.risk === 'High' ? 'text-destructive' : stock.risk === 'Low' ? 'text-success' : 'text-warning'
+                      )}>{stock.risk || '—'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Score</p>
+                      <p className={cn(
+                        'text-xs font-semibold mt-0.5',
+                        (stock.score || 0) >= 70 ? 'text-success' : (stock.score || 0) >= 40 ? 'text-warning' : 'text-destructive'
+                      )}>{stock.score?.toFixed(0) || '—'}</p>
+                    </div>
+                  </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -555,144 +503,94 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 5 — ONE STOCK, MULTIPLE LAYERS (static — no data dependency)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 5 — ONE STOCK, MULTIPLE LAYERS */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-10"
-          >
+          <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">One Stock, Multiple Layers</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               We don&apos;t give you a single number and hope. We show you every evidence layer behind the brief.
             </p>
-          </motion.div>
+          </div>
 
           <div className="max-w-lg mx-auto space-y-3">
             {evidenceSteps.map((step, idx) => (
-              <motion.div
+              <Link
                 key={step.label}
-                initial={{ opacity: 0, x: -15 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.08 }}
+                href={step.link}
+                className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20 group"
               >
-                <Link
-                  href={step.link}
-                  className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20 group"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                    <step.icon className="h-5 w-5 text-primary" />
+                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                  <step.icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-primary uppercase tracking-wide">Step {idx + 1}</span>
+                    <span className="text-base font-semibold">{step.label}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-primary uppercase tracking-wide">Step {idx + 1}</span>
-                      <span className="text-base font-semibold">{step.label}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{step.description}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                </Link>
-              </motion.div>
+                  <p className="text-sm text-muted-foreground mt-0.5">{step.description}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 6 — RESEARCH CAPABILITIES (static — no data dependency)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 6 — RESEARCH CAPABILITIES */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-10"
-          >
+          <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Research Capabilities</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               Everything available inside the product built around evidence and transparency.
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
-            {capabilities.map((cap, idx) => (
-              <motion.div
-                key={cap.title}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.06 }}
-              >
-                <Link href={cap.link}>
-                  <div className="rounded-2xl border border-border/60 bg-card p-6 h-full transition-all duration-200 hover:shadow-md hover:border-primary/20 group">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <cap.icon className="h-5 w-5 text-white" />
-                    </div>
-                    <h3 className="text-base font-semibold mb-1">{cap.title}</h3>
-                    <p className="text-sm text-muted-foreground">{cap.description}</p>
+            {capabilities.map((cap) => (
+              <Link key={cap.title} href={cap.link}>
+                <div className="rounded-2xl border border-border/60 bg-card p-6 h-full transition-all duration-200 hover:shadow-md hover:border-primary/20 group">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <cap.icon className="h-5 w-5 text-white" />
                   </div>
-                </Link>
-              </motion.div>
+                  <h3 className="text-base font-semibold mb-1">{cap.title}</h3>
+                  <p className="text-sm text-muted-foreground">{cap.description}</p>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 7 — BUILT FOR EVIDENCE (static — no data dependency)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 7 — BUILT FOR EVIDENCE */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-10"
-          >
+          <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Built for Evidence</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               Not a prediction tool. A research system that shows its work.
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
-            {trustPillars.map((pillar, idx) => (
-              <motion.div
-                key={pillar.title}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.08 }}
-                className="text-center"
-              >
+            {trustPillars.map((pillar) => (
+              <div key={pillar.title} className="text-center">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 mx-auto mb-4 flex items-center justify-center">
                   <pillar.icon className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="text-base font-semibold mb-1">{pillar.title}</h3>
                 <p className="text-sm text-muted-foreground">{pillar.description}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 8 — FINAL CTA (static — no data dependency)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 8 — FINAL CTA */}
       <section className="py-12 md:py-16 border-t border-border/60">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto glow-primary"
-          >
+          <div className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto glow-primary">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3">
               Start With Evidence
             </h2>
@@ -717,7 +615,7 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
     </div>

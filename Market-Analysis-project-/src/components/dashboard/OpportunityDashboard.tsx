@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -108,11 +107,8 @@ export function OpportunityDashboard({ data, isLoading, onRefresh, onAssetClick 
             const scoreColorClass = getScoreColor(item.score);
             
             return (
-              <motion.div
+              <div
                 key={item.ticker}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
               >
                 <div
                   className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
@@ -193,9 +189,7 @@ export function OpportunityDashboard({ data, isLoading, onRefresh, onAssetClick 
                   </div>
                   
                   {isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
+                    <div
                       className="mt-4 pt-4 border-t border-border/50"
                     >
                       <h4 className="text-sm font-semibold mb-3">Contributing Factors</h4>
@@ -230,10 +224,10 @@ export function OpportunityDashboard({ data, isLoading, onRefresh, onAssetClick 
                       >
                         View Detailed Analysis
                       </Button>
-                    </motion.div>
+                    </div>
                   )}
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>

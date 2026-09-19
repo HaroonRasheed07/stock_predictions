@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EnhancedSentiment } from '@/lib/api';
 import { TrendingUp, TrendingDown, Minus, BrainCircuit, Smile, Frown, Meh } from 'lucide-react';

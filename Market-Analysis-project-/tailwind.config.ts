@@ -73,7 +73,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "-apple-system", "sans-serif"],
         mono: ["JetBrains Mono", "SF Mono", "Fira Code", "monospace"],
       },
       borderRadius: {

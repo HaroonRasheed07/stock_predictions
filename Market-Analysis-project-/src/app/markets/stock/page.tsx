@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Activity, Users, BarChart3, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -139,7 +138,7 @@ export default function StockOverview() {
 
   if (isLoading) return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+      <div className="space-y-2">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Stock Market Overview</h1>
@@ -158,7 +157,7 @@ export default function StockOverview() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
       <LoadingSkeleton type="card" />
     </div>
   );
@@ -233,11 +232,7 @@ export default function StockOverview() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-2"
-      >
+      <div className="space-y-2">
         <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -302,17 +297,12 @@ export default function StockOverview() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {marketStats.map((stat, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.1 }}
-          >
+          <div key={idx}>
             <Card className="glass hover:glow-primary transition-all duration-300">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -342,16 +332,12 @@ export default function StockOverview() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         ))}
       </div>
 
       {/* Market Trend Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      <div>
         <Card className="glass">
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <CardTitle className="text-base sm:text-lg">Price History - {ticker}</CardTitle>
@@ -391,35 +377,35 @@ export default function StockOverview() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Components Grid — data from combined endpoint */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+        <div>
           <TradeConfirmation
             data={overview?.tradeConfirmation || null}
             isLoading={isLoading}
           />
-        </motion.div>
+        </div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <div>
           <RiskOverview
             data={overview?.risk || null}
             isLoading={isLoading}
           />
-        </motion.div>
+        </div>
       </div>
 
       {/* Relative Volume */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+      <div>
         <RelativeVolume
           data={overview?.volatility?.relative_volume}
           isLoading={isLoading}
         />
-      </motion.div>
+      </div>
 
       {/* Opportunity Dashboard */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+      <div>
         <OpportunityDashboard
           data={opportunityData?.scan_results || []}
           isLoading={isLoadingOpportunities}
@@ -430,10 +416,10 @@ export default function StockOverview() {
             setSelectedTicker(selectedTicker);
           }}
         />
-      </motion.div>
+      </div>
 
       {/* Volatility Monitor - Collapsible */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+      <div>
         <Accordion type="single" collapsible className="glass">
           <AccordionItem value="volatility-monitor">
             <AccordionTrigger className="px-6">
@@ -456,10 +442,10 @@ export default function StockOverview() {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      </motion.div>
+      </div>
 
       {/* Top Performing Stocks */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+      <div>
         <Card className="glass">
           <CardHeader>
             <CardTitle>Top Performing Stocks</CardTitle>
@@ -501,7 +487,7 @@ export default function StockOverview() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 }

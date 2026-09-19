@@ -415,6 +415,44 @@
    RESPONSIVE UTILITIES
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Page transition — replaces framer-motion AnimatePresence */
+.page-enter {
+  animation: page-fade-in 0.2s ease-out both;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Section reveal animation — replaces framer-motion whileInView */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Ticker scroll marquee — replaces framer-motion infinite animation */
+.ticker-scroll {
+  animation: ticker-marquee 30s linear infinite;
+}
+
+@keyframes ticker-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-scroll {
+    animation: none;
+  }
+}
+
 /* Hide on mobile, show on desktop */
 @media (max-width: 767px) {
   .desktop-only {

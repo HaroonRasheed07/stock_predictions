@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,9 +128,7 @@ export default function WatchlistPage() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div
         className="space-y-2"
       >
         <div className="flex justify-between items-center">
@@ -149,14 +146,10 @@ export default function WatchlistPage() {
             Refresh Scores
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Add Ticker Form */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
+      <div>
           <Card className="glass">
             <CardContent className="p-4">
               <div ref={searchRef} className="relative">
@@ -208,15 +201,11 @@ export default function WatchlistPage() {
               </div>
             </CardContent>
           </Card>
-      </motion.div>
+      </div>
 
       {/* Quick Add Categories */}
       {defaultWatchlists?.categories && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        <div>
           <Card className="glass">
             <CardHeader>
               <CardTitle className="text-lg">Quick Add by Category</CardTitle>
@@ -238,14 +227,12 @@ export default function WatchlistPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       )}
 
       {/* Empty State */}
       {watchlist.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+        <div
           className="text-center py-16"
         >
           <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted/30 flex items-center justify-center">
@@ -267,16 +254,12 @@ export default function WatchlistPage() {
               </Button>
             ))}
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Watchlist with Opportunity Scores */}
       {watchlist.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
+        <div>
           <Card className="glass">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -296,11 +279,8 @@ export default function WatchlistPage() {
                   {opportunities.map((item, index) => {
                     const scoreColorClass = getScoreColor(item.score);
                     return (
-                      <motion.div
+                      <div
                         key={item.ticker}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
                         className="p-4 rounded-lg border border-border/50 hover:border-primary/50 transition-all cursor-pointer hover:shadow-md bg-card/50"
                         onClick={() => handleAssetClick(item.ticker)}
                       >
@@ -359,7 +339,7 @@ export default function WatchlistPage() {
                             </Button>
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
@@ -373,7 +353,7 @@ export default function WatchlistPage() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       )}
     </div>
   );

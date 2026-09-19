@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { fetchForecast } from '@/lib/api';
@@ -190,7 +189,7 @@ export default function PriceForecasting() {
 
   if (isLoading) return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <div>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
@@ -198,7 +197,7 @@ export default function PriceForecasting() {
           </div>
           {renderSearchForm()}
         </div>
-      </motion.div>
+      </div>
       <LoadingSkeleton type="chart" />
     </div>
   );
@@ -206,10 +205,7 @@ export default function PriceForecasting() {
   if (error) {
     return (
       <div className="space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
@@ -220,7 +216,7 @@ export default function PriceForecasting() {
               {renderSearchForm()}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         <Alert className="border-destructive">
           <AlertCircle className="h-4 w-4 text-destructive" />
@@ -236,10 +232,7 @@ export default function PriceForecasting() {
   if (!forecastData) {
     return (
       <div className="space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <div>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
@@ -247,7 +240,7 @@ export default function PriceForecasting() {
           </div>
           {renderSearchForm()}
         </div>
-        </motion.div>
+        </div>
 
         <Alert>
           <AlertCircle className="h-4 w-4" />
@@ -335,7 +328,7 @@ export default function PriceForecasting() {
   if (apiStatus && apiStatus !== 'success') {
     return (
       <div className="space-y-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
@@ -343,7 +336,7 @@ export default function PriceForecasting() {
             </div>
             {renderSearchForm()}
           </div>
-        </motion.div>
+        </div>
 
         <Alert className="border-yellow-600 bg-yellow-600/10">
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
@@ -361,7 +354,7 @@ export default function PriceForecasting() {
   if (!hasValidSeries) {
     return (
       <div className="space-y-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
@@ -369,7 +362,7 @@ export default function PriceForecasting() {
             </div>
             {renderSearchForm()}
           </div>
-        </motion.div>
+        </div>
 
         <Alert>
           <AlertCircle className="h-4 w-4" />
@@ -389,10 +382,7 @@ export default function PriceForecasting() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <div>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
@@ -400,7 +390,7 @@ export default function PriceForecasting() {
           </div>
           {renderSearchForm()}
         </div>
-      </motion.div>
+      </div>
 
       {/* Fallback Scaler Warning */}
       {isFallbackScaler && (
@@ -485,11 +475,7 @@ export default function PriceForecasting() {
       </div>
 
       {/* Forecast Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
+      <div>
         <Card className="glass">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -559,15 +545,11 @@ export default function PriceForecasting() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Model Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-        >
+        <div>
           <Card className="glass">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -598,13 +580,9 @@ export default function PriceForecasting() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-        >
+        <div>
           <Card className="glass">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -635,7 +613,7 @@ export default function PriceForecasting() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground text-center py-2">

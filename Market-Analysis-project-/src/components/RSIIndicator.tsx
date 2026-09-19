@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RSIIndicatorProps {
@@ -39,11 +38,7 @@ export default function RSIIndicator({ rsi }: RSIIndicatorProps) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.2 }}
-    >
+    <div>
       <Card className={`glass h-full ${bgColor} border ${borderColor}`}>
         <CardHeader>
           <CardTitle>RSI (14)</CardTitle>
@@ -52,14 +47,11 @@ export default function RSIIndicator({ rsi }: RSIIndicatorProps) {
         <CardContent className="space-y-6">
           {/* RSI Value */}
           <div className="text-center">
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+            <div
               className="text-5xl font-bold text-white mb-2"
             >
               {rsi !== null ? rsi.toFixed(2) : '--'}
-            </motion.div>
+            </div>
             <p className={`text-sm font-semibold ${rsiColor}`}>{rsiStatus}</p>
           </div>
 
@@ -83,12 +75,10 @@ export default function RSIIndicator({ rsi }: RSIIndicatorProps) {
 
               {/* Indicator Cursor */}
               {rsi !== null && (
-                <motion.div
-                  initial={{ left: '0%' }}
-                  animate={{ left: `${Math.max(0, Math.min(100, rsi))}%` }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                <div
                   className="absolute top-0 h-full w-1 bg-white shadow-lg shadow-white/50 transform -translate-x-1/2"
-                ></motion.div>
+                  style={{ left: `${Math.max(0, Math.min(100, rsi))}%` }}
+                ></div>
               )}
             </div>
 
@@ -115,6 +105,6 @@ export default function RSIIndicator({ rsi }: RSIIndicatorProps) {
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
