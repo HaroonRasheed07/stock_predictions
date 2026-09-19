@@ -383,9 +383,9 @@ export default function TechnicalAnalysis() {
                 <YAxis yAxisId="price" {...yAxisConfig(isMobile)} />
                 <YAxis yAxisId="volume" orientation="right" {...yAxisConfig(isMobile)} tickFormatter={(v) => formatCompact(v)} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Line yAxisId="price" type="monotone" dataKey="high" stroke="hsl(var(--primary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="High" />
-                <Line yAxisId="price" type="monotone" dataKey="low" stroke="hsl(var(--secondary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="Low" />
-                <Bar yAxisId="volume" dataKey="volume" fill="hsl(var(--muted))" opacity={0.3} name="Volume" />
+                <Line yAxisId="price" type="monotone" dataKey="high" stroke="hsl(var(--primary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="High" isAnimationActive={false} />
+                <Line yAxisId="price" type="monotone" dataKey="low" stroke="hsl(var(--secondary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="Low" isAnimationActive={false} />
+                <Bar yAxisId="volume" dataKey="volume" fill="hsl(var(--muted))" opacity={0.3} name="Volume" isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
             ) : (
@@ -426,9 +426,9 @@ export default function TechnicalAnalysis() {
                 <XAxis {...xAxisConfig(isMobile, filteredCandleData.length)} />
                 <YAxis {...yAxisConfig(isMobile)} tickFormatter={(v) => `$${v >= 1000 ? (v/1000).toFixed(1) + 'K' : v.toFixed(0)}`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(2)}`, '']} />
-                <Area type="monotone" dataKey="upper" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Upper Band" />
-                <Line type="monotone" dataKey="close" stroke="hsl(var(--secondary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="Close" />
-                <Area type="monotone" dataKey="lower" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Lower Band" />
+                <Area type="monotone" dataKey="upper" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Upper Band" isAnimationActive={false} />
+                <Line type="monotone" dataKey="close" stroke="hsl(var(--secondary))" strokeWidth={isMobile ? 1.5 : 2} dot={false} name="Close" isAnimationActive={false} />
+                <Area type="monotone" dataKey="lower" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Lower Band" isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
             ) : (

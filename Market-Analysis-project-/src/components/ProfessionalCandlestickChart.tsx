@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { useIsMobile, getCanvasTheme, CHART_HEIGHTS, formatPriceTick } from '@/lib/chartUtils';
+import { getCanvasTheme, CHART_HEIGHTS, formatPriceTick } from '@/lib/chartUtils';
 
 interface CandleDataPoint {
   date: string;
@@ -28,10 +28,10 @@ export default function ProfessionalCandlestickChart({
   const [hoveredCandle, setHoveredCandle] = useState<number | null>(null);
   const [tooltipData, setTooltipData] = useState<CandleDataPoint | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const isMobile = useIsMobile();
-  const theme = getCanvasTheme(!isMobile);
 
-  const height = heightProp || (isMobile ? CHART_HEIGHTS.candlestick.mobile : CHART_HEIGHTS.candlestick.desktop);
+  const height = heightProp || CHART_HEIGHTS.candlestick.desktop;
+  const isMobile = height <= CHART_HEIGHTS.candlestick.mobile;
+  const theme = getCanvasTheme(!isMobile);
 
   if (!data || data.length === 0) {
     return (
@@ -191,12 +191,6 @@ export default function ProfessionalCandlestickChart({
       ctx.fillText(date, x, height - CHART_PADDING.bottom + 6);
     }
   }, [filteredData, height, hoveredCandle, isMobile, theme, CHART_PADDING, maxPrice, minPrice, padding]);
-
-  useEffect(() => {
-    const handleResize = () => setHoveredCandle((v) => v);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const handlePointer = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

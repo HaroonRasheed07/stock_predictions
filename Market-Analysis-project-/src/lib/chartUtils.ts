@@ -94,6 +94,28 @@ export function formatPriceTick(value: number): string {
 }
 
 // ─── Canvas Theme Resolution ───────────────────────────────────────
+// Single-element batch: resolve all CSS custom properties in ONE forced reflow
+// instead of N separate append/remove cycles.
+let _themeCache: Record<string, CanvasTheme> = {};
+
+function resolveCssColorsBatch(cssValues: string[]): string[] {
+  try {
+    const tmp = document.createElement('div');
+    tmp.style.display = 'none';
+    tmp.style.position = 'absolute';
+    tmp.style.visibility = 'hidden';
+    document.body.appendChild(tmp);
+    const results = cssValues.map((v) => {
+      tmp.style.color = v;
+      return getComputedStyle(tmp).color || v;
+    });
+    document.body.removeChild(tmp);
+    return results;
+  } catch {
+    return cssValues;
+  }
+}
+
 export function resolveCssColor(cssValue: string): string {
   try {
     const tmp = document.createElement('div');
@@ -121,17 +143,33 @@ export interface CanvasTheme {
   isDark: boolean;
 }
 
+// Cache: CSS custom properties don't change at runtime for a given dark/light mode.
+// Resolve once per isDark value, reuse forever.
 export function getCanvasTheme(isDark: boolean): CanvasTheme {
-  return {
-    muted: resolveCssColor('hsl(var(--muted))'),
-    border: resolveCssColor('hsl(var(--border))'),
-    primary: resolveCssColor('hsl(var(--primary))'),
+  const key = isDark ? 'dark' : 'light';
+  if (_themeCache[key]) return _themeCache[key];
+
+  const cssVars = [
+    'hsl(var(--muted))',
+    'hsl(var(--border))',
+    'hsl(var(--primary))',
+    'hsl(var(--card))',
+    'hsl(var(--foreground))',
+    'hsl(var(--muted-foreground))',
+  ];
+  const [muted, border, primary, card, foreground, mutedForeground] = resolveCssColorsBatch(cssVars);
+
+  _themeCache[key] = {
+    muted,
+    border,
+    primary,
     success: '#22c55e',
     destructive: '#ef4444',
     warning: '#f59e0b',
-    card: resolveCssColor('hsl(var(--card))'),
-    foreground: resolveCssColor('hsl(var(--foreground))'),
-    mutedForeground: resolveCssColor('hsl(var(--muted-foreground))'),
+    card,
+    foreground,
+    mutedForeground,
     isDark,
   };
+  return _themeCache[key];
 }
