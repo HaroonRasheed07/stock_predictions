@@ -6,8 +6,6 @@ import { BottomNav } from '@/components/layout/BottomNav';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useThemeStore } from '@/store/themeStore';
-import { useStockStore } from '@/store/stockStore';
-import { fetchMarketOverview, fetchDiscoverScan } from '@/lib/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 let queryClientInstance: QueryClient | null = null;
@@ -38,7 +36,6 @@ function getQueryClient() {
 export function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { theme } = useThemeStore();
-  const { selectedTicker } = useStockStore();
   const [pageKey, setPageKey] = useState(pathname);
   const queryClient = useMemo(() => getQueryClient(), []);
 
@@ -49,24 +46,6 @@ export function LayoutWrapper({ children }: { children: ReactNode }) {
   useEffect(() => {
     setPageKey(pathname);
   }, [pathname]);
-
-  useEffect(() => {
-    const ticker = (selectedTicker || '').toUpperCase().trim();
-    if (!ticker) return;
-
-    const defaultPeriod = '1y';
-
-    queryClient.prefetchQuery({
-      queryKey: ['market-overview', ticker, defaultPeriod],
-      queryFn: () => fetchMarketOverview(ticker, defaultPeriod),
-    });
-
-    const defaultTickers = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'JPM', 'V', 'JNJ'];
-    queryClient.prefetchQuery({
-      queryKey: ['discover-scan', defaultPeriod, ...defaultTickers],
-      queryFn: () => fetchDiscoverScan(defaultTickers, defaultPeriod),
-    });
-  }, [queryClient, selectedTicker]);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -33,8 +33,8 @@ import ProfessionalCandlestickChart from '@/components/ProfessionalCandlestickCh
 
 export default function TechnicalAnalysis() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
-  const [ticker, setTicker] = useState('AAPL');
-  const [inputTicker, setInputTicker] = useState('AAPL');
+  const [ticker, setTicker] = useState(selectedTicker);
+  const [inputTicker, setInputTicker] = useState(selectedTicker);
   const [timeRange, setTimeRange] = useState('1y');
   const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -104,9 +104,30 @@ export default function TechnicalAnalysis() {
     }
   };
 
-  const { data: apiData, isLoading } = useQuery({
+  const { data: candleData = [], isLoading } = useQuery({
     queryKey: ['technical-data', ticker, timeRange],
     queryFn: () => fetchIndicators(ticker, timeRange),
+    select: (data) => data.data.map((d: any) => ({
+      date: new Date(d.Date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: '2-digit',
+        hour: timeRange === '1d' ? '2-digit' : undefined,
+        minute: timeRange === '1d' ? '2-digit' : undefined,
+      }),
+      open: d.Open,
+      high: d.High,
+      low: d.Low,
+      close: d.Close,
+      volume: d.Volume,
+      rsi: d.RSI,
+      macd: d.MACD,
+      signal: d.Signal,
+      upper: d.UpperBand,
+      lower: d.LowerBand,
+      sma20: d.SMA20,
+      sma50: d.SMA50,
+    })) || [],
     refetchInterval: 30000,
     staleTime: 15000,
     gcTime: 300000,
@@ -128,28 +149,6 @@ export default function TechnicalAnalysis() {
     gcTime: 300000,
     refetchOnWindowFocus: false,
   });
-
-  const candleData = apiData?.data?.map((d: any) => ({
-    date: new Date(d.Date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: '2-digit',
-      hour: timeRange === '1d' ? '2-digit' : undefined,
-      minute: timeRange === '1d' ? '2-digit' : undefined,
-    }),
-    open: d.Open,
-    high: d.High,
-    low: d.Low,
-    close: d.Close,
-    volume: d.Volume,
-    rsi: d.RSI,
-    macd: d.MACD,
-    signal: d.Signal,
-    upper: d.UpperBand,
-    lower: d.LowerBand,
-    sma20: d.SMA20,
-    sma50: d.SMA50,
-  })) || [];
 
   const latest = candleData[candleData.length - 1] || {};
 
@@ -193,8 +192,6 @@ export default function TechnicalAnalysis() {
       <Skeleton className="glass h-[220px] sm:h-[300px] rounded-xl" />
     </div>
   );
-
-  const filteredCandleData = candleData;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -338,9 +335,9 @@ export default function TechnicalAnalysis() {
             </div>
           </CardHeader>
           <CardContent className="pt-2 px-2 sm:px-6 pb-4 sm:pb-6">
-            {filteredCandleData && filteredCandleData.length > 0 ? (
+            {candleData && candleData.length > 0 ? (
               <ProfessionalCandlestickChart 
-                data={filteredCandleData} 
+                data={candleData} 
                 ticker={ticker}
                 height={isMobile ? CHART_HEIGHTS.candlestick.mobile : CHART_HEIGHTS.candlestick.desktop}
               />
@@ -375,11 +372,11 @@ export default function TechnicalAnalysis() {
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
-            {filteredCandleData.length > 0 ? (
+            {candleData.length > 0 ? (
             <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.priceAction.mobile : CHART_HEIGHTS.priceAction.desktop}>
-              <ComposedChart data={filteredCandleData} margin={chartMargins(isMobile)}>
+              <ComposedChart data={candleData} margin={chartMargins(isMobile)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                <XAxis {...xAxisConfig(isMobile, filteredCandleData.length)} />
+                <XAxis {...xAxisConfig(isMobile, candleData.length)} />
                 <YAxis yAxisId="price" {...yAxisConfig(isMobile)} />
                 <YAxis yAxisId="volume" orientation="right" {...yAxisConfig(isMobile)} tickFormatter={(v) => formatCompact(v)} />
                 <Tooltip contentStyle={tooltipStyle} />
@@ -419,11 +416,11 @@ export default function TechnicalAnalysis() {
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
-            {filteredCandleData.length > 0 ? (
+            {candleData.length > 0 ? (
             <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.bollinger.mobile : CHART_HEIGHTS.bollinger.desktop}>
-              <ComposedChart data={filteredCandleData} margin={chartMargins(isMobile)}>
+              <ComposedChart data={candleData} margin={chartMargins(isMobile)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                <XAxis {...xAxisConfig(isMobile, filteredCandleData.length)} />
+                <XAxis {...xAxisConfig(isMobile, candleData.length)} />
                 <YAxis {...yAxisConfig(isMobile)} tickFormatter={(v) => `$${v >= 1000 ? (v/1000).toFixed(1) + 'K' : v.toFixed(0)}`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(2)}`, '']} />
                 <Area type="monotone" dataKey="upper" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} name="Upper Band" isAnimationActive={false} />

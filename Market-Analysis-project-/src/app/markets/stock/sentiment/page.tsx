@@ -23,8 +23,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function SentimentAnalysis() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
-  const [ticker, setTicker] = useState('AAPL');
-  const [inputTicker, setInputTicker] = useState('AAPL');
+  const [ticker, setTicker] = useState(selectedTicker);
+  const [inputTicker, setInputTicker] = useState(selectedTicker);
   const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);

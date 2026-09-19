@@ -353,12 +353,7 @@ export default function StockBriefPage() {
             <Target className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold text-muted-foreground">Catalyst</span>
           </div>
-          {overviewLoading ? (
-            <div className="space-y-1.5">
-              <div className="h-3 bg-muted/30 rounded animate-pulse w-3/4" />
-              <div className="h-3 bg-muted/20 rounded animate-pulse w-1/2" />
-            </div>
-          ) : catalysts?.catalysts && catalysts.catalysts.length > 0 ? (
+          {catalysts?.catalysts && catalysts.catalysts.length > 0 ? (
             <div>
               <p className="text-xs font-medium capitalize">{catalysts.catalysts[0].type.replace(/_/g, ' ')}</p>
               <p className={cn(
@@ -380,12 +375,7 @@ export default function StockBriefPage() {
             <Shield className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold text-muted-foreground">Risk</span>
           </div>
-          {overviewLoading ? (
-            <div className="space-y-1.5">
-              <div className="h-3 bg-muted/30 rounded animate-pulse w-2/3" />
-              <div className="h-3 bg-muted/20 rounded animate-pulse w-1/3" />
-            </div>
-          ) : risk ? (
+          {risk ? (
             <div>
               <p className={cn(
                 'text-xs font-medium',

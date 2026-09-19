@@ -3,6 +3,9 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { getCanvasTheme, CHART_HEIGHTS, formatPriceTick } from '@/lib/chartUtils';
 
+const MOBILE_PADDING = { top: 16, bottom: 40, left: 48, right: 12 };
+const DESKTOP_PADDING = { top: 40, bottom: 60, left: 70, right: 40 };
+
 interface CandleDataPoint {
   date: string;
   open: number;
@@ -24,6 +27,7 @@ export default function ProfessionalCandlestickChart({
   height: heightProp,
 }: CandlestickChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hoverCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredCandle, setHoveredCandle] = useState<number | null>(null);
   const [tooltipData, setTooltipData] = useState<CandleDataPoint | null>(null);
@@ -54,9 +58,7 @@ export default function ProfessionalCandlestickChart({
   const changePercent = ((changeAmount / previous.close) * 100).toFixed(2);
   const isPositive = changeAmount >= 0;
 
-  const CHART_PADDING = isMobile
-    ? { top: 16, bottom: 40, left: 48, right: 12 }
-    : { top: 40, bottom: 60, left: 70, right: 40 };
+  const CHART_PADDING = isMobile ? MOBILE_PADDING : DESKTOP_PADDING;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -171,12 +173,6 @@ export default function ProfessionalCandlestickChart({
       ctx.lineWidth = 0.5;
       ctx.globalAlpha = 0.6;
       ctx.strokeRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeightMin);
-
-      if (hoveredCandle === index) {
-        ctx.globalAlpha = 0.15;
-        ctx.fillStyle = theme.primary;
-        ctx.fillRect(x - candleSpacing / 2, CHART_PADDING.top, candleSpacing, chartHeight);
-      }
     });
 
     // Date labels
@@ -190,7 +186,37 @@ export default function ProfessionalCandlestickChart({
       const date = filteredData[i].date;
       ctx.fillText(date, x, height - CHART_PADDING.bottom + 6);
     }
-  }, [filteredData, height, hoveredCandle, isMobile, theme, CHART_PADDING, maxPrice, minPrice, padding]);
+  }, [filteredData, height, isMobile, theme, CHART_PADDING, maxPrice, minPrice, padding]);
+
+  useEffect(() => {
+    const hoverCanvas = hoverCanvasRef.current;
+    if (!hoverCanvas) return;
+    const ctx = hoverCanvas.getContext('2d');
+    if (!ctx) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const width = container.clientWidth;
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+
+    hoverCanvas.width = Math.floor(width * dpr);
+    hoverCanvas.height = Math.floor(height * dpr);
+    hoverCanvas.style.width = `${width}px`;
+    hoverCanvas.style.height = `${height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    if (hoveredCandle === null || hoveredCandle < 0 || hoveredCandle >= filteredData.length) return;
+
+    const chartWidth = width - CHART_PADDING.left - CHART_PADDING.right;
+    const chartHeight = height - CHART_PADDING.top - CHART_PADDING.bottom;
+    const candleSpacing = chartWidth / filteredData.length;
+    const x = CHART_PADDING.left + hoveredCandle * candleSpacing + candleSpacing / 2;
+
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = theme.primary;
+    ctx.fillRect(x - candleSpacing / 2, CHART_PADDING.top, candleSpacing, chartHeight);
+  }, [filteredData, height, hoveredCandle, isMobile, theme, CHART_PADDING]);
 
   const handlePointer = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -259,11 +285,16 @@ export default function ProfessionalCandlestickChart({
       >
         <canvas
           ref={canvasRef}
+          className="w-full cursor-crosshair"
+          style={{ display: 'block' }}
+        />
+        <canvas
+          ref={hoverCanvasRef}
           onMouseMove={handlePointer}
           onMouseLeave={handleLeave}
           onTouchMove={handlePointer}
           onTouchEnd={handleLeave}
-          className="w-full cursor-crosshair"
+          className="absolute inset-0 w-full cursor-crosshair"
           style={{ display: 'block' }}
         />
 

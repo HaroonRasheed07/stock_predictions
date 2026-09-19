@@ -34,6 +34,10 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
   const canonicalLabel = sentiment_label || 'Neutral';
   const canonicalScore = sentiment_score ?? score ?? 0;
 
+  // Pre-compute driver arrays once (avoids 4x .filter() per render)
+  const positiveDrivers = drivers?.filter((d: Driver) => d.direction === 'positive') || [];
+  const negativeDrivers = drivers?.filter((d: Driver) => d.direction === 'negative') || [];
+
   // Prepare chart data
   const chartData = sentiment_trend_7d?.map((item) => ({
     date: new Date(item.date || item.timestamp || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -148,11 +152,11 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
             {/* Drivers */}
             {drivers && drivers.length > 0 && (
               <div className="space-y-2">
-                {drivers.filter((d: Driver) => d.direction === 'positive').length > 0 && (
+                {positiveDrivers.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-success/80 uppercase mb-1">Positive Drivers</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {drivers.filter((d: Driver) => d.direction === 'positive').map((d: Driver, i: number) => (
+                      {positiveDrivers.map((d: Driver, i: number) => (
                         <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
                           {d.category}
                         </span>
@@ -160,11 +164,11 @@ export function SentimentTrend({ data, isLoading }: SentimentTrendProps) {
                     </div>
                   </div>
                 )}
-                {drivers.filter((d: Driver) => d.direction === 'negative').length > 0 && (
+                {negativeDrivers.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-destructive/80 uppercase mb-1">Negative Drivers</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {drivers.filter((d: Driver) => d.direction === 'negative').map((d: Driver, i: number) => (
+                      {negativeDrivers.map((d: Driver, i: number) => (
                         <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
                           {d.category}
                         </span>
