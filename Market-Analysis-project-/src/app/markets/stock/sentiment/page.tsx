@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@tanstack/react-query';
-import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, TrendingUp, AlertCircle, Search, ExternalLink, Newspaper } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -173,17 +172,7 @@ export default function SentimentAnalysis() {
     </div>
   );
 
-  // Show header + loading state for sentiment data
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {headerSection}
-        <LoadingSkeleton type="chart" />
-      </div>
-    );
-  }
-
-  if (!sentimentData) {
+  if (!sentimentData && !isLoading) {
     return (
       <div className="space-y-6">
         {headerSection}
@@ -210,15 +199,17 @@ export default function SentimentAnalysis() {
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Overall Score</p>
                 <p className="text-xl sm:text-3xl font-bold">
-                  {sentimentData?.score_available === false
+                  {isLoading ? '—' : sentimentData?.score_available === false
                     ? '—'
                     : (sentimentData?.sentiment_score ? sentimentData.sentiment_score.toFixed(2) : '0.00')}
                 </p>
-                <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`}>
-                  {formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}
-                </p>
+                {!isLoading && (
+                  <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`}>
+                    {formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}
+                  </p>
+                )}
               </div>
-              <TrendingUp className={`h-7 w-7 sm:h-10 sm:w-10 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`} />
+              <TrendingUp className={`h-7 w-7 sm:h-10 sm:w-10 ${isLoading ? 'text-muted-foreground opacity-50' : getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`} />
             </div>
           </CardContent>
         </Card>
@@ -228,10 +219,10 @@ export default function SentimentAnalysis() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Sentiment</p>
-                <p className="text-xl sm:text-3xl font-bold">{formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}</p>
+                <p className="text-xl sm:text-3xl font-bold">{isLoading ? '—' : formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Market Mood</p>
               </div>
-              <MessageSquare className="h-7 w-7 sm:h-10 sm:w-10 text-primary" />
+              <MessageSquare className="h-7 w-7 sm:h-10 sm:w-10 text-primary opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -241,14 +232,14 @@ export default function SentimentAnalysis() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">News Count</p>
-                <p className="text-xl sm:text-3xl font-bold">{sentimentData?.news_count ?? sentimentData?.news?.length ?? 0}</p>
+                <p className="text-xl sm:text-3xl font-bold">{isLoading ? '—' : (sentimentData?.news_count ?? sentimentData?.news?.length ?? 0)}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
-                  {(sentimentData?.status === 'news_unavailable' || sentimentData?.status === 'no_relevant_news')
+                  {isLoading ? 'Loading...' : (sentimentData?.status === 'news_unavailable' || sentimentData?.status === 'no_relevant_news')
                     ? 'No articles found'
                     : 'Articles analyzed'}
                 </p>
               </div>
-              <AlertCircle className="h-7 w-7 sm:h-10 sm:w-10 text-secondary" />
+              <AlertCircle className="h-7 w-7 sm:h-10 sm:w-10 text-secondary opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -279,13 +270,18 @@ export default function SentimentAnalysis() {
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="text-xs text-muted-foreground">Sources</div>
-                  <div className="text-sm font-semibold">{sentimentData?.news?.length || 0}</div>
+                  <div className="text-sm font-semibold">{isLoading ? '—' : (sentimentData?.news?.length || 0)}</div>
                 </div>
               </div>
               <Separator className="mt-4 bg-border/60" />
             </CardHeader>
             <CardContent className="relative pt-2">
-              {(sentimentData?.news_count === 0 || sentimentData?.status === 'news_unavailable' || sentimentData?.status === 'no_relevant_news') ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="h-12 w-12 rounded-full bg-muted/30 animate-pulse mb-4" />
+                  <p className="text-sm text-muted-foreground">Loading sentiment data...</p>
+                </div>
+              ) : (sentimentData?.news_count === 0 || sentimentData?.status === 'news_unavailable' || sentimentData?.status === 'no_relevant_news') ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Newspaper className="h-12 w-12 text-muted-foreground/40 mb-4" />
                   <p className="text-sm font-medium text-muted-foreground">No sentiment distribution available</p>
@@ -311,14 +307,26 @@ export default function SentimentAnalysis() {
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">Latest headlines for {ticker}</p>
                 </div>
-                <Badge variant="outline" className="shrink-0">{sentimentData?.news?.length || 0} items</Badge>
+                <Badge variant="outline" className="shrink-0">{isLoading ? '—' : (sentimentData?.news?.length || 0)} items</Badge>
               </div>
               <Separator className="mt-4 bg-border/60" />
             </CardHeader>
             <CardContent className="relative pt-2">
               <ScrollArea className="h-[320px] sm:h-[380px] md:h-[420px] w-full pr-4">
                 <div className="space-y-3 pb-1">
-                  {sentimentData?.news && sentimentData.news.map((news: any, idx: number) => (
+                  {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="rounded-xl border border-border/50 bg-background/40 p-3 sm:p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-full bg-muted/30 animate-pulse" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-muted/30 rounded animate-pulse w-3/4" />
+                            <div className="h-3 bg-muted/20 rounded animate-pulse w-1/2" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : sentimentData?.news && sentimentData.news.map((news: any, idx: number) => (
                     <div
                       key={idx}
                       className="group rounded-xl border border-border/50 bg-background/40 p-3 sm:p-4 shadow-sm hover:shadow-md hover:bg-muted/25 hover:border-border/80 transition-all"
@@ -365,7 +373,7 @@ export default function SentimentAnalysis() {
                       </div>
                     </div>
                   ))}
-                  {(!sentimentData?.news || sentimentData.news.length === 0) && (
+                  {(!isLoading && (!sentimentData?.news || sentimentData.news.length === 0)) && (
                     <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
                       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
                         <Newspaper className="h-5 w-5 text-muted-foreground" />

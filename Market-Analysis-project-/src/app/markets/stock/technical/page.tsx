@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { fetchIndicators, fetchTrendStrength, fetchVolatilitySummary } from '@/lib/api';
-import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { TrendStrength } from '@/components/analysis/TrendStrength';
 import { ExpectedRange } from '@/components/analysis/ExpectedRange';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
@@ -160,33 +159,6 @@ export default function TechnicalAnalysis() {
     macdLabel: latest.macd > latest.signal ? 'Bullish Cross' : 'Bearish Cross',
   } : null;
 
-  if (isLoading) return (
-    <div className="space-y-6">
-      <div>
-        <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Technical Analysis</h1>
-            <p className="text-sm text-muted-foreground">Advanced charting and live signals for {ticker}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <WatchlistButton ticker={ticker} />
-            <div ref={searchRef} className="relative">
-              <form onSubmit={handleSearch} className="flex items-center space-x-2">
-                <Input type="text" placeholder="Search..." value={inputTicker}
-                  onChange={(e) => handleSearchInput(e.target.value)}
-                  onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
-                  className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60" />
-                <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9"><Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-      <LoadingSkeleton type="chart" />
-    </div>
-  );
-
-  // charts use full `candleData` (no timeframe selector)
   const filteredCandleData = candleData;
 
   return (
@@ -251,12 +223,14 @@ export default function TechnicalAnalysis() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">RSI (14)</p>
-                <p className="text-xl sm:text-2xl font-bold">{indicators?.rsi}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
-                  {parseFloat(indicators?.rsi || '0') > 70 ? 'Overbought' : parseFloat(indicators?.rsi || '0') < 30 ? 'Oversold' : 'Neutral'}
-                </p>
+                <p className="text-xl sm:text-2xl font-bold">{isLoading ? '—' : indicators?.rsi ?? 'N/A'}</p>
+                {!isLoading && (
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+                    {parseFloat(indicators?.rsi || '0') > 70 ? 'Overbought' : parseFloat(indicators?.rsi || '0') < 30 ? 'Oversold' : 'Neutral'}
+                  </p>
+                )}
               </div>
-              <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-primary opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -266,14 +240,12 @@ export default function TechnicalAnalysis() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">MACD</p>
-                <p className="text-xl sm:text-2xl font-bold">{indicators?.macd}</p>
-                <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${indicators?.signal === 'Buy' ? 'text-success' : 'text-destructive'}`}>{indicators?.macdLabel}</p>
+                <p className="text-xl sm:text-2xl font-bold">{isLoading ? '—' : indicators?.macd ?? 'N/A'}</p>
+                {!isLoading && (
+                  <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${indicators?.signal === 'Buy' ? 'text-success' : 'text-destructive'}`}>{indicators?.macdLabel}</p>
+                )}
               </div>
-              {indicators?.signal === 'Buy' ? (
-                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
-              ) : (
-                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-destructive rotate-180" />
-              )}
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -283,10 +255,12 @@ export default function TechnicalAnalysis() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Signal</p>
-                <p className="text-xl sm:text-2xl font-bold text-success">{indicators?.signal}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Strong momentum</p>
+                <p className="text-xl sm:text-2xl font-bold text-muted-foreground">{isLoading ? '—' : indicators?.signal ?? 'N/A'}</p>
+                {!isLoading && (
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Strong momentum</p>
+                )}
               </div>
-              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
+              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground opacity-50" />
             </div>
           </CardContent>
         </Card>

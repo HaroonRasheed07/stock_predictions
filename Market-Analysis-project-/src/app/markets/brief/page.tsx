@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   TrendingUp,
@@ -246,16 +245,7 @@ export default function StockBriefPage() {
       }));
   }, [tradeConfirmation]);
 
-  if (overviewLoading) {
-    return (
-      <div className="space-y-4 p-4 md:p-6">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
-    );
-  }
+  const showData = overview && !overviewLoading;
 
   return (
     <div className="space-y-4 p-4 md:p-6">
@@ -278,9 +268,9 @@ export default function StockBriefPage() {
       <div className="flex items-end justify-between">
         <div>
           <p className="text-3xl font-bold tracking-tight">
-            ${overview?.currentPrice?.toFixed(2) || '—'}
+            {overviewLoading ? '—' : `$${overview?.currentPrice?.toFixed(2) || '—'}`}
           </p>
-          {overview?.change !== undefined && overview.change !== 0 && (
+          {!overviewLoading && overview?.change !== undefined && overview.change !== 0 && (
             <div className={cn('flex items-center gap-1 text-sm font-medium', overview.change > 0 ? 'text-success' : 'text-destructive')}>
               {overview.change > 0 ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
               {overview.change > 0 ? '+' : ''}{overview.change.toFixed(2)} ({overview.changePercent?.toFixed(2)}%)
@@ -296,7 +286,7 @@ export default function StockBriefPage() {
       </div>
 
       {/* Timeframe Selector */}
-      {timeframes && (
+      {!overviewLoading && timeframes && (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Timeframe View</p>
           <div className="grid grid-cols-3 gap-2">
@@ -330,7 +320,7 @@ export default function StockBriefPage() {
       )}
 
       {/* Why? */}
-      {whyReasons.length > 0 && (
+      {!overviewLoading && whyReasons.length > 0 && (
         <Card className="border-border/60">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -363,7 +353,12 @@ export default function StockBriefPage() {
             <Target className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold text-muted-foreground">Catalyst</span>
           </div>
-          {catalysts?.catalysts && catalysts.catalysts.length > 0 ? (
+          {overviewLoading ? (
+            <div className="space-y-1.5">
+              <div className="h-3 bg-muted/30 rounded animate-pulse w-3/4" />
+              <div className="h-3 bg-muted/20 rounded animate-pulse w-1/2" />
+            </div>
+          ) : catalysts?.catalysts && catalysts.catalysts.length > 0 ? (
             <div>
               <p className="text-xs font-medium capitalize">{catalysts.catalysts[0].type.replace(/_/g, ' ')}</p>
               <p className={cn(
@@ -385,7 +380,12 @@ export default function StockBriefPage() {
             <Shield className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold text-muted-foreground">Risk</span>
           </div>
-          {risk ? (
+          {overviewLoading ? (
+            <div className="space-y-1.5">
+              <div className="h-3 bg-muted/30 rounded animate-pulse w-2/3" />
+              <div className="h-3 bg-muted/20 rounded animate-pulse w-1/3" />
+            </div>
+          ) : risk ? (
             <div>
               <p className={cn(
                 'text-xs font-medium',
@@ -405,7 +405,7 @@ export default function StockBriefPage() {
       {/* Expandable Sections */}
       <div className="space-y-2">
         {/* Timeframe Detail */}
-        {tf && (
+        {!overviewLoading && tf && (
           <ExpandableSection title={`${tf.label} Analysis`} icon={Clock} defaultOpen>
             <div className="space-y-3 pt-3">
               <div className="flex items-center justify-between">
