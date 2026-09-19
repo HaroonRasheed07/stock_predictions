@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { fetchForecast } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ComposedChart,
@@ -187,6 +188,30 @@ export default function PriceForecasting() {
   });
 
   const isLoadingForecast = isLoading && !forecastData;
+
+  if (isLoadingForecast) return (
+    <div className="space-y-4 sm:space-y-6">
+      <div>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
+            <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
+          </div>
+          {renderSearchForm()}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="glass h-[120px] rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="glass h-[360px] sm:h-[400px] rounded-xl" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Skeleton className="glass h-[300px] rounded-xl" />
+        <Skeleton className="glass h-[300px] rounded-xl" />
+      </div>
+    </div>
+  );
   
   if (error) {
     return (
@@ -407,7 +432,7 @@ export default function PriceForecasting() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Current Price</p>
-                <p className="text-2xl font-bold">{isLoadingForecast ? '—' : `$${currentPrice.toFixed(2)}`}</p>
+                <p className="text-2xl font-bold">${currentPrice.toFixed(2)}</p>
                 <Badge variant="secondary" className="mt-2">Live</Badge>
               </div>
               <Target className="h-8 w-8 text-primary" />
@@ -420,15 +445,13 @@ export default function PriceForecasting() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Forecast (Avg)</p>
-                <p className="text-2xl font-bold">{isLoadingForecast ? '—' : `$${avgPredicted.toFixed(2)}`}</p>
-                {!isLoadingForecast && (
-                  <div className="flex items-center space-x-1 mt-2">
-                    <TrendingUp className={`h-4 w-4 ${priceChange >= 0 ? 'text-success' : 'text-destructive'}`} />
-                    <span className={`text-sm ${priceChange >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-                    </span>
-                  </div>
-                )}
+                <p className="text-2xl font-bold">${avgPredicted.toFixed(2)}</p>
+                <div className="flex items-center space-x-1 mt-2">
+                  <TrendingUp className={`h-4 w-4 ${priceChange >= 0 ? 'text-success' : 'text-destructive'}`} />
+                  <span className={`text-sm ${priceChange >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                  </span>
+                </div>
               </div>
               <Brain className="h-8 w-8 text-secondary" />
             </div>
@@ -440,8 +463,8 @@ export default function PriceForecasting() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Expected Range</p>
-                <p className="text-2xl font-bold">{isLoadingForecast ? '—' : `$${Math.min(...futurePrices).toFixed(2)} – $${Math.max(...futurePrices).toFixed(2)}`}</p>
-                <p className="text-xs text-muted-foreground mt-2">{isLoadingForecast ? '...' : `${forecastLength}-day forecast horizon`}</p>
+                <p className="text-2xl font-bold">${Math.min(...futurePrices).toFixed(2)} – ${Math.max(...futurePrices).toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-2">{forecastLength}-day forecast horizon</p>
               </div>
               <Target className="h-8 w-8 text-secondary" />
             </div>
@@ -453,14 +476,12 @@ export default function PriceForecasting() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Trend</p>
-                <p className="text-2xl font-bold">{isLoadingForecast ? '—' : trend}</p>
-                {!isLoadingForecast && (
-                  <p className={`text-sm mt-2 ${trend === 'Bullish' ? 'text-success' : 'text-destructive'}`}>
-                    {trend === 'Bullish' ? 'Upward momentum' : 'Downward correction'}
-                  </p>
-                )}
+                <p className="text-2xl font-bold">{trend}</p>
+                <p className={`text-sm mt-2 ${trend === 'Bullish' ? 'text-success' : 'text-destructive'}`}>
+                  {trend === 'Bullish' ? 'Upward momentum' : 'Downward correction'}
+                </p>
               </div>
-              <TrendingUp className={`h-8 w-8 ${isLoadingForecast ? 'text-muted-foreground' : trend === 'Bullish' ? 'text-success' : 'text-destructive'}`} />
+              <TrendingUp className={`h-8 w-8 ${trend === 'Bullish' ? 'text-success' : 'text-destructive'}`} />
             </div>
           </CardContent>
         </Card>
@@ -491,11 +512,7 @@ export default function PriceForecasting() {
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">
-            {isLoadingForecast ? (
-              <div className="flex items-center justify-center h-60 text-muted-foreground text-sm">
-                Loading forecast data...
-              </div>
-            ) : historicalLength === 0 && forecastLength === 0 ? (
+            {historicalLength === 0 && forecastLength === 0 ? (
               <div className="flex items-center justify-center h-60 text-muted-foreground text-sm">
                 No forecast data available
               </div>
@@ -568,7 +585,7 @@ export default function PriceForecasting() {
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Historical Fit</span>
-                <span className="font-semibold text-success">{isLoadingForecast ? '—' : `${modelAccuracy.toFixed(1)}%`}</span>
+                <span className="font-semibold text-success">{modelAccuracy.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
@@ -589,23 +606,23 @@ export default function PriceForecasting() {
             <CardContent className="space-y-4">
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Volatility</span>
-                <span className="font-semibold">{isLoadingForecast ? '—' : `${volatility.toFixed(2)}%`}</span>
+                <span className="font-semibold">{volatility.toFixed(2)}%</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Forecast Days</span>
-                <span className="font-semibold">{isLoadingForecast ? '—' : `${forecastLength} days`}</span>
+                <span className="font-semibold">{forecastLength} days</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Historical Data Points</span>
-                <span className="font-semibold">{isLoadingForecast ? '—' : `${historicalLength} prices`}</span>
+                <span className="font-semibold">{historicalLength} prices</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Price Range (Forecast)</span>
-                <span className="font-semibold">{isLoadingForecast ? '—' : `$${Math.min(...futurePrices).toFixed(2)} - $${Math.max(...futurePrices).toFixed(2)}`}</span>
+                <span className="font-semibold">${Math.min(...futurePrices).toFixed(2)} - ${Math.max(...futurePrices).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last Updated</span>
-                <span className="font-semibold text-xs">{isLoadingForecast ? '—' : new Date().toLocaleTimeString()}</span>
+                <span className="font-semibold text-xs">{new Date().toLocaleTimeString()}</span>
               </div>
             </CardContent>
           </Card>
