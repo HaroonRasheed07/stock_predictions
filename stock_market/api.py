@@ -521,7 +521,7 @@ def get_stock_data_and_indicators(req: IndicatorRequest):
         price_change = 0.0
         price_change_pct = 0.0
         try:
-            live = get_latest_price(req.ticker)
+            live = get_latest_price(req.ticker, cached_df=df)
             if live is not None and live > 0:
                 current_price = live
                 if len(df) >= 2:
@@ -644,7 +644,7 @@ def _compute_market_overview_raw(ticker: str, period: str) -> Dict[str, Any]:
         price_change = 0.0
         price_change_pct = 0.0
         try:
-            live = get_latest_price(ticker)
+            live = get_latest_price(ticker, cached_df=df)
             if live and live > 0:
                 current_price = live
                 if len(df) >= 2:
@@ -1229,7 +1229,7 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
             current_price = 0.0
             price_change_pct = 0.0
             try:
-                live = get_latest_price(ticker)
+                live = get_latest_price(ticker, cached_df=df)
                 if live and live > 0:
                     current_price = live
                     if len(df) >= 2:
@@ -1333,7 +1333,7 @@ def discover_scan(req: DiscoverScanRequest):
                 price_change = 0.0
                 price_change_pct = 0.0
                 try:
-                    live = get_latest_price(ticker)
+                    live = get_latest_price(ticker, cached_df=df)
                     if live and live > 0:
                         current_price = live
                         if len(df) >= 2:

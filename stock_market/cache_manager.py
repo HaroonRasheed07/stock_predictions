@@ -162,7 +162,13 @@ class PersistentCacheManager:
         Write or update a cache entry in both L1 Memory and L2 SQLite.
         `fresh_ttl_seconds`: Duration for which data is completely fresh.
         `stale_ttl_seconds`: Duration during which stale data may be served while refreshing in background.
+        
+        Market-aware TTL: When markets are closed (evenings, weekends, holidays),
+        fresh_ttl_seconds is automatically extended to reduce unnecessary Yahoo API calls.
         """
+        # Apply market-aware TTL scaling
+        fresh_ttl_seconds = get_market_aware_fresh_ttl(fresh_ttl_seconds)
+        
         now = time.time()
         fresh_until = now + fresh_ttl_seconds
         stale_until = now + stale_ttl_seconds
@@ -372,3 +378,36 @@ class PersistentCacheManager:
 
 # Global Singleton Instance
 cache_manager = PersistentCacheManager()
+
+
+def get_market_aware_fresh_ttl(base_ttl: float) -> float:
+    """
+    Returns a longer fresh TTL when the market is closed (evenings, weekends, holidays).
+    During market hours, returns the base_ttl unchanged.
+    
+    Rationale: When markets are closed, prices don't change. There's no benefit
+    to refreshing cache every 5 minutes on a Saturday. Extending TTL reduces
+    unnecessary Yahoo API calls dramatically.
+    
+    Multipliers:
+      Market OPEN:       1x (base_ttl)
+      Pre/After hours:   3x (prices barely move)
+      Closed (evening):  6x (no price changes until next open)
+      Weekend/Holiday:  12x (no price changes all day)
+    """
+    try:
+        from market_status import get_market_status
+        status_info = get_market_status()
+        status = status_info.get("status", "closed")
+        
+        if status == "open":
+            return base_ttl
+        elif status in ("pre_market", "after_hours"):
+            return base_ttl * 3
+        elif status == "closed":
+            return base_ttl * 6
+        else:  # holiday
+            return base_ttl * 12
+    except Exception:
+        # If market status check fails, use base TTL (safe default)
+        return base_ttl

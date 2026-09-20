@@ -156,12 +156,15 @@ def load_data(ticker, period="1y", interval=None, allow_stale=True):
         raise RuntimeError(f"Error loading data for {ticker}: {str(e)}")
 
 
-def get_latest_price(ticker):
+def get_latest_price(ticker, cached_df=None):
     """
     Fetches the latest available price for a ticker.
-    Uses yahooquery's batch .price endpoint for speed.
+    If cached_df is provided (from a recent load_data() call), uses it as
+    primary source to avoid a redundant Yahoo call.
+    Uses yahooquery's batch .price endpoint for live price only when needed.
     """
     try:
+        # Try live price first (30-second TTL cache in adapter)
         live = get_fast_live_data(ticker)
         info = live.get(ticker, {})
         price = info.get("regularMarketPrice", 0)
@@ -169,7 +172,14 @@ def get_latest_price(ticker):
         if price:
             return price
 
-        # Fallback to last close from history
+        # Use provided cached DataFrame if available — zero extra Yahoo calls
+        if cached_df is not None and not cached_df.empty:
+            last_c = cached_df["Close"].iloc[-1]
+            if hasattr(last_c, 'iloc'):
+                last_c = last_c.iloc[:, 0]
+            return float(last_c)
+
+        # Fallback: fetch history (this IS a Yahoo call, but it's cached for 10min)
         df = get_fast_history(ticker, period="1d", interval="1d")
         if not df.empty:
             return float(df["Close"].iloc[-1])

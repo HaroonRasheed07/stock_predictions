@@ -1,20 +1,3 @@
-import axios from 'axios';
-
-export const api = axios.create({
-  baseURL: '/api',
-  timeout: 10000,
-});
-
-// Simulate API delay for realistic UX
-export const simulateDelay = (ms: number = 500) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-// Mock API response wrapper
-export const mockApiCall = async <T,>(data: T, delay: number = 500): Promise<T> => {
-  await simulateDelay(delay);
-  return data;
-};
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://stock-predictions-b6yx.onrender.com";
 
 export interface IndicatorsResponse {

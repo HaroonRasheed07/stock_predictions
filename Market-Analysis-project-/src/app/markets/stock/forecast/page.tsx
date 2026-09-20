@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
-import { fetchForecast } from '@/lib/api';
+import { fetchForecast, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useStockStore } from '@/store/stockStore';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
-import { fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { TickerLogo } from '@/components/common/TickerLogo';
 
 interface ForecastData {

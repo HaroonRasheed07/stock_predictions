@@ -6,7 +6,6 @@ import { useStockStore } from '@/store/stockStore';
 import {
   fetchMarketOverview,
   fetchIndicators,
-  fetchSentiment,
   fetchForecast,
 } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -230,13 +229,15 @@ function TechnicalSection({ ticker }: { ticker: string }) {
 }
 
 function SentimentSection({ ticker }: { ticker: string }) {
-  const { data: sentimentData, isLoading } = useQuery({
-    queryKey: ['sentiment-data', ticker],
-    queryFn: () => fetchSentiment(ticker),
+  const { data: overview, isLoading } = useQuery({
+    queryKey: ['market-overview', ticker, '1y'],
+    queryFn: () => fetchMarketOverview(ticker, '1y'),
     staleTime: 30000,
     gcTime: 300000,
     refetchOnWindowFocus: false,
   });
+
+  const sentimentData = overview?.sentiment;
 
   if (isLoading) {
     return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-32 rounded-xl bg-muted/30 animate-pulse" />)}</div>;

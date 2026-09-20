@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
-import { fetchIndicators, fetchTrendStrength, fetchVolatilitySummary } from '@/lib/api';
+import { fetchIndicators, fetchTrendStrength, fetchVolatilitySummary, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendStrength } from '@/components/analysis/TrendStrength';
 import { ExpectedRange } from '@/components/analysis/ExpectedRange';
@@ -27,7 +27,6 @@ import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHAR
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useStockStore } from '@/store/stockStore';
-import { fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import ProfessionalCandlestickChart from '@/components/ProfessionalCandlestickChart';
 

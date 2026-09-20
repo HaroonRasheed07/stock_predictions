@@ -12,7 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
-import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchDiscoverScan, fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { getSentimentColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { TickerLogo } from '@/components/common/TickerLogo';
@@ -147,32 +147,8 @@ export default function Home() {
   const discover = discoverData?.discover || [];
   const marketStatus = tickerData?.marketStatus || 'Unknown';
 
-  const discoverTickers = discover.slice(0, 6).map((s) => s.ticker);
-  const batch1 = discoverTickers.slice(0, 5);
-  const batch2 = discoverTickers.slice(5);
-  const { data: scanData1 } = useQuery({
-    queryKey: ['discover-sentiment', ...batch1],
-    queryFn: () => fetchDiscoverScan(batch1, '1y'),
-    enabled: batch1.length > 0,
-    staleTime: 300000,
-    gcTime: 600000,
-  });
-  const { data: scanData2 } = useQuery({
-    queryKey: ['discover-sentiment', ...batch2],
-    queryFn: () => fetchDiscoverScan(batch2, '1y'),
-    enabled: batch2.length > 0,
-    staleTime: 300000,
-    gcTime: 600000,
-  });
-
-  const discoverWithSentiment = discover.map((stock) => {
-    const scanStock = scanData1?.stocks?.[stock.ticker] || scanData2?.stocks?.[stock.ticker];
-    return {
-      ...stock,
-      technical: stock.technical || scanStock?.technical || '',
-      sentiment: stock.sentiment || scanStock?.sentiment || '',
-    };
-  });
+  // discover data already includes technical/sentiment from /api/home/intelligence → /api/discover/scan
+  const discoverWithSentiment = discover;
 
   const evidenceSteps = [
     { icon: BarChart3, label: 'Technical', description: 'Indicators, momentum, and pattern recognition', link: '/markets/stock/technical' },

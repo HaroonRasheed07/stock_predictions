@@ -10,7 +10,12 @@ import {
   fetchCatalysts,
   fetchTimeframeDecision,
   fetchSignalEvidence,
-  fetchForecast,
+  fetchAssetSearch,
+  type AssetInfo,
+  type MarketOverviewResponse,
+  type CatalystResponse,
+  type TimeframeResponse,
+  type SignalEvidenceResponse,
 } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,14 +40,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
-import {
-  fetchAssetSearch,
-  type AssetInfo,
-  type MarketOverviewResponse,
-  type CatalystResponse,
-  type TimeframeResponse,
-  type SignalEvidenceResponse,
-} from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { getSentimentScoreColorClass, formatSentimentLabel, getSentimentBadgeClass } from '@/lib/sentiment';
 import { TickerLogo } from '@/components/common/TickerLogo';
