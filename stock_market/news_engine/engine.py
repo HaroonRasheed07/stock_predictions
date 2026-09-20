@@ -1405,7 +1405,6 @@ def get_sentiment_snapshot(
                         snapshot.articles.append(old_asent)
                         existing_urls.add(old_asent.url)
                 # Re-rank the merged set
-                from .models import ArticleSentiment
                 snapshot.articles.sort(
                     key=lambda a: a.relevance_score,
                     reverse=True
