@@ -12,7 +12,6 @@ import {
   fetchSignalEvidence,
   fetchForecast,
 } from '@/lib/api';
-import { useAssetSearch } from '@/hooks/useAssetSearch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +36,7 @@ import {
   ArrowDownRight,
 } from 'lucide-react';
 import {
+  fetchAssetSearch,
   type AssetInfo,
   type MarketOverviewResponse,
   type CatalystResponse,
@@ -138,11 +138,23 @@ function ExpandableSection({ title, icon: Icon, children, defaultOpen = false }:
 
 // ─── Search Component ──────────────────────────────────────────────────────
 function StockSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
-  const assetSearch = useAssetSearch();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<AssetInfo[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = useCallback((q: string) => {
-    assetSearch.search(q);
-  }, [assetSearch]);
+    setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.length < 1) { setResults([]); setShowResults(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await fetchAssetSearch(q);
+        setResults(data.slice(0, 8));
+        setShowResults(true);
+      } catch { setResults([]); }
+    }, 300);
+  }, []);
 
   return (
     <div className="relative">
@@ -150,21 +162,21 @@ function StockSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            value={assetSearch.query}
+            value={query}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search ticker or company..."
             className="pl-9 h-10 text-sm bg-background border-border/60"
-            onFocus={() => assetSearch.results.length > 0 && assetSearch.setShowResults(true)}
-            onBlur={() => setTimeout(() => assetSearch.close(), 200)}
+            onFocus={() => results.length > 0 && setShowResults(true)}
+            onBlur={() => setTimeout(() => setShowResults(false), 200)}
           />
         </div>
       </div>
-      {assetSearch.showResults && assetSearch.results.length > 0 && (
+      {showResults && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border/60 rounded-xl shadow-lg z-50 max-h-72 overflow-y-auto">
-          {assetSearch.results.map((r) => (
+          {results.map((r) => (
             <button
               key={r.ticker}
-              onClick={() => { onSelect(r.ticker); assetSearch.setQuery(''); assetSearch.close(); }}
+              onClick={() => { onSelect(r.ticker); setQuery(''); setShowResults(false); }}
               className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
             >
               <TickerLogo ticker={r.ticker} size="sm" />

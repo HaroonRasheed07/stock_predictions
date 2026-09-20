@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Activity, Users, BarChart3, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchMarketOverview, AssetInfo } from '@/lib/api';
+import { fetchMarketOverview, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { OpportunityDashboard } from '@/components/dashboard/OpportunityDashboard';
 import { VolatilityMonitor } from '@/components/dashboard/VolatilityMonitor';
@@ -18,7 +18,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
-import { useAssetSearch } from '@/hooks/useAssetSearch';
 
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -31,25 +30,55 @@ export default function StockOverview() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
   const [inputTicker, setInputTicker] = useState('AAPL');
   const [ticker, setTicker] = useState('AAPL');
-  const assetSearch = useAssetSearch();
+  const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = useIsMobile();
 
+  // Debounced autocomplete search
   const handleSearchInput = useCallback((value: string) => {
     setInputTicker(value);
-    assetSearch.search(value);
-  }, [assetSearch]);
+    setShowSuggestions(true);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length < 1) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await fetchAssetSearch(value.trim(), true);
+        setSuggestions(results.slice(0, 8));
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, []);
 
   // Close suggestions on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        assetSearch.close();
+        setShowSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [assetSearch]);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setTicker(selectedTicker);
@@ -60,7 +89,8 @@ export default function StockOverview() {
     setInputTicker(asset.ticker);
     setTicker(asset.ticker);
     setSelectedTicker(asset.ticker);
-    assetSearch.close();
+    setShowSuggestions(false);
+    setSuggestions([]);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -69,7 +99,7 @@ export default function StockOverview() {
       const newTicker = inputTicker.toUpperCase().trim();
       setTicker(newTicker);
       setSelectedTicker(newTicker);
-      assetSearch.close();
+      setShowSuggestions(false);
     }
   };
 
@@ -120,7 +150,7 @@ export default function StockOverview() {
               <form onSubmit={handleSearch} className="flex items-center gap-1.5">
                 <Input type="text" placeholder="Search..." value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
-                  onFocus={() => inputTicker.trim().length >= 1 && assetSearch.setShowResults(true)}
+                  onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
                   className="w-28 md:w-56 h-9 text-sm bg-background border-border/60" />
                 <Button type="submit" size="icon" variant="secondary" className="h-9 w-9"><Search className="h-4 w-4" /></Button>
               </form>
@@ -223,7 +253,7 @@ export default function StockOverview() {
                   placeholder="Search..."
                   value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
-                  onFocus={() => inputTicker.trim().length >= 1 && assetSearch.setShowResults(true)}
+                  onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
                   className="w-28 md:w-56 h-9 text-sm bg-background border-border/60"
                 />
                 <Button type="submit" size="icon" variant="secondary" className="h-9 w-9">
@@ -232,15 +262,15 @@ export default function StockOverview() {
               </form>
 
               {/* Autocomplete Dropdown */}
-              {assetSearch.showResults && (assetSearch.results.length > 0 || assetSearch.isSearching) && (
+              {showSuggestions && (suggestions.length > 0 || isSearching) && (
                 <div className="absolute top-full left-0 right-12 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
-                  {assetSearch.isSearching && assetSearch.results.length === 0 && (
+                  {isSearching && suggestions.length === 0 && (
                     <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
                       <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                       Searching...
                     </div>
                   )}
-                  {assetSearch.results.map((asset) => (
+                  {suggestions.map((asset) => (
                     <button
                       key={asset.ticker}
                       onClick={() => handleSelectSuggestion(asset)}

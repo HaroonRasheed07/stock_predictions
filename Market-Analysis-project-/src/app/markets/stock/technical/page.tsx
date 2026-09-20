@@ -27,34 +27,59 @@ import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHAR
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useStockStore } from '@/store/stockStore';
-import { AssetInfo } from '@/lib/api';
+import { fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import ProfessionalCandlestickChart from '@/components/ProfessionalCandlestickChart';
-import { useAssetSearch } from '@/hooks/useAssetSearch';
 
 export default function TechnicalAnalysis() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
   const [ticker, setTicker] = useState(selectedTicker);
   const [inputTicker, setInputTicker] = useState(selectedTicker);
   const [timeRange, setTimeRange] = useState('1y');
-  const assetSearch = useAssetSearch();
+  const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = useIsMobile();
 
   const handleSearchInput = useCallback((value: string) => {
     setInputTicker(value);
-    assetSearch.search(value);
-  }, [assetSearch]);
+    setShowSuggestions(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 1) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await fetchAssetSearch(value.trim(), true);
+        setSuggestions(results.slice(0, 8));
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, []);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        assetSearch.close();
+        setShowSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [assetSearch]);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setTicker(selectedTicker);
@@ -65,7 +90,8 @@ export default function TechnicalAnalysis() {
     setInputTicker(asset.ticker);
     setTicker(asset.ticker);
     setSelectedTicker(asset.ticker);
-    assetSearch.close();
+    setShowSuggestions(false);
+    setSuggestions([]);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -74,7 +100,7 @@ export default function TechnicalAnalysis() {
       const newTicker = inputTicker.toUpperCase().trim();
       setTicker(newTicker);
       setSelectedTicker(newTicker);
-      assetSearch.close();
+      setShowSuggestions(false);
     }
   };
 
@@ -147,7 +173,7 @@ export default function TechnicalAnalysis() {
               <form onSubmit={handleSearch} className="flex items-center space-x-2">
                 <Input type="text" placeholder="Search..." value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
-                  onFocus={() => inputTicker.trim().length >= 1 && assetSearch.setShowResults(true)}
+                  onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
                   className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60" />
                 <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9"><Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
               </form>
@@ -184,22 +210,22 @@ export default function TechnicalAnalysis() {
                   placeholder="Search..."
                   value={inputTicker}
                   onChange={(e) => handleSearchInput(e.target.value)}
-                  onFocus={() => inputTicker.trim().length >= 1 && assetSearch.setShowResults(true)}
+                  onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
                   className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60"
                 />
                 <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9">
                   <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
               </form>
-              {assetSearch.showResults && (assetSearch.results.length > 0 || assetSearch.isSearching) && (
+              {showSuggestions && (suggestions.length > 0 || isSearching) && (
                 <div className="absolute top-full left-0 right-12 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
-                  {assetSearch.isSearching && assetSearch.results.length === 0 && (
+                  {isSearching && suggestions.length === 0 && (
                     <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
                       <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                       Searching...
                     </div>
                   )}
-                  {assetSearch.results.map((asset) => (
+                  {suggestions.map((asset) => (
                     <button
                       key={asset.ticker}
                       onClick={() => handleSelectSuggestion(asset)}

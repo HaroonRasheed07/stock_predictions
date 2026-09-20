@@ -389,8 +389,8 @@ export async function fetchSentiment(
 
 // ─── New API Fetch Functions ───────────────────────────────────────────────
 
-export async function fetchAssetSearch(query: string, live: boolean = true, signal?: AbortSignal): Promise<AssetInfo[]> {
-  const res = await fetch(`${API_BASE}/api/multi-asset/search?q=${encodeURIComponent(query)}&live=${live}`, { signal });
+export async function fetchAssetSearch(query: string, live: boolean = true): Promise<AssetInfo[]> {
+  const res = await fetch(`${API_BASE}/api/multi-asset/search?q=${encodeURIComponent(query)}&live=${live}`);
   if (!res.ok) throw new Error("Failed to search assets");
   return res.json();
 }

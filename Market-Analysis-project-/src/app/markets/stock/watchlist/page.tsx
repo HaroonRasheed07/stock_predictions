@@ -9,37 +9,65 @@ import { Badge } from '@/components/ui/badge';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import { useStockStore } from '@/store/stockStore';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOpportunityScan, fetchWatchlistDefaults, OpportunityScore, AssetInfo } from '@/lib/api';
+import { fetchOpportunityScan, fetchWatchlistDefaults, fetchAssetSearch, OpportunityScore, AssetInfo } from '@/lib/api';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { Star, Plus, Trash2, TrendingUp, Search, Sparkles } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAssetSearch } from '@/hooks/useAssetSearch';
 
 export default function WatchlistPage() {
   const { watchlist, addToWatchlist, removeFromWatchlist, setWatchlist } = useWatchlistStore();
   const [newTicker, setNewTicker] = useState('');
-  const assetSearch = useAssetSearch({ maxResults: 6 });
+  const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
 
   // Debounced autocomplete search
   const handleTickerInput = useCallback((value: string) => {
     setNewTicker(value);
-    assetSearch.search(value);
-  }, [assetSearch]);
+    setShowSuggestions(true);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length < 1) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await fetchAssetSearch(value.trim(), true);
+        setSuggestions(results.slice(0, 6));
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, []);
 
   // Close suggestions on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        assetSearch.close();
+        setShowSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [assetSearch]);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   // Fetch opportunity scores for watchlist
   const { data: opportunityData, isLoading: isLoadingOpportunities, refetch: refetchOpportunities } = useQuery({
@@ -59,14 +87,16 @@ export default function WatchlistPage() {
     if (newTicker.trim()) {
       addToWatchlist(newTicker.trim().toUpperCase());
       setNewTicker('');
-      assetSearch.close();
+      setShowSuggestions(false);
+      setSuggestions([]);
     }
   };
 
   const handleSelectSuggestion = (asset: AssetInfo) => {
     addToWatchlist(asset.ticker);
     setNewTicker('');
-    assetSearch.close();
+    setShowSuggestions(false);
+    setSuggestions([]);
   };
 
   const handleAddCategory = (categoryTickers: string[]) => {
@@ -129,7 +159,7 @@ export default function WatchlistPage() {
                     placeholder="Add ticker (e.g., AAPL, GC=F, EURUSD=X)"
                     value={newTicker}
                     onChange={(e) => handleTickerInput(e.target.value)}
-                    onFocus={() => newTicker.trim().length >= 1 && assetSearch.setShowResults(true)}
+                    onFocus={() => newTicker.trim().length >= 1 && setShowSuggestions(true)}
                     className="flex-1"
                   />
                   <Button type="submit" size="icon">
@@ -138,15 +168,15 @@ export default function WatchlistPage() {
                 </form>
 
                 {/* Autocomplete Dropdown */}
-                {assetSearch.showResults && (assetSearch.results.length > 0 || assetSearch.isSearching) && (
+                {showSuggestions && (suggestions.length > 0 || isSearching) && (
                   <div className="absolute top-full left-0 right-10 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
-                    {assetSearch.isSearching && assetSearch.results.length === 0 && (
+                    {isSearching && suggestions.length === 0 && (
                       <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
                         <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                         Searching...
                       </div>
                     )}
-                    {assetSearch.results.map((asset) => (
+                    {suggestions.map((asset) => (
                       <button
                         key={asset.ticker}
                         onClick={() => handleSelectSuggestion(asset)}

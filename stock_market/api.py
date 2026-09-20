@@ -1485,28 +1485,10 @@ def search_multi_assets(q: str, live: bool = True):
     """
     Search for assets by ticker or name.
     When live=true (default), includes Yahoo Finance autocomplete suggestions.
-    SWR-cached for 5 minutes to avoid repeated Yahoo calls on rapid keystrokes.
     """
     if not q:
         return []
-
-    query_lower = q.strip().lower()
-    cache_key = f"search:{query_lower}:{live}"
-
-    def _compute():
-        return search_assets(q, live=live)
-
-    payload, meta = cache_manager.get_swr(
-        key=cache_key,
-        refresh_func=_compute,
-        fresh_ttl_seconds=300.0,
-        stale_ttl_seconds=3600.0,
-        category="search",
-    )
-
-    if payload is not None:
-        return payload
-    return []
+    return search_assets(q, live=live)
 
 @app.get("/api/multi-asset/watchlist")
 def get_watchlist_defaults(category: Optional[str] = None):
