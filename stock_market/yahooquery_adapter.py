@@ -18,12 +18,47 @@ import numpy as np
 import threading
 import time
 import logging
+import collections
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import List, Dict, Any, Optional, Union
 from yahooquery import Ticker as YQTicker
 from yahooquery.session_management import initialize_session
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Lightweight TTL Caches ─────────────────────────────────────────────────
+class _TTLCache:
+    """Thread-safe LRU cache with per-entry TTL. Evicts oldest on capacity."""
+    def __init__(self, maxsize: int = 256, default_ttl: float = 300.0):
+        self._maxsize = maxsize
+        self._default_ttl = default_ttl
+        self._cache: collections.OrderedDict[str, tuple] = collections.OrderedDict()
+        self._lock = threading.Lock()
+
+    def get(self, key: str) -> Any:
+        with self._lock:
+            if key not in self._cache:
+                return None
+            value, expires_at = self._cache[key]
+            if time.time() > expires_at:
+                del self._cache[key]
+                return None
+            self._cache.move_to_end(key)
+            return value
+
+    def set(self, key: str, value: Any, ttl: Optional[float] = None):
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+            elif len(self._cache) >= self._maxsize:
+                self._cache.popitem(last=False)
+            self._cache[key] = (value, time.time() + (ttl or self._default_ttl))
+
+
+_search_cache = _TTLCache(maxsize=256, default_ttl=600.0)  # 10min for Yahoo search
+_price_cache = _TTLCache(maxsize=512, default_ttl=30.0)    # 30s for live prices
+
 
 # Interval auto-determination based on period (mirrors yfinance logic)
 _INTERVAL_MAP = {
@@ -301,13 +336,19 @@ def search_yahoo(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     Search Yahoo Finance for matching tickers/names via v1/finance/search API.
     Falls back to v6/quote endpoint search if v1 fails.
     Returns [{ticker, name, asset_class, exchange}] for autocomplete dropdowns.
+    Results are cached for 10 minutes per query to avoid repeated Yahoo calls.
     """
-    results = _search_yahoo_v1(query, limit)
-    if results:
-        return results
+    cache_key = f"{query.lower().strip()}:{limit}"
+    cached = _search_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
-    # Fallback: try v6/quote endpoint search
-    results = _search_yahoo_v6(query, limit)
+    results = _search_yahoo_v1(query, limit)
+    if not results:
+        results = _search_yahoo_v6(query, limit)
+
+    if results:
+        _search_cache.set(cache_key, results)
     return results
 
 

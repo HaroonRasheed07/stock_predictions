@@ -10,7 +10,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, TrendingUp, AlertCircle, Search, ExternalLink, Newspaper } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { fetchSentiment, fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { fetchSentiment, AssetInfo } from '@/lib/api';
 import { useStockStore } from '@/store/stockStore';
 import { getSentimentColorClass, getSentimentScoreColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { SentimentTrend } from '@/components/analysis/SentimentTrend';
@@ -20,54 +20,29 @@ import ProfessionalSentimentChart from '@/components/ProfessionalSentimentChart'
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAssetSearch } from '@/hooks/useAssetSearch';
 
 export default function SentimentAnalysis() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
   const [ticker, setTicker] = useState(selectedTicker);
   const [inputTicker, setInputTicker] = useState(selectedTicker);
-  const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
+  const assetSearch = useAssetSearch();
   const searchRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearchInput = useCallback((value: string) => {
     setInputTicker(value);
-    setShowSuggestions(true);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (value.trim().length < 1) {
-      setSuggestions([]);
-      setIsSearching(false);
-      return;
-    }
-    setIsSearching(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const results = await fetchAssetSearch(value.trim(), true);
-        setSuggestions(results.slice(0, 8));
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-  }, []);
+    assetSearch.search(value);
+  }, [assetSearch]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
+        assetSearch.close();
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+  }, [assetSearch]);
 
   useEffect(() => {
     setTicker(selectedTicker);
@@ -78,8 +53,7 @@ export default function SentimentAnalysis() {
     setInputTicker(asset.ticker);
     setTicker(asset.ticker);
     setSelectedTicker(asset.ticker);
-    setShowSuggestions(false);
-    setSuggestions([]);
+    assetSearch.close();
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -88,7 +62,7 @@ export default function SentimentAnalysis() {
       const newTicker = inputTicker.toUpperCase().trim();
       setTicker(newTicker);
       setSelectedTicker(newTicker);
-      setShowSuggestions(false);
+      assetSearch.close();
     }
   };
 
@@ -134,22 +108,22 @@ export default function SentimentAnalysis() {
                 placeholder="Search..."
                 value={inputTicker}
                 onChange={(e) => handleSearchInput(e.target.value)}
-                onFocus={() => inputTicker.trim().length >= 1 && setShowSuggestions(true)}
+                onFocus={() => inputTicker.trim().length >= 1 && assetSearch.setShowResults(true)}
                 className="w-24 sm:w-40 md:w-56 h-8 sm:h-9 text-xs sm:text-sm bg-background border-border/60"
               />
               <Button type="submit" size="icon" variant="secondary" className="h-8 w-8 sm:h-9 sm:w-9">
                 <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </form>
-            {showSuggestions && (suggestions.length > 0 || isSearching) && (
+            {assetSearch.showResults && (assetSearch.results.length > 0 || assetSearch.isSearching) && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
-                {isSearching && suggestions.length === 0 && (
+                {assetSearch.isSearching && assetSearch.results.length === 0 && (
                   <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
                     <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                     Searching...
                   </div>
                 )}
-                {suggestions.map((asset) => (
+                {assetSearch.results.map((asset) => (
                   <button
                     key={asset.ticker}
                     onClick={() => handleSelectSuggestion(asset)}

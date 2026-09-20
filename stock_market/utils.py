@@ -13,7 +13,7 @@ import pandas as pd
 import time
 import logging
 import threading
-from yahooquery_adapter import get_fast_history, get_fast_batch_history, get_fast_live_data
+from yahooquery_adapter import get_fast_history, get_fast_batch_history, get_fast_live_data, _price_cache
 from cache_manager import cache_manager
 
 logger = logging.getLogger(__name__)
@@ -160,19 +160,28 @@ def get_latest_price(ticker):
     """
     Fetches the latest available price for a ticker.
     Uses yahooquery's batch .price endpoint for speed.
+    Cached for 30 seconds to avoid repeated Yahoo calls during batch scans.
     """
+    cache_key = f"price:{ticker}"
+    cached = _price_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         live = get_fast_live_data(ticker)
         info = live.get(ticker, {})
         price = info.get("regularMarketPrice", 0)
 
         if price:
+            _price_cache.set(cache_key, price)
             return price
 
         # Fallback to last close from history
         df = get_fast_history(ticker, period="1d", interval="1d")
         if not df.empty:
-            return float(df["Close"].iloc[-1])
+            p = float(df["Close"].iloc[-1])
+            _price_cache.set(cache_key, p)
+            return p
 
         return None
     except Exception:

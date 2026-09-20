@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useStockStore } from '@/store/stockStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import {
-  fetchAssetSearch,
   fetchDiscoverScan,
   type AssetInfo,
   type DiscoverStock,
@@ -34,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { getSentimentColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
+import { useAssetSearch } from '@/hooks/useAssetSearch';
 
 // ─── Stock Card ────────────────────────────────────────────────────────────
 function DiscoverStockCard({ data, onTap }: {
@@ -131,10 +131,7 @@ export default function DiscoverPage() {
   const { setSelectedTicker } = useStockStore();
   const { watchlist } = useWatchlistStore();
   const [filter, setFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<AssetInfo[]>([]);
-  const [showSearch, setShowSearch] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const assetSearch = useAssetSearch();
 
   const watchlistTickers = watchlist.length > 0 ? watchlist : ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'JPM', 'V', 'JNJ'];
 
@@ -168,16 +165,7 @@ export default function DiscoverPage() {
   }, [stocks, filter]);
 
   const handleSearch = (q: string) => {
-    setSearchQuery(q);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (q.length < 1) { setSearchResults([]); setShowSearch(false); return; }
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const data = await fetchAssetSearch(q);
-        setSearchResults(data.slice(0, 8));
-        setShowSearch(true);
-      } catch { setSearchResults([]); }
-    }, 300);
+    assetSearch.search(q);
   };
 
   const openStock = (ticker: string) => {
@@ -197,19 +185,19 @@ export default function DiscoverPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          value={searchQuery}
+          value={assetSearch.query}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search stocks..."
           className="pl-9 h-10 text-sm bg-background border-border/60"
-          onFocus={() => searchResults.length > 0 && setShowSearch(true)}
-          onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+          onFocus={() => assetSearch.results.length > 0 && assetSearch.setShowResults(true)}
+          onBlur={() => setTimeout(() => assetSearch.close(), 200)}
         />
-        {showSearch && searchResults.length > 0 && (
+        {assetSearch.showResults && assetSearch.results.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border/60 rounded-xl shadow-lg z-50 max-h-72 overflow-y-auto">
-            {searchResults.map((r) => (
+            {assetSearch.results.map((r) => (
               <button
                 key={r.ticker}
-                onClick={() => { openStock(r.ticker); setSearchQuery(''); setShowSearch(false); }}
+                onClick={() => { openStock(r.ticker); assetSearch.setQuery(''); assetSearch.close(); }}
                 className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
               >
                 <TickerLogo ticker={r.ticker} size="sm" />
