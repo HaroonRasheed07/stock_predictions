@@ -9,12 +9,12 @@ logging.basicConfig(level=logging.WARNING)
 
 from stock_market.news_engine.engine import (
     _score_relevance, _deduplicate_articles, _rank_and_select_articles,
-    _l1_cache, RELEVANCE_THRESHOLD, LOOKBACK_DAYS, TARGET_NEWS_COUNT
+    _l1_cache, RELEVANCE_THRESHOLD, TARGET_NEWS_COUNT
 )
 from stock_market.news_engine.company_resolver import resolve_company
 from stock_market.news_engine.providers import get_all_providers
 from stock_market.news_engine.provider_budget import budget_manager
-from stock_market.news_engine.provider_router import provider_router
+from stock_market.news_engine.provider_router import provider_router, NEWS_MAX_AGE_DAYS, get_coverage_status
 
 TICKERS = [
     "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD",
@@ -41,7 +41,7 @@ for ticker in TICKERS:
             provider_stats[pname] = {"status": "quota_exhausted", "raw": 0}
             continue
         try:
-            result = provider.fetch(ticker=ticker, company=company, lookback_days=LOOKBACK_DAYS, max_results=15)
+            result = provider.fetch(ticker=ticker, company=company, lookback_days=NEWS_MAX_AGE_DAYS, max_results=20)
             provider_stats[pname] = {"status": "ok" if result.success else result.error, "raw": len(result.articles)}
             if result.articles:
                 all_articles.extend(result.articles)
@@ -56,14 +56,7 @@ for ticker in TICKERS:
     ranked = _rank_and_select_articles(unique, TARGET_NEWS_COUNT)
 
     count = len(ranked)
-    if count >= TARGET_NEWS_COUNT:
-        coverage = "FULL"
-    elif count >= 3:
-        coverage = "PARTIAL"
-    elif count >= 1:
-        coverage = "INSUFFICIENT"
-    else:
-        coverage = "NONE"
+    coverage = get_coverage_status(count)
 
     raw_total = sum(s.get("raw", 0) for s in provider_stats.values())
     print(f"{ticker:5s}  raw={raw_total:3d}  rel={len(relevant):2d}  dedup={len(unique):2d}  final={count:2d}  {coverage:12s}  providers: {', '.join(f'{k}={v['raw']}' for k, v in provider_stats.items())}")
@@ -72,11 +65,13 @@ for ticker in TICKERS:
 # Summary
 print("\n=== COVERAGE SUMMARY ===")
 full = sum(1 for r in results if r["coverage"] == "FULL")
+good = sum(1 for r in results if r["coverage"] == "GOOD")
 partial = sum(1 for r in results if r["coverage"] == "PARTIAL")
 insuff = sum(1 for r in results if r["coverage"] == "INSUFFICIENT")
 none = sum(1 for r in results if r["coverage"] == "NONE")
-print(f"FULL (>=8): {full}")
-print(f"PARTIAL (3-7): {partial}")
+print(f"FULL (8+): {full}")
+print(f"GOOD (5-7): {good}")
+print(f"PARTIAL (3-4): {partial}")
 print(f"INSUFFICIENT (1-2): {insuff}")
 print(f"NONE (0): {none}")
 avg = sum(r["final"] for r in results) / len(results) if results else 0

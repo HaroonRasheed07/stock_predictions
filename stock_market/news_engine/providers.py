@@ -160,16 +160,21 @@ class NewsDataProvider(NewsProvider):
 
         start = time.perf_counter()
         try:
-            # Try company short name first (most specific), then canonical name
+            # Build comprehensive query list from company identity
             queries_to_try = []
             if company.short_name:
                 queries_to_try.append(company.short_name)
-            queries_to_try.append(company.canonical_name)
+            if company.canonical_name and company.canonical_name != company.short_name:
+                queries_to_try.append(company.canonical_name)
+            queries_to_try.append(f"{ticker} stock")
+            for alias in company.aliases[:2]:
+                if alias not in [q.lower() for q in queries_to_try]:
+                    queries_to_try.append(alias)
 
             all_articles = []
             seen_urls = set()
 
-            for query in queries_to_try[:2]:
+            for query in queries_to_try[:3]:
                 encoded = quote(query, safe="")
                 url = (
                     f"{self._base_url}?apikey={self._api_key}&q={encoded}"
@@ -370,19 +375,22 @@ class CurrentsProvider(NewsProvider):
         try:
             start_date = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            # Try multiple queries for better coverage: short_name, ticker+stock, canonical name
+            # Build comprehensive query list from company identity
+            # Use OR-joined alias queries for broader discovery
             queries_to_try = []
             if company.short_name:
                 queries_to_try.append(company.short_name)
-            queries_to_try.append(f"{ticker} stock")
             if company.canonical_name and company.canonical_name != company.short_name:
                 queries_to_try.append(company.canonical_name)
+            queries_to_try.append(f"{ticker} stock")
+            for alias in company.aliases[:2]:
+                if alias not in [q.lower() for q in queries_to_try]:
+                    queries_to_try.append(alias)
 
             all_articles = []
             seen_urls = set()
 
-            for query in queries_to_try[:2]:  # Limit to 2 queries to preserve quota
-                # Currents API uses "keywords" (plural) and start_date/end_date (RFC3339)
+            for query in queries_to_try[:3]:  # Try up to 3 queries for better coverage
                 params = {
                     "apiKey": self._api_key,
                     "keywords": query,
@@ -395,7 +403,7 @@ class CurrentsProvider(NewsProvider):
                 resp.encoding = 'utf-8'
                 data = resp.json()
 
-                for item in data.get("news", [])[:max_results]:
+                for item in data.get("news", []):
                     url = item.get("url", "#")
                     if url in seen_urls:
                         continue
@@ -414,9 +422,6 @@ class CurrentsProvider(NewsProvider):
                         source_type=SourceType.AGGREGATOR,
                         ticker=ticker,
                     ))
-
-                if len(all_articles) >= max_results:
-                    break
 
             latency = (time.perf_counter() - start) * 1000
             self.circuit_breaker.record_success()
@@ -470,37 +475,51 @@ class GDELTProvider(NewsProvider):
 
         start = time.perf_counter()
         try:
-            # Use short_name for better search (e.g., "Apple" not "Apple Inc.")
-            query = company.short_name or company.canonical_name or ticker
-            params = {
-                "query": query,
-                "mode": "ArtList",
-                "maxrecords": min(max_results, 50),
-                "format": "json",
-                "sort": "DateDesc",
-                "timespan": f"{lookback_days}d",
-                "sourcelang": "eng",
-                "include": "Title,Description",
-            }
-            headers = {"User-Agent": "StockVanta/1.0"}
-            resp = requests.get(self._base_url, params=params, timeout=self._timeout, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
+            # Try short_name first (most specific), then canonical name
+            queries_to_try = []
+            if company.short_name:
+                queries_to_try.append(company.short_name)
+            if company.canonical_name and company.canonical_name != company.short_name:
+                queries_to_try.append(company.canonical_name)
+            queries_to_try.append(ticker)
 
-            articles = []
-            for item in data.get("articles", [])[:max_results]:
-                title = item.get("title", "") or ""
-                desc = item.get("seendescription", "") or ""
-                articles.append(NewsArticle(
-                    title=title,
-                    description=desc,
-                    url=item.get("url", "#"),
-                    publisher=item.get("domain", "Unknown"),
-                    published_at=item.get("seendate", ""),
-                    provider=self.name,
-                    source_type=SourceType.AGGREGATOR,
-                    ticker=ticker,
-                ))
+            all_articles = []
+            seen_urls = set()
+
+            for query in queries_to_try[:2]:
+                params = {
+                    "query": query,
+                    "mode": "ArtList",
+                    "maxrecords": min(max_results, 50),
+                    "format": "json",
+                    "sort": "DateDesc",
+                    "timespan": f"{lookback_days}d",
+                    "sourcelang": "eng",
+                    "include": "Title,Description",
+                }
+                headers = {"User-Agent": "StockVanta/1.0"}
+                resp = requests.get(self._base_url, params=params, timeout=self._timeout, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+                for item in data.get("articles", []):
+                    url = item.get("url", "#")
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+
+                    title = item.get("title", "") or ""
+                    desc = item.get("seendescription", "") or ""
+                    all_articles.append(NewsArticle(
+                        title=title,
+                        description=desc,
+                        url=url,
+                        publisher=item.get("domain", "Unknown"),
+                        published_at=item.get("seendate", ""),
+                        provider=self.name,
+                        source_type=SourceType.AGGREGATOR,
+                        ticker=ticker,
+                    ))
 
             latency = (time.perf_counter() - start) * 1000
             self.circuit_breaker.record_success()
@@ -510,10 +529,10 @@ class GDELTProvider(NewsProvider):
 
             return ProviderResult(
                 provider=self.name,
-                articles=articles,
+                articles=all_articles,
                 success=True,
                 latency_ms=latency,
-                raw_count=len(articles),
+                raw_count=len(all_articles),
             )
 
         except Exception as e:
@@ -633,8 +652,6 @@ class RSSProvider(NewsProvider):
             try:
                 articles = self._fetch_feed(source, ticker, company, lookback_days)
                 all_articles.extend(articles)
-                if len(all_articles) >= max_results:
-                    break
             except Exception as e:
                 logger.debug(f"[RSS] {source['id']} error: {e}")
                 continue
@@ -646,7 +663,7 @@ class RSSProvider(NewsProvider):
 
         return ProviderResult(
             provider=self.name,
-            articles=all_articles[:max_results],
+            articles=all_articles,
             success=True,
             latency_ms=latency,
             raw_count=len(all_articles),

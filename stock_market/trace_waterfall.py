@@ -11,21 +11,19 @@ logging.basicConfig(level=logging.INFO, format="[%(name)s] %(message)s")
 
 from stock_market.news_engine.engine import (
     _score_relevance, _deduplicate_articles, _rank_and_select_articles,
-    _l1_cache, RELEVANCE_THRESHOLD, LOOKBACK_DAYS, TARGET_NEWS_COUNT,
+    _l1_cache, RELEVANCE_THRESHOLD, TARGET_NEWS_COUNT,
     get_sentiment_snapshot
 )
 from stock_market.news_engine.company_resolver import resolve_company, get_search_queries
 from stock_market.news_engine.providers import get_all_providers
 from stock_market.news_engine.provider_budget import budget_manager
-from stock_market.news_engine.provider_router import provider_router, CANDIDATE_MULTIPLIER, MAX_CANDIDATES
+from stock_market.news_engine.provider_router import provider_router, MAX_CANDIDATES
 
 ticker = "AAPL"
 company = resolve_company(ticker)
 
 print(f"TARGET_NEWS_COUNT = {TARGET_NEWS_COUNT}")
-print(f"CANDIDATE_MULTIPLIER = {CANDIDATE_MULTIPLIER}")
 print(f"MAX_CANDIDATES = {MAX_CANDIDATES}")
-print(f"Stop threshold (raw) = {TARGET_NEWS_COUNT * CANDIDATE_MULTIPLIER}")
 print(f"RELEVANCE_THRESHOLD = {RELEVANCE_THRESHOLD}")
 print()
 
@@ -61,8 +59,8 @@ for i, provider_name in enumerate(selected):
         result = provider.fetch(
             ticker=ticker,
             company=company,
-            lookback_days=LOOKBACK_DAYS,
-            max_results=10,
+            lookback_days=7,
+            max_results=20,
         )
         latency = (time.perf_counter() - t0) * 1000
         status = "success" if result.success else f"error: {result.error}"
@@ -74,7 +72,7 @@ for i, provider_name in enumerate(selected):
 
         # Check stop condition
         should_stop = provider_router.should_stop_fetching(
-            articles_collected=len(all_articles),
+            unique_relevant_count=len(all_articles),
             target_count=TARGET_NEWS_COUNT,
             providers_called=len(provider_results),
         )

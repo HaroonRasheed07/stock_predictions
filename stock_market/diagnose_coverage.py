@@ -8,12 +8,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from stock_market.news_engine.engine import (
     _score_relevance, _deduplicate_articles, _rank_and_select_articles,
-    _l1_cache, RELEVANCE_THRESHOLD, LOOKBACK_DAYS, TARGET_NEWS_COUNT as ENGINE_TARGET
+    _l1_cache, RELEVANCE_THRESHOLD, TARGET_NEWS_COUNT as ENGINE_TARGET
 )
 from stock_market.news_engine.company_resolver import resolve_company, get_search_queries
 from stock_market.news_engine.providers import get_all_providers
 from stock_market.news_engine.provider_budget import budget_manager
-from stock_market.news_engine.provider_router import provider_router, TARGET_NEWS_COUNT
+from stock_market.news_engine.provider_router import provider_router, TARGET_NEWS_COUNT, NEWS_MAX_AGE_DAYS
 
 
 def diagnose(ticker: str, force: bool = False):
@@ -59,8 +59,8 @@ def diagnose(ticker: str, force: bool = False):
             result = provider.fetch(
                 ticker=ticker,
                 company=company,
-                lookback_days=LOOKBACK_DAYS,
-                max_results=10,
+                lookback_days=NEWS_MAX_AGE_DAYS,
+                max_results=20,
             )
             latency = (time.perf_counter() - t0) * 1000
             status = "success" if result.success else f"error: {result.error}"

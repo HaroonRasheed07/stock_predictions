@@ -1,18 +1,18 @@
 """
 provider_router.py — Quota-aware provider selection and orchestration.
 
-Waterfall strategy (freshness-first):
-1. Cache / existing recent articles
-2. RSS (free, fresh)
-3. Currents (fresh coverage)
-4. Marketaux (high-precision enrichment, scarce)
-5. NewsData (gap-fill, may be delayed)
-6. GDELT (free supplement)
+Reservoir strategy:
+1. Build one unified candidate reservoir across ALL providers and time windows
+2. Progressively expand time windows (24h → 72h → 7d) if insufficient unique relevant articles
+3. Never stop early based on raw article count — only stop when unique relevant count >= target
+4. Cache merge: always merge new fetch with valid cached articles, never replace
+5. Free providers (RSS, GDELT) are never skipped and never stopped early
 
 Key principles:
 - Target 8 articles after relevance + dedup
-- Fetch more candidates than needed (2x target)
-- Stop immediately when adequate coverage exists
+- Minimum desired: 5 articles
+- Fetch more candidates than needed (relevance filter removes many)
+- Never stop when raw count is high but unique relevant count is low
 - Marketaux is scarce: enrich only, never dependency
 - RSS is free: always try first
 """
@@ -29,14 +29,35 @@ logger = logging.getLogger(__name__)
 
 # ─── Configuration ──────────────────────────────────────────────────────────
 
-TARGET_NEWS_COUNT = 8           # Canonical target after relevance + dedup
-CANDIDATE_MULTIPLIER = 5.0      # Fetch 5x candidates — relevance filter removes 70-90%
-MAX_CANDIDATES = 60             # Cap on raw candidates per ticker (increased for better coverage)
+TARGET_NEWS_COUNT = 8               # Canonical target after relevance + dedup
+MIN_DESIRED_NEWS_COUNT = 5          # Minimum desired (strong attempt to reach)
+MAX_CANDIDATES = 80                 # Cap on raw candidates per ticker
 
-# Freshness windows (hours)
-FRESHNESS_WINDOW_PRIMARY = 24    # First try: last 24 hours
-FRESHNESS_WINDOW_SECONDARY = 72  # Expand to 72 hours if needed
-FRESHNESS_WINDOW_MAX = 168       # Maximum: 7 days
+# Progressive time windows (days)
+NEWS_PRIMARY_WINDOW_DAYS = 1        # Stage A: 0-24h
+NEWS_SECONDARY_WINDOW_DAYS = 3      # Stage B: 0-72h
+NEWS_MAX_AGE_DAYS = 7               # Stage C: 0-7d (absolute max)
+
+# Coverage status thresholds
+COVERAGE_FULL = "FULL"             # 8+
+COVERAGE_GOOD = "GOOD"             # 5-7
+COVERAGE_PARTIAL = "PARTIAL"       # 3-4
+COVERAGE_INSUFFICIENT = "INSUFFICIENT"  # 1-2
+COVERAGE_NONE = "NONE"             # 0
+
+
+def get_coverage_status(count: int) -> str:
+    """Determine coverage status from article count."""
+    if count >= TARGET_NEWS_COUNT:
+        return COVERAGE_FULL
+    elif count >= MIN_DESIRED_NEWS_COUNT:
+        return COVERAGE_GOOD
+    elif count >= 3:
+        return COVERAGE_PARTIAL
+    elif count >= 1:
+        return COVERAGE_INSUFFICIENT
+    return COVERAGE_NONE
+
 
 # Provider roles
 ROLE_RSS = "rss"              # Free, always try first (fresh)
@@ -68,15 +89,15 @@ PROVIDER_WATERFALL_PRIORITY = {
 
 class ProviderRouter:
     """
-    Selects providers based on waterfall strategy:
-    1. Cache (already have articles)
+    Selects providers based on reservoir strategy:
+    1. Cache (already have articles) — always included
     2. RSS (free, fresh)
     3. Currents (fresh API)
     4. Marketaux (enrichment, if quota allows)
     5. NewsData (gap-fill)
     6. GDELT (supplement)
     
-    Stops when target count reached.
+    Does NOT stop early — the engine tracks unique relevant count.
     """
 
     def __init__(self):
@@ -90,24 +111,14 @@ class ProviderRouter:
     ) -> List[str]:
         """
         Return ordered list of provider names to call (waterfall order).
-
-        Strategy:
-        1. If cache already has enough -> no providers needed
-        2. RSS first (free, fresh)
-        3. Currents (fresh coverage)
-        4. Marketaux ONLY if still below target and quota allows
-        5. NewsData for gap-fill
-        6. GDELT as last resort
+        
+        Always returns ALL available providers — the engine decides when to stop
+        based on unique relevant count, not raw count.
         """
-        needed = target_count - cached_article_count
-        if needed <= 0:
-            return []
-
         all_providers = get_all_providers()
         available = {p.name: p for p in all_providers if p.is_available()}
         selected = []
 
-        # Waterfall: follow the priority order strictly
         for name in sorted(
             available.keys(),
             key=lambda n: PROVIDER_WATERFALL_PRIORITY.get(n, 99)
@@ -115,46 +126,31 @@ class ProviderRouter:
             if not budget_manager.can_call(name):
                 logger.info(f"[ROUTER] Skipping {name} (quota exhausted or cooldown)")
                 continue
-
-            role = PROVIDER_ROLES.get(name, ROLE_SUPPLEMENT)
-
-            # Marketaux: only add if still need more after free + fresh sources
-            if role == ROLE_ENRICHMENT:
-                estimated_from_earlier = cached_article_count + (8 * len(selected))
-                if estimated_from_earlier >= target_count * CANDIDATE_MULTIPLIER:
-                    logger.info(f"[ROUTER] Skipping {name} (estimated {estimated_from_earlier} >= target {target_count})")
-                    continue
-
             selected.append(name)
 
         return selected
 
     def should_stop_fetching(
         self,
-        articles_collected: int,
+        unique_relevant_count: int,
         target_count: int = TARGET_NEWS_COUNT,
         providers_called: int = 0,
         current_provider: str = "",
     ) -> bool:
         """Determine if we should stop calling providers.
 
+        ONLY stops when unique relevant articles >= target.
         Free providers (rss, gdelt) are NEVER stopped — they cost nothing.
-        Stop only after collecting enough raw candidates from paid sources.
+        Raw count is NOT used — only unique relevant count after dedup.
         """
-        # Never stop before calling at least 3 providers (need diverse sources)
-        if providers_called < 3:
-            return False
-
         # Never stop free providers — they cost nothing
         if current_provider in ("rss", "gdelt"):
             return False
 
-        # Stop if we have enough raw candidates
-        if articles_collected >= target_count * CANDIDATE_MULTIPLIER:
+        # Stop when we have enough unique relevant articles
+        if unique_relevant_count >= target_count:
             return True
-        # Hard cap
-        if articles_collected >= MAX_CANDIDATES:
-            return True
+
         return False
 
     def get_provider_priority(self, provider_name: str) -> int:
