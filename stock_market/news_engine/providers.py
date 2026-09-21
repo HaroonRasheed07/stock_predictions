@@ -259,6 +259,7 @@ class MarketauxProvider(NewsProvider):
             return ProviderResult(provider=self.name, success=False, error="unavailable")
 
         start = time.perf_counter()
+        correlation_id = f"mx-{ticker}-{int(time.time())}"
         try:
             published_after = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%S")
             params = {
@@ -272,6 +273,20 @@ class MarketauxProvider(NewsProvider):
                 "must_have_entities": "true",
             }
             resp = requests.get(f"{self._base_url}/news/all", params=params, timeout=self._timeout)
+
+            # Extract header-based usage tracking before raise_for_status
+            quota_remaining = None
+            usage_pct = None
+            try:
+                qr = resp.headers.get("X-RateLimit-Remaining")
+                if qr is not None:
+                    quota_remaining = int(qr)
+                up = resp.headers.get("X-RateLimit-Usage")
+                if up is not None:
+                    usage_pct = float(up.replace("%", "")) / 100.0
+            except (ValueError, TypeError, AttributeError):
+                pass
+
             resp.raise_for_status()
             data = resp.json()
 
@@ -321,29 +336,44 @@ class MarketauxProvider(NewsProvider):
             self._metrics["successes"] += 1
             self._metrics["total_latency_ms"] += latency
 
-            return ProviderResult(
+            result = ProviderResult(
                 provider=self.name,
                 articles=articles,
                 success=True,
                 latency_ms=latency,
                 raw_count=len(articles),
             )
+            # Attach header-derived data for budget tracking
+            result.quota_remaining = quota_remaining
+            result._correlation_id = correlation_id
+            return result
 
         except requests.exceptions.Timeout:
+            latency = (time.perf_counter() - start) * 1000
             self.circuit_breaker.record_failure()
             self._metrics["total_calls"] += 1
             self._metrics["failures"] += 1
-            return ProviderResult(provider=self.name, success=False, error="timeout")
+            result = ProviderResult(provider=self.name, success=False, error="timeout")
+            result._correlation_id = correlation_id
+            return result
         except requests.exceptions.HTTPError as e:
+            latency = (time.perf_counter() - start) * 1000
             self.circuit_breaker.record_failure()
             self._metrics["total_calls"] += 1
             self._metrics["failures"] += 1
-            return ProviderResult(provider=self.name, success=False, error=f"HTTP {e.response.status_code}")
+            status_code = e.response.status_code if e.response is not None else 0
+            result = ProviderResult(provider=self.name, success=False, error=f"HTTP {status_code}")
+            result._http_status = status_code
+            result._correlation_id = correlation_id
+            return result
         except Exception as e:
+            latency = (time.perf_counter() - start) * 1000
             self.circuit_breaker.record_failure()
             self._metrics["total_calls"] += 1
             self._metrics["failures"] += 1
-            return ProviderResult(provider=self.name, success=False, error=str(e))
+            result = ProviderResult(provider=self.name, success=False, error=str(e))
+            result._correlation_id = correlation_id
+            return result
 
 
 # ─── Currents ───────────────────────────────────────────────────────────────

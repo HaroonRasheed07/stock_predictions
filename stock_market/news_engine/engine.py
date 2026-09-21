@@ -31,7 +31,7 @@ from .provider_budget import budget_manager
 from .provider_router import (
     provider_router, fetch_metrics, TARGET_NEWS_COUNT, MIN_DESIRED_NEWS_COUNT,
     NEWS_PRIMARY_WINDOW_DAYS, NEWS_SECONDARY_WINDOW_DAYS, NEWS_MAX_AGE_DAYS,
-    get_coverage_status,
+    get_coverage_status, COVERAGE_NONE,
 )
 
 logger = logging.getLogger(__name__)
@@ -812,6 +812,7 @@ def get_provider_diagnostics(ticker: str) -> Dict[str, Any]:
                 diagnostics["freshness"]["freshest_article_age_hours"] = round(_article_age_hours(cached.freshest_article_at), 1)
             diagnostics["freshness"]["status"] = cached.data_freshness
 
+        from .provider_router import is_marketaux_eligible
         providers = get_all_providers()
         all_articles: List[NewsArticle] = []
 
@@ -830,6 +831,15 @@ def get_provider_diagnostics(ticker: str) -> Dict[str, Any]:
                 provider_diag["status"] = "unavailable"
                 diagnostics["providers"][provider.name] = provider_diag
                 continue
+
+            # Gate Marketaux even in diagnostics to prevent quota waste
+            if provider.name == "marketaux":
+                eligible, reason = is_marketaux_eligible(ticker, COVERAGE_NONE, False)
+                if not eligible:
+                    provider_diag["attempted"] = False
+                    provider_diag["status"] = f"gate_blocked: {reason}"
+                    diagnostics["providers"][provider.name] = provider_diag
+                    continue
 
             try:
                 result = provider.fetch(
@@ -1068,26 +1078,34 @@ def _compute_fresh_snapshot(
     """
     Compute a fresh snapshot by fetching from providers.
     This is the core pipeline that does actual provider calls.
+
+    Marketaux is called at most ONCE per ticker per pipeline run.
+    It is gated by: per-ticker cooldown (4h), budget tier, and coverage.
     """
     start_time = time.perf_counter()
+    import uuid as _uuid
+    run_correlation_id = str(_uuid.uuid4())[:8]
 
     # Resolve company identity
     company = resolve_company(ticker)
-    logger.info(f"[ENGINE] {ticker} resolved to {company.canonical_name}")
+    logger.info(f"[ENGINE] {ticker} resolved to {company.canonical_name} (run={run_correlation_id})")
 
-    # Select providers
+    # Select providers (using ticker-aware gate for Marketaux)
     metrics = fetch_metrics
     metrics.start()
 
-    selected_providers = provider_router.select_providers(
-        cached_article_count=len(existing_stale_articles) if existing_stale_articles else 0,
-        target_count=TARGET_NEWS_COUNT,
+    selected_providers = provider_router.select_providers_for_ticker(
+        ticker=ticker,
+        current_coverage=COVERAGE_NONE,
+        marketaux_called=False,
     )
 
     all_providers = {p.name: p for p in get_all_providers()}
     all_articles: List[NewsArticle] = []
     provider_results: Dict[str, Any] = []
     unique_relevant_urls: set = set()
+    marketaux_called_this_ticker = False
+    marketaux_articles_selected = 0
 
     def _add_to_reservoir(articles: List[NewsArticle]):
         """Add articles to reservoir, tracking unique relevant count."""
@@ -1098,9 +1116,45 @@ def _compute_fresh_snapshot(
                     unique_relevant_urls.add(article.url)
             all_articles.append(article)
 
+    def _record_provider_call(provider_name: str, result, lookback_days: int):
+        """Record provider call with full ledger context."""
+        latency_ms = round(result.latency_ms, 1)
+        http_status = getattr(result, '_http_status', 200 if result.success else 0)
+        correlation_id = getattr(result, '_correlation_id', run_correlation_id)
+        articles_returned = len(result.articles)
+        articles_selected = sum(1 for a in result.articles if a.relevance_score and a.relevance_score >= RELEVANCE_THRESHOLD)
+
+        if result.success:
+            budget_manager.record_success(
+                provider_name,
+                quota_remaining=getattr(result, 'quota_remaining', None),
+                ticker=ticker,
+                reason=f"lookback_{lookback_days}d",
+                http_status=http_status,
+                articles_returned=articles_returned,
+                articles_selected=articles_selected,
+                cache_state="fresh" if not existing_stale_articles else "incremental",
+                duration_ms=latency_ms,
+                correlation_id=correlation_id,
+            )
+        else:
+            budget_manager.record_failure(
+                provider_name,
+                error=result.error or "unknown",
+                ticker=ticker,
+                reason=f"lookback_{lookback_days}d",
+                http_status=http_status,
+                duration_ms=latency_ms,
+                correlation_id=correlation_id,
+            )
+
+        if provider_name == "marketaux":
+            nonlocal marketaux_called_this_ticker, marketaux_articles_selected
+            marketaux_called_this_ticker = True
+            marketaux_articles_selected = articles_selected
+
     # Start with stale articles in the reservoir (if doing incremental refresh)
     if existing_stale_articles:
-        # Filter out expired articles before adding to reservoir
         valid_old = _filter_expired_articles(existing_stale_articles)
         for a in valid_old:
             a.relevance_score = _score_relevance(a, company)
@@ -1109,7 +1163,7 @@ def _compute_fresh_snapshot(
             all_articles.append(a)
         logger.info(f"[ENGINE] {ticker} reservoir starts with {len(unique_relevant_urls)} unique relevant from cache ({len(valid_old)} valid, {len(existing_stale_articles) - len(valid_old)} expired)")
 
-    # STAGE A: Fetch from all providers with primary window (24h)
+    # ── STAGE A: Fetch from all providers with primary window (24h) ──
     for provider_name in selected_providers:
         provider = all_providers.get(provider_name)
         if not provider or not provider.is_available():
@@ -1117,7 +1171,13 @@ def _compute_fresh_snapshot(
             continue
 
         try:
-            if not budget_manager.can_call(provider_name):
+            # Per-ticker cooldown check for Marketaux
+            if provider_name == "marketaux":
+                if not budget_manager.can_call_ticker("marketaux", ticker):
+                    provider_results.append({"provider": provider_name, "status": "per_ticker_cooldown", "count": 0})
+                    logger.info(f"[ENGINE] {ticker} skipping Marketaux (per-ticker cooldown)")
+                    continue
+            elif not budget_manager.can_call(provider_name):
                 provider_results.append({"provider": provider_name, "status": "quota_exhausted", "count": 0})
                 logger.info(f"[ENGINE] {ticker} skipping {provider_name} (quota exhausted)")
                 continue
@@ -1129,12 +1189,8 @@ def _compute_fresh_snapshot(
                 max_results=20,
             )
 
-            if result.success:
-                budget_manager.record_success(provider_name, getattr(result, 'quota_remaining', None))
-                metrics.record_provider_call(provider_name, True)
-            else:
-                budget_manager.record_failure(provider_name, result.error or "unknown")
-                metrics.record_provider_call(provider_name, False)
+            _record_provider_call(provider_name, result, NEWS_PRIMARY_WINDOW_DAYS)
+            metrics.record_provider_call(provider_name, result.success)
 
             provider_results.append({
                 "provider": provider_name,
@@ -1158,22 +1214,28 @@ def _compute_fresh_snapshot(
                 break
 
         except Exception as e:
-            budget_manager.record_failure(provider_name, str(e))
+            budget_manager.record_failure(provider_name, str(e), ticker=ticker, reason="exception")
             metrics.record_provider_call(provider_name, False)
             provider_results.append({"provider": provider_name, "status": f"error: {e}", "count": 0})
             logger.warning(f"[ENGINE] {provider_name} error for {ticker}: {e}")
             continue
 
-    logger.info(f"[ENGINE] {ticker} after Stage A (24h): {len(unique_relevant_urls)} unique relevant from {len(all_articles)} raw")
+    logger.info(f"[ENGINE] {ticker} after Stage A (24h): {len(unique_relevant_urls)} unique relevant from {len(all_articles)} raw, marketaux_called={marketaux_called_this_ticker}")
 
-    # STAGE B: If still below target, expand to 72h window
+    # ── STAGE B: If still below target, expand to 72h window ──
     if len(unique_relevant_urls) < TARGET_NEWS_COUNT:
         logger.info(f"[ENGINE] {ticker} only {len(unique_relevant_urls)} unique relevant, expanding to {NEWS_SECONDARY_WINDOW_DAYS}d window")
         for provider_name in selected_providers:
+            # Skip Marketaux if already called this ticker (don't call twice)
+            if provider_name == "marketaux" and marketaux_called_this_ticker:
+                continue
             provider = all_providers.get(provider_name)
             if not provider or not provider.is_available():
                 continue
-            if not budget_manager.can_call(provider_name):
+            if provider_name == "marketaux":
+                if not budget_manager.can_call_ticker("marketaux", ticker):
+                    continue
+            elif not budget_manager.can_call(provider_name):
                 continue
             try:
                 result = provider.fetch(
@@ -1183,6 +1245,7 @@ def _compute_fresh_snapshot(
                     max_results=20,
                 )
                 if result.success and result.articles:
+                    _record_provider_call(provider_name, result, NEWS_SECONDARY_WINDOW_DAYS)
                     _add_to_reservoir(result.articles)
                     metrics.articles_fetched += len(result.articles)
                     logger.info(f"[ENGINE] {provider_name} (72h) returned {len(result.articles)} articles (unique relevant: {len(unique_relevant_urls)})")
@@ -1193,14 +1256,20 @@ def _compute_fresh_snapshot(
 
         logger.info(f"[ENGINE] {ticker} after Stage B (72h): {len(unique_relevant_urls)} unique relevant")
 
-    # STAGE C: If still below target, expand to 7d window
+    # ── STAGE C: If still below target, expand to 7d window ──
     if len(unique_relevant_urls) < TARGET_NEWS_COUNT:
         logger.info(f"[ENGINE] {ticker} only {len(unique_relevant_urls)} unique relevant, expanding to {NEWS_MAX_AGE_DAYS}d window")
         for provider_name in selected_providers:
+            # Skip Marketaux if already called this ticker (don't call twice)
+            if provider_name == "marketaux" and marketaux_called_this_ticker:
+                continue
             provider = all_providers.get(provider_name)
             if not provider or not provider.is_available():
                 continue
-            if not budget_manager.can_call(provider_name):
+            if provider_name == "marketaux":
+                if not budget_manager.can_call_ticker("marketaux", ticker):
+                    continue
+            elif not budget_manager.can_call(provider_name):
                 continue
             try:
                 result = provider.fetch(
@@ -1210,6 +1279,7 @@ def _compute_fresh_snapshot(
                     max_results=20,
                 )
                 if result.success and result.articles:
+                    _record_provider_call(provider_name, result, NEWS_MAX_AGE_DAYS)
                     _add_to_reservoir(result.articles)
                     metrics.articles_fetched += len(result.articles)
                     logger.info(f"[ENGINE] {provider_name} (7d) returned {len(result.articles)} articles (unique relevant: {len(unique_relevant_urls)})")
@@ -1220,7 +1290,7 @@ def _compute_fresh_snapshot(
 
         logger.info(f"[ENGINE] {ticker} after Stage C (7d): {len(unique_relevant_urls)} unique relevant")
 
-    logger.info(f"[ENGINE] {ticker} collected {len(all_articles)} raw articles from {len(provider_results)} providers, {len(unique_relevant_urls)} unique relevant")
+    logger.info(f"[ENGINE] {ticker} collected {len(all_articles)} raw articles from {len(provider_results)} providers, {len(unique_relevant_urls)} unique relevant, marketaux_articles={marketaux_articles_selected}")
 
     # Filter to relevant only
     relevant_articles = [a for a in all_articles if a.relevance_score >= RELEVANCE_THRESHOLD]

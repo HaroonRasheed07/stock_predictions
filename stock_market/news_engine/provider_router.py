@@ -13,17 +13,19 @@ Key principles:
 - Minimum desired: 5 articles
 - Fetch more candidates than needed (relevance filter removes many)
 - Never stop when raw count is high but unique relevant count is low
-- Marketaux is scarce: enrich only, never dependency
+- Marketaux is SCARCE (100 req/day): call at most ONCE per ticker per 4h cooldown
 - RSS is free: always try first
+- Marketaux is only called when: (a) per-ticker cooldown expired, AND (b) budget tier allows
 """
 
 import logging
+import uuid
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
 
 from .models import NewsArticle, CompanyIdentity
 from .providers import get_all_providers, NewsProvider
-from .provider_budget import budget_manager, ProviderState
+from .provider_budget import budget_manager, ProviderState, BudgetTier
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,46 @@ PROVIDER_WATERFALL_PRIORITY = {
     "gdelt": 4,
 }
 
+# Budget tiers at which Marketaux is NOT called
+# CONSERVE: only call if coverage is PARTIAL or worse
+# CRITICAL: never call
+MARKETAUX_SKIP_AT_TIER = {BudgetTier.CRITICAL, BudgetTier.EXHAUSTED}
+
+
+# ─── Marketaux Eligibility Gate ─────────────────────────────────────────────
+
+def is_marketaux_eligible(
+    ticker: str,
+    current_coverage: str = COVERAGE_NONE,
+    marketaux_called_this_ticker: bool = False,
+) -> Tuple[bool, str]:
+    """
+    Determine if Marketaux should be called for this ticker.
+
+    Returns (eligible, reason).
+    
+    Eligibility rules:
+    1. Per-ticker cooldown must have expired (4h default)
+    2. Budget tier must allow it (not CRITICAL/EXHAUSTED)
+    3. If coverage is already FULL, skip (no point enriching what's complete)
+    4. If marketaux was already called for this ticker in this pipeline run, skip
+    """
+    if marketaux_called_this_ticker:
+        return False, "already_called_this_ticker"
+
+    tier = budget_manager.get_budget_tier("marketaux")
+    if tier in MARKETAUX_SKIP_AT_TIER:
+        return False, f"budget_tier_{tier.value}"
+
+    if not budget_manager.can_call_ticker("marketaux", ticker):
+        remaining_cooldown = budget_manager.get_ticker_cooldown_remaining("marketaux", ticker)
+        return False, f"per_ticker_cooldown_{remaining_cooldown:.0f}s_remaining"
+
+    if current_coverage == COVERAGE_FULL:
+        return False, "coverage_already_full"
+
+    return True, "eligible"
+
 
 # ─── Provider Router ────────────────────────────────────────────────────────
 
@@ -93,8 +135,8 @@ class ProviderRouter:
     1. Cache (already have articles) — always included
     2. RSS (free, fresh)
     3. Currents (fresh API)
-    4. Marketaux (enrichment, if quota allows)
-    5. NewsData (gap-fill)
+    4. NewsData (gap-fill)
+    5. Marketaux (enrichment, ONLY if eligible gate passes)
     6. GDELT (supplement)
     
     Does NOT stop early — the engine tracks unique relevant count.
@@ -123,6 +165,42 @@ class ProviderRouter:
             available.keys(),
             key=lambda n: PROVIDER_WATERFALL_PRIORITY.get(n, 99)
         ):
+            if not budget_manager.can_call(name):
+                logger.info(f"[ROUTER] Skipping {name} (quota exhausted or cooldown)")
+                continue
+            selected.append(name)
+
+        return selected
+
+    def select_providers_for_ticker(
+        self,
+        ticker: str,
+        current_coverage: str = COVERAGE_NONE,
+        marketaux_called: bool = False,
+    ) -> List[str]:
+        """
+        Return ordered list of provider names for a specific ticker.
+        
+        Marketaux is only included if the eligibility gate passes.
+        Free providers (RSS, GDELT) are always included.
+        """
+        all_providers = get_all_providers()
+        available = {p.name: p for p in all_providers if p.is_available()}
+        selected = []
+
+        for name in sorted(
+            available.keys(),
+            key=lambda n: PROVIDER_WATERFALL_PRIORITY.get(n, 99)
+        ):
+            if name == "marketaux":
+                eligible, reason = is_marketaux_eligible(
+                    ticker, current_coverage, marketaux_called
+                )
+                if not eligible:
+                    logger.info(f"[ROUTER] Marketaux gate BLOCKED for {ticker}: {reason}")
+                    continue
+                logger.info(f"[ROUTER] Marketaux gate PASSED for {ticker}: {reason}")
+
             if not budget_manager.can_call(name):
                 logger.info(f"[ROUTER] Skipping {name} (quota exhausted or cooldown)")
                 continue
