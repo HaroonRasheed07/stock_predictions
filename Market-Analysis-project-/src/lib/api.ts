@@ -385,7 +385,21 @@ export async function fetchWatchlistDefaults(category?: string) {
   return res.json();
 }
 
-export async function fetchOpportunityScan(tickers: string[], period = "1y"): Promise<{ scan_results: OpportunityScore[] }> {
+export interface CacheMeta {
+  created_at?: number;
+  updated_at?: number;
+  fresh_until?: number;
+  is_stale?: boolean;
+  refresh_in_progress?: boolean;
+  status?: string;
+}
+
+export interface OpportunityScanResponse {
+  scan_results: OpportunityScore[];
+  _cache_meta?: CacheMeta;
+}
+
+export async function fetchOpportunityScan(tickers: string[], period = "1y"): Promise<OpportunityScanResponse> {
   const res = await fetch(`${API_BASE}/api/opportunities/scan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -532,6 +546,7 @@ export interface DiscoverStock {
 export interface DiscoverScanResponse {
   stocks: Record<string, DiscoverStock>;
   count: number;
+  _cache_meta?: CacheMeta;
 }
 
 export async function fetchDiscoverScan(tickers: string[], period = "1y"): Promise<DiscoverScanResponse> {
@@ -542,6 +557,87 @@ export async function fetchDiscoverScan(tickers: string[], period = "1y"): Promi
   });
   if (!res.ok) throw new Error("Failed to scan discover tickers");
   return res.json();
+}
+
+// ─── Chunked Bulk Scans (Watchlist) ─────────────────────────────────────────
+// Backend caps /api/discover/scan at 10 tickers and /api/opportunities/scan
+// at 20 tickers per request, so long watchlists are split into cached chunks
+// and merged into a single response. Chunk results share the server-side SWR
+// cache with the single-request endpoints, so repeated loads stay cheap.
+
+const DISCOVER_SCAN_MAX = 10;
+const OPPORTUNITY_SCAN_MAX = 20;
+
+function normalizeTickers(tickers: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of tickers) {
+    const t = (raw || "").toUpperCase().trim();
+    if (t && !seen.has(t)) {
+      seen.add(t);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+function chunkTickers(tickers: string[], size: number): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < tickers.length; i += size) {
+    chunks.push(tickers.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function newestMeta(metas: Array<CacheMeta | undefined>): CacheMeta | undefined {
+  let newest: CacheMeta | undefined;
+  for (const meta of metas) {
+    if (!meta) continue;
+    if (!newest || (meta.updated_at ?? 0) >= (newest.updated_at ?? 0)) {
+      newest = meta;
+    }
+  }
+  return newest;
+}
+
+export async function fetchDiscoverScanAll(tickers: string[], period = "1y"): Promise<DiscoverScanResponse> {
+  const list = normalizeTickers(tickers);
+  if (list.length === 0) return { stocks: {}, count: 0 };
+
+  const responses = await Promise.all(
+    chunkTickers(list, DISCOVER_SCAN_MAX).map((chunk) => fetchDiscoverScan(chunk, period))
+  );
+
+  const stocks: Record<string, DiscoverStock> = {};
+  for (const res of responses) {
+    Object.assign(stocks, res.stocks || {});
+  }
+  return {
+    stocks,
+    count: Object.keys(stocks).length,
+    _cache_meta: newestMeta(responses.map((r) => r._cache_meta)),
+  };
+}
+
+export async function fetchOpportunityScanAll(
+  tickers: string[],
+  period = "1y"
+): Promise<OpportunityScanResponse> {
+  const list = normalizeTickers(tickers);
+  if (list.length === 0) return { scan_results: [] };
+
+  const responses = await Promise.all(
+    chunkTickers(list, OPPORTUNITY_SCAN_MAX).map((chunk) => fetchOpportunityScan(chunk, period))
+  );
+
+  const byTicker = new Map<string, OpportunityScore>();
+  for (const res of responses) {
+    for (const item of res.scan_results || []) {
+      byTicker.set(item.ticker, item);
+    }
+  }
+  const scan_results = Array.from(byTicker.values()).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  return { scan_results, _cache_meta: newestMeta(responses.map((r) => r._cache_meta)) };
 }
 
 // ─── Home Intelligence ──────────────────────────────────────────────────────
