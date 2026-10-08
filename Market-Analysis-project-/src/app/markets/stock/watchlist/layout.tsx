@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: 'My Watchlist',
-  robots: 'noindex, nofollow',
+  robots: 'noindex, follow',
 };
 
 export default function WatchlistLayout({ children }: { children: ReactNode }) {

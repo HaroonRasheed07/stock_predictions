@@ -660,6 +660,164 @@ const articles: Record<string, LearnArticle> = {
       limitations: 'Neither technical nor fundamental analysis guarantees investment success. Both are tools for research and decision-making—not crystal balls. StockVantex provides technical and sentiment analysis tools to support your research, but investment decisions are ultimately your own.',
     },
   },
+  'what-is-adx': {
+    slug: 'what-is-adx',
+    title: 'What Is ADX? How to Measure Trend Strength',
+    description: 'ADX (Average Directional Index) measures how strong a trend is—not its direction. Learn how the ADX scale works, how to read it with +DI and -DI, and where it misleads.',
+    h1: 'What Is ADX? How to Measure Trend Strength',
+    publishedAt: '2026-06-20',
+    updatedAt: '2026-10-08',
+    author: 'Haroon Rasheed',
+    readingTime: '6 min',
+    tags: ['technical analysis', 'indicators', 'trend', 'ADX'],
+    relatedTickers: ['AAPL', 'NVDA', 'MSFT'],
+    relatedArticles: ['what-is-technical-analysis', 'what-is-rsi', 'sma-vs-ema'],
+    content: {
+      intro: 'ADX (Average Directional Index) is an indicator that measures trend strength on a 0–100 scale. It answers a different question than most indicators: not "which way is price going?" but "how strong is the move at all?" Understanding that distinction is the key to using ADX without misreading it.',
+      sections: [
+        {
+          heading: 'What the ADX Scale Means',
+          content: 'Welles Wilder, who also created RSI and ATR, proposed conventional thresholds for ADX. Traders use them as rules of thumb rather than hard laws.',
+          subsections: [
+            { heading: 'Below 20 — weak or absent trend', content: 'Readings under 20 suggest price is moving sideways or without direction. Range-trading approaches tend to interest traders more than trend-following ones in this zone.' },
+            { heading: '20 to 25 — emerging trend', content: 'A move above 20 can signal that a trend is beginning to form. Many traders treat 25 as the level where a trend is considered established.' },
+            { heading: 'Above 25 — strong trend', content: 'Readings above 25 indicate a well-established trend. Extremely high readings (above 50 or 60) often appear late in trends, which is why ADX is read as a lagging measure.' },
+          ],
+        },
+        {
+          heading: 'ADX Does Not Tell You Direction',
+          content: 'This is the most common ADX mistake. ADX rises whether price is trending up OR down — it only measures the intensity of the move. To establish direction, traders pair ADX with the directional movement lines (+DI and -DI) or with price structure itself: higher highs and higher lows indicate an uptrend, lower highs and lower lows a downtrend. When +DI is above -DI while ADX is above 25, the trend is considered up and strong; the reverse indicates a strong downtrend.',
+        },
+        {
+          heading: 'How ADX Is Calculated (Intuitively)',
+          content: 'ADX is built from Wilder\'s Directional Movement system: today\'s range is compared with yesterday\'s to determine whether the market moved up or down more (positive and negative directional movement). These are smoothed with Wilder\'s smoothing method, converted into +DI and -DI, then into the Directional Indicator (DX), and ADX is simply a smoothed average of DX. The smoothing is what makes ADX stable — and what makes it lag.',
+        },
+        {
+          heading: 'Where ADX Misleads',
+          content: 'ADX is a lagging indicator: because it smooths multiple layers, it often confirms a trend only after a substantial part of the move has happened. High ADX after a long run-up can coincide with exhaustion rather than continuation. In choppy, news-driven markets ADX can rise briefly and fall back, producing signals that arrive too late to act on. ADX also uses fixed lookback parameters (Wilder proposed 14 periods) that may not match a stock\'s natural rhythm. Treat its thresholds as descriptive, not predictive.',
+        },
+      ],
+      keyTakeaways: [
+        'ADX measures trend strength on a 0–100 scale, not direction.',
+        'Conventional thresholds: below 20 weak, 20–25 emerging, above 25 established trend.',
+        'Direction comes from +DI/-DI or price structure, never from ADX alone.',
+        'ADX lags: it describes trends already underway rather than predicting new ones.',
+      ],
+      limitations: 'ADX thresholds are conventions, not laws, and smoothed indicators lag real-time price action. StockVantex shows trend-strength readings as one layer of descriptive evidence alongside momentum, sentiment, and risk data — not as trading signals.',
+      faq: [
+        { question: 'What does an ADX above 25 mean?', answer: 'An ADX above 25 conventionally indicates that a trend — up or down — is well established. ADX does not indicate direction; use +DI/-DI or the price structure to determine which way the trend points.' },
+        { question: 'Is ADX a buy or sell signal?', answer: 'No. ADX only measures how strong a trend is. A high ADX can accompany a strong rise or a strong fall. Traders combine it with directional indicators or other analysis; it should never be read as a standalone buy or sell instruction.' },
+        { question: 'What is the difference between ADX and RSI?', answer: 'RSI measures momentum — the speed and magnitude of recent price changes on a 0–100 scale with overbought/oversold thresholds. ADX measures trend strength regardless of direction. They answer different questions and are often used together.' },
+      ],
+    },
+  },
+  'how-to-build-a-stock-watchlist': {
+    slug: 'how-to-build-a-stock-watchlist',
+    title: 'How to Build a Stock Watchlist That You Actually Use',
+    description: 'A good watchlist is small, purposeful, and reviewed regularly. Learn how to structure your stock watchlist, what to track for each name, and how often to refresh it.',
+    h1: 'How to Build a Stock Watchlist That You Actually Use',
+    publishedAt: '2026-07-10',
+    updatedAt: '2026-10-08',
+    author: 'Haroon Rasheed',
+    readingTime: '6 min',
+    tags: ['watchlist', 'stock research', 'process', 'beginner'],
+    relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
+    relatedArticles: ['how-to-analyze-a-stock', 'what-is-stock-volatility', 'how-to-analyze-stock-risk'],
+    content: {
+      intro: 'A watchlist is the core organizing tool of ongoing stock research: the short list of companies you actively follow. Most watchlists fail the same way — they grow into an unmanageable catalog that nobody reviews. This guide covers how to build one that stays useful.',
+      sections: [
+        {
+          heading: 'Start With a Purpose, Not a List',
+          content: 'Before adding tickers, decide what the watchlist is for. A swing trader watching setups for the next week needs a very different list than an investor tracking long-term compounders. Purpose decides size, review cadence, and what you track for each name. If you cannot say in one sentence why a stock is on the list, it probably should not be on it.',
+        },
+        {
+          heading: 'Keep It Small and Bucketed',
+          content: 'Between 10 and 20 names is a workable range for most individual investors — large enough to capture opportunities, small enough to actually review. A useful structure splits names into buckets:',
+          subsections: [
+            { heading: 'Core holdings you already own', content: 'Companies where you need to stay informed about earnings, guidance, and changing thesis conditions.' },
+            { heading: 'Candidates you are researching', content: 'Names on a short list for potential entry, each with a specific reason you are waiting or watching.' },
+            { heading: 'Context proxies', content: 'A few tickers that represent broader themes you care about — interest-rate sensitivity, semiconductor cycle, consumer health — used to read the market environment rather than to buy.' },
+          ],
+        },
+        {
+          heading: 'Track a Thesis, Not Just a Price',
+          content: 'For each name, write down why it is on the list: the one or two facts that would make you act. Add the level or event that would invalidate the idea (a broken support, a missed earnings date, a guidance cut). Price alone gives you nothing to react to; a written thesis turns every market swing into information you can evaluate. Keep each entry to two or three sentences — if it needs a paragraph, you do not understand the position yet.',
+        },
+        {
+          heading: 'Review on a Schedule, Prune Ruthlessly',
+          content: 'A weekly 15-minute review is enough for most lists: check what moved, what is coming up, and whether anything has left the original thesis. Quarterly, prune names you can no longer justify keeping — dead ideas accumulate quietly and are the main reason watchlists rot. If a name has been "someday" for a year, remove it; you can always add it back with fresh reasoning.',
+        },
+        {
+          heading: 'Common Watchlist Mistakes',
+          content: 'The typical failure modes are predictable: adding every stock mentioned on social media; never removing anything; tracking price without tracking why; and using the watchlist as a substitute for deeper analysis. A watchlist is an intake funnel for research, not a conclusion — being on the list means "I am paying attention," nothing more.',
+        },
+      ],
+      keyTakeaways: [
+        'Define the watchlist\'s purpose first; it determines size and review cadence.',
+        'Keep it to 10–20 names, bucketed by role (held, candidate, context).',
+        'Write a one-line thesis and invalidation condition for every entry.',
+        'Review weekly, prune quarterly — dead ideas are the main failure mode.',
+      ],
+      limitations: 'Watchlists organize attention; they do not evaluate investments. Inclusion on a list — yours or StockVantex\'s — is not a recommendation to buy or sell. StockVantex\'s watchlist stores entries in your own browser\'s local storage on your device.',
+      faq: [
+        { question: 'How many stocks should be on a watchlist?', answer: 'For most individual investors, 10–20 names is manageable: large enough to catch opportunities, small enough to review regularly. If you cannot review the full list in 15 minutes weekly, it is too long.' },
+        { question: 'How often should I update my watchlist?', answer: 'A brief weekly review keeps entries current; a deeper quarterly prune removes names whose original thesis no longer holds. Add or remove names whenever the reason for tracking them changes — not on a fixed calendar alone.' },
+        { question: 'Does StockVantex save my watchlist?', answer: 'Your watchlist is stored in your own browser\'s local storage on your device — it is not uploaded to an account, because StockVantex has no user accounts. Clearing browser data will clear the list.' },
+      ],
+    },
+  },
+  'why-stock-forecasts-are-uncertain': {
+    slug: 'why-stock-forecasts-are-uncertain',
+    title: 'Why Stock Forecasts Are Uncertain (and Why That Is Normal)',
+    description: 'Every stock forecast is an estimate from historical patterns, not a prediction of the future. Learn where forecast uncertainty comes from and how to use model output responsibly.',
+    h1: 'Why Stock Forecasts Are Uncertain (and Why That Is Normal)',
+    publishedAt: '2026-08-05',
+    updatedAt: '2026-10-08',
+    author: 'Haroon Rasheed',
+    readingTime: '7 min',
+    tags: ['forecasting', 'AI', 'risk', 'model limitations'],
+    relatedTickers: ['NVDA', 'TSLA', 'AAPL'],
+    relatedArticles: ['how-lstm-forecasting-works', 'how-ai-stock-forecasting-works', 'what-is-stock-volatility'],
+    content: {
+      intro: 'Ask ten models where a stock will be in ten days and you will get ten different numbers — none of them certain. Uncertainty is not a flaw in forecasting; it is a property of markets. Understanding where forecast uncertainty comes from is what separates using model output as one input from mistaking it for a crystal ball.',
+      sections: [
+        {
+          heading: 'What a Forecast Actually Is',
+          content: 'A stock forecast is a conditional estimate: if the future resembles the patterns in the historical data the model learned, price might follow the projected path. The condition is doing heavy lifting. Models learn from past price sequences — trends, volatility clusters, mean-reverting stretches — and extrapolate them. When the future plays out differently from the training history, the forecast is wrong by design, not by accident.',
+        },
+        {
+          heading: 'Where the Uncertainty Comes From',
+          content: 'Several sources combine, and none of them disappear with more data.',
+          subsections: [
+            { heading: 'Regime change', content: 'Markets shift between calm and crisis, trending and ranging. A model trained largely on one regime carries that regime\'s assumptions into the next — often exactly when they stop working.' },
+            { heading: 'Unscheduled events', content: 'Earnings surprises, guidance cuts, geopolitical shocks, and regulatory moves are, by definition, absent from price history. No historical pattern contains next week\'s news.' },
+            { heading: 'Model limitations', content: 'Every model simplifies: fixed lookback windows, limited features (often price and volume), and assumptions about how today relates to tomorrow. Simplification is necessary to learn anything at all — and it is also where forecasts break.' },
+            { heading: 'The crowd adapts', content: 'Markets react to the forecasts published about them. A pattern that is widely traded on tends to get arbitraged away, so historical regularities can weaken simply because everyone can see them.' },
+          ],
+        },
+        {
+          heading: 'Point Estimates vs Ranges',
+          content: 'A single predicted number implies a precision markets do not have. Ranges are more honest: a projection expressed as "expected average, with likely bounds" communicates that many outcomes are possible around the central estimate. When StockVantex shows a projected average alongside a projected range and session window, the range is the more informative figure — it is a visible reminder of uncertainty, not hedging language.',
+        },
+        {
+          heading: 'How to Use Model Output Responsibly',
+          content: 'Treat a forecast as one layer of evidence alongside technicals, sentiment, and risk — never as a standalone instruction. Ask what would make the forecast invalid, not just what it predicts. Size decisions so that being wrong about the forecast is survivable. And be skeptical of any source — human or machine — that presents a specific future price with confidence: the honest answer to "will this stock go up?" is always "with some probability, under some conditions."',
+        },
+      ],
+      keyTakeaways: [
+        'A forecast is a conditional estimate from historical patterns, not a glimpse of the future.',
+        'Uncertainty comes from regime shifts, unscheduled events, model limits, and adapting markets.',
+        'Ranges communicate uncertainty honestly; point estimates hide it.',
+        'Use forecasts as one input among many — never as a guaranteed outcome.',
+      ],
+      limitations: 'StockVantex forecasts are statistical estimates produced by models trained on historical data. Backtested accuracy does not guarantee future accuracy, and model outputs should never be the sole basis for investment decisions. All investing involves risk, including loss of principal.',
+      faq: [
+        { question: 'Can a stock forecast ever be accurate?', answer: 'Forecasts can be directionally useful and sometimes land close to the mark, but no model predicts prices with certainty. Accuracy varies with market conditions, and a model that performs well in calm markets may perform poorly in volatile ones.' },
+        { question: 'Why do forecast models fail?', answer: 'Common reasons include regime changes the model never saw in training, unscheduled news events that have no precedent in price history, overfitting to historical noise, and the simple fact that markets are adaptive — participants change behavior when patterns become visible.' },
+        { question: 'Should I make a trade based on a forecast?', answer: 'A forecast alone is not a sufficient reason to trade. Use it as one layer alongside technical analysis, sentiment, risk assessment, and your own thesis — with position sizing that assumes the forecast could be wrong.' },
+      ],
+    },
+  },
 };
 
 export function getArticle(slug: string): LearnArticle | null {

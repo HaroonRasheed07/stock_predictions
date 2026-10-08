@@ -85,6 +85,17 @@ export default function StockOverview() {
     setInputTicker(selectedTicker);
   }, [selectedTicker]);
 
+  // Deep link support: /markets/stock?ticker=NVDA
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('ticker');
+    if (!q) return;
+    const t = q.trim().toUpperCase();
+    if (/^[A-Z.]{1,10}$/.test(t)) {
+      setSelectedTicker(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSelectSuggestion = (asset: AssetInfo) => {
     setInputTicker(asset.ticker);
     setTicker(asset.ticker);

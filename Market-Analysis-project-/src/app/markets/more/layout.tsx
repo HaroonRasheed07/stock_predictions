@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'More',
-  robots: 'noindex, nofollow',
+  robots: 'noindex, follow',
 };
 
 export default function MoreLayout({ children }: { children: React.ReactNode }) {

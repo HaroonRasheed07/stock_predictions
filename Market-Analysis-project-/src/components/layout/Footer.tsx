@@ -142,6 +142,10 @@ export const Footer = () => {
 
         <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
           <p>&copy; 2026 StockVantex. All rights reserved.</p>
+          <div className="mt-2 flex justify-center gap-4">
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">Terms of Use</Link>
+          </div>
         </div>
       </div>
     </footer>

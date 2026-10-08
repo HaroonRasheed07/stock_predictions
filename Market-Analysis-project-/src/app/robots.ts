@@ -11,21 +11,26 @@ export default function robots(): MetadataRoute.Robots {
 
   return {
     rules: [
+      // Search and answer engines: fully allowed.
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/', '/test-chart/', '/markets/stock/watchlist'],
+        disallow: ['/api/', '/test-chart/'],
       },
       {
         userAgent: 'GPTBot',
         disallow: '/',
       },
       {
-        userAgent: 'ChatGPT-User',
+        userAgent: 'CCBot',
         disallow: '/',
       },
       {
-        userAgent: 'CCBot',
+        userAgent: 'ClaudeBot',
+        disallow: '/',
+      },
+      {
+        userAgent: 'Google-Extended',
         disallow: '/',
       },
     ],

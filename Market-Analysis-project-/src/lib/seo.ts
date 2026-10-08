@@ -18,6 +18,7 @@ export function buildOGImageUrl(path: string): string {
 export const STRUCTURED_DATA_ORGANIZATION = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
+  '@id': `${SITE_URL}/#organization`,
   name: SITE_NAME,
   url: SITE_URL,
   logo: `${SITE_URL}/logo.png`,
@@ -31,11 +32,8 @@ export const STRUCTURED_DATA_ORGANIZATION = {
 export const STRUCTURED_DATA_WEBSITE = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
+  '@id': `${SITE_URL}/#website`,
   name: SITE_NAME,
   url: SITE_URL,
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: `${SITE_URL}/stocks?q={search_term_string}`,
-    'query-input': 'required name=search_term_string',
-  },
+  publisher: { '@id': `${SITE_URL}/#organization` },
 };
