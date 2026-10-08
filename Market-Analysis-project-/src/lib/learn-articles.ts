@@ -64,7 +64,7 @@ const articles: Record<string, LearnArticle> = {
         'Technical analysis works best as part of a broader research strategy, not in isolation.',
         'No indicator or pattern guarantees future price movement.',
       ],
-      limitations: 'Technical analysis is one tool among many. It does not predict the future with certainty. Stock Vanta presents technical signals as one layer of evidence alongside sentiment, risk, and forecasting—not as definitive trading recommendations.',
+      limitations: 'Technical analysis is one tool among many. It does not predict the future with certainty. StockVantex presents technical signals as one layer of evidence alongside sentiment, risk, and forecasting—not as definitive trading recommendations.',
       faq: [
         { question: 'Is technical analysis reliable?', answer: 'Technical analysis can be useful for identifying trends and managing risk, but it is not foolproof. It works best when combined with fundamental analysis, risk management, and a clear trading plan.' },
         { question: 'Do professional traders use technical analysis?', answer: 'Many professional traders use technical analysis as one component of their strategy, often alongside fundamental analysis, quantitative models, and risk management frameworks.' },
@@ -110,7 +110,7 @@ const articles: Record<string, LearnArticle> = {
         'RSI works best in conjunction with trend analysis and other indicators.',
         'No single indicator provides complete trading information.',
       ],
-      limitations: 'RSI is a momentum indicator, not a prediction tool. It does not predict future price movements. Stock Vanta displays RSI as one data point within a broader analytical framework—not as a standalone buy or sell signal.',
+      limitations: 'RSI is a momentum indicator, not a prediction tool. It does not predict future price movements. StockVantex displays RSI as one data point within a broader analytical framework—not as a standalone buy or sell signal.',
       faq: [
         { question: 'What is a good RSI value?', answer: 'There is no single "good" RSI value. Context matters—a stock in a strong uptrend may sustain RSI above 70, while a stock in a downtrend may stay below 30. RSI is most useful when combined with trend direction and other analysis.' },
         { question: 'What period should I use for RSI?', answer: 'The standard period is 14 days, which is what most platforms use by default. Shorter periods make RSI more sensitive (more signals, more noise); longer periods make it smoother (fewer signals, less noise).' },
@@ -156,7 +156,7 @@ const articles: Record<string, LearnArticle> = {
         'The histogram visualizes momentum strength and direction.',
         'MACD is a lagging indicator and works best in trending markets.',
       ],
-      limitations: 'MACD is based on historical price data and cannot predict future movements with certainty. It works best in trending markets and can produce misleading signals in sideways markets. Stock Vanta presents MACD as one component of its technical analysis—not as a standalone trading recommendation.',
+      limitations: 'MACD is based on historical price data and cannot predict future movements with certainty. It works best in trending markets and can produce misleading signals in sideways markets. StockVantex presents MACD as one component of its technical analysis—not as a standalone trading recommendation.',
       faq: [
         { question: 'Is MACD better than RSI?', answer: 'MACD and RSI measure different things. MACD is a trend-following momentum indicator, while RSI is a momentum oscillator. They complement each other well—many traders use both together to get a more complete picture.' },
         { question: 'What are the best MACD settings?', answer: 'The standard settings are 12/26/9 (12-period EMA, 26-period EMA, 9-period signal). These work well for most timeframes. Some traders adjust these for shorter or longer-term analysis.' },
@@ -201,7 +201,7 @@ const articles: Record<string, LearnArticle> = {
         'They complement each other: RSI for extremes, MACD for trend direction.',
         'Using both together can provide more confirmation, but does not eliminate risk.',
       ],
-      limitations: 'Neither RSI nor MACD predicts the future. They are analytical tools that help identify potential opportunities and risks. Stock Vanta uses both as part of its multi-layered evidence approach—not as standalone trading signals.',
+      limitations: 'Neither RSI nor MACD predicts the future. They are analytical tools that help identify potential opportunities and risks. StockVantex uses both as part of its multi-layered evidence approach—not as standalone trading signals.',
       faq: [
         { question: 'Should I use RSI or MACD?', answer: 'It depends on your analysis goal. Use RSI to identify overbought/oversold conditions and MACD to identify trend direction. Using both gives a more complete view of price action.' },
       ],
@@ -242,7 +242,7 @@ const articles: Record<string, LearnArticle> = {
         'ATR is commonly used for stop-loss placement and position sizing.',
         'Higher ATR means higher volatility; lower ATR means lower volatility.',
       ],
-      limitations: 'ATR is a backward-looking indicator based on historical price ranges. It does not predict future volatility. ATR values change over time and vary significantly between stocks, making direct comparisons across different securities less meaningful. Stock Vanta displays ATR as part of its risk and volatility analysis.',
+      limitations: 'ATR is a backward-looking indicator based on historical price ranges. It does not predict future volatility. ATR values change over time and vary significantly between stocks, making direct comparisons across different securities less meaningful. StockVantex displays ATR as part of its risk and volatility analysis.',
       faq: [
         { question: 'What is a good ATR value?', answer: 'There is no universally "good" ATR value. ATR is relative—a $5 ATR might be high for a stable utility stock but low for a volatile tech stock. Compare ATR to the stock\'s price and historical ATR levels.' },
       ],
@@ -287,7 +287,7 @@ const articles: Record<string, LearnArticle> = {
         'They show relative price levels and volatility, not direction.',
         'Bollinger Bands work best as part of a multi-indicator analysis.',
       ],
-      limitations: 'Bollinger Bands are based on historical standard deviation and cannot predict future price movements. They are most effective in range-bound markets and can produce misleading signals during strong trends. Stock Vanta uses Bollinger Bands as one component of its technical analysis.',
+      limitations: 'Bollinger Bands are based on historical standard deviation and cannot predict future price movements. They are most effective in range-bound markets and can produce misleading signals during strong trends. StockVantex uses Bollinger Bands as one component of its technical analysis.',
       faq: [
         { question: 'When do Bollinger Bands predict a breakout?', answer: 'Bollinger Band squeezes (narrowing bands) often precede breakouts, but they do not predict the direction. The squeeze signals that volatility has been low and a larger move may be coming.' },
       ],
@@ -327,7 +327,7 @@ const articles: Record<string, LearnArticle> = {
         'The choice depends on your trading timeframe and analysis goals.',
         'Many traders use both SMA and EMA together.',
       ],
-      limitations: 'Both SMA and EMA are lagging indicators based on historical prices. Neither can predict future price movements. They work best in trending markets and can produce misleading signals in sideways markets. Stock Vanta uses both types as part of its technical analysis.',
+      limitations: 'Both SMA and EMA are lagging indicators based on historical prices. Neither can predict future price movements. They work best in trending markets and can produce misleading signals in sideways markets. StockVantex uses both types as part of its technical analysis.',
       faq: [
         { question: 'Which is better, SMA or EMA?', answer: 'Neither is universally better. SMA is better for longer-term trend identification; EMA is better for responsiveness to recent price action. Many traders use both together.' },
       ],
@@ -367,7 +367,7 @@ const articles: Record<string, LearnArticle> = {
         'Extreme sentiment may signal potential reversals, but not reliably.',
         'Sentiment works best as one layer of analysis alongside technicals and fundamentals.',
       ],
-      limitations: 'Sentiment analysis is imprecise and subjective. Automated sentiment tools can misinterpret sarcasm, context, and nuance. Sentiment does not predict future price movements. Stock Vanta\'s sentiment analysis is one component of a broader analytical framework—not a standalone investment signal.',
+      limitations: 'Sentiment analysis is imprecise and subjective. Automated sentiment tools can misinterpret sarcasm, context, and nuance. Sentiment does not predict future price movements. StockVantex\'s sentiment analysis is one component of a broader analytical framework—not a standalone investment signal.',
       faq: [
         { question: 'Can sentiment predict stock prices?', answer: 'Sentiment can provide clues about market psychology, but it does not reliably predict future prices. Extreme sentiment readings may suggest potential turning points, but markets can remain irrational longer than investors can remain solvent.' },
       ],
@@ -407,7 +407,7 @@ const articles: Record<string, LearnArticle> = {
         'Sentiment analysis has accuracy limitations, especially with context and nuance.',
         'It is one tool for understanding market psychology, not a prediction system.',
       ],
-      limitations: 'Automated sentiment analysis is not perfectly accurate. It can misinterpret financial jargon, miss important context, and produce misleading signals. Stock Vanta\'s sentiment analysis is one analytical layer—not a guaranteed indicator of future price movement.',
+      limitations: 'Automated sentiment analysis is not perfectly accurate. It can misinterpret financial jargon, miss important context, and produce misleading signals. StockVantex\'s sentiment analysis is one analytical layer—not a guaranteed indicator of future price movement.',
     },
   },
   'what-is-stock-volatility': {
@@ -444,7 +444,7 @@ const articles: Record<string, LearnArticle> = {
         'Volatility increases during earnings, economic events, and market stress.',
         'Understanding volatility is essential for risk management.',
       ],
-      limitations: 'Historical volatility does not predict future volatility with certainty. Volatility can change suddenly due to unexpected events. Stock Vanta\'s volatility analysis is backward-looking and should be used as one input in risk management—not as a definitive prediction.',
+      limitations: 'Historical volatility does not predict future volatility with certainty. Volatility can change suddenly due to unexpected events. StockVantex\'s volatility analysis is backward-looking and should be used as one input in risk management—not as a definitive prediction.',
     },
   },
   'how-to-analyze-stock-risk': {
@@ -483,7 +483,7 @@ const articles: Record<string, LearnArticle> = {
         'Risk analysis is backward-looking and cannot predict future events.',
         'Use risk assessment to inform position sizing and diversification decisions.',
       ],
-      limitations: 'Stock Vanta\'s risk assessment is based on historical data and models. It cannot predict future risk with certainty. Risk scores and levels are approximate assessments—not guarantees. Always conduct your own research and consider your personal risk tolerance.',
+      limitations: 'StockVantex\'s risk assessment is based on historical data and models. It cannot predict future risk with certainty. Risk scores and levels are approximate assessments—not guarantees. Always conduct your own research and consider your personal risk tolerance.',
     },
   },
   'how-to-analyze-a-stock': {
@@ -532,7 +532,7 @@ const articles: Record<string, LearnArticle> = {
         'No single indicator or metric provides a complete picture.',
         'Risk assessment and position sizing are essential parts of analysis.',
       ],
-      limitations: 'Stock analysis cannot predict the future with certainty. Even thorough analysis can be wrong. Stock Vanta provides tools to support your analysis, but all investment decisions are your own. Never invest more than you can afford to lose.',
+      limitations: 'Stock analysis cannot predict the future with certainty. Even thorough analysis can be wrong. StockVantex provides tools to support your analysis, but all investment decisions are your own. Never invest more than you can afford to lose.',
     },
   },
   'how-ai-stock-forecasting-works': {
@@ -573,7 +573,7 @@ const articles: Record<string, LearnArticle> = {
         'Confidence intervals show the range of possible outcomes, not certainty.',
         'AI forecasting is a tool for research, not a guarantee of future results.',
       ],
-      limitations: 'Stock Vanta\'s forecasting is based on LSTM/attention models trained on historical data. Historical model performance metrics (such as backtesting accuracy) do not guarantee future prediction accuracy. Forecasts should be used as one input in your research process—not as the basis for investment decisions.',
+      limitations: 'StockVantex\'s forecasting is based on LSTM/attention models trained on historical data. Historical model performance metrics (such as backtesting accuracy) do not guarantee future prediction accuracy. Forecasts should be used as one input in your research process—not as the basis for investment decisions.',
     },
   },
   'how-lstm-forecasting-works': {
@@ -616,7 +616,7 @@ const articles: Record<string, LearnArticle> = {
         'LSTM models can learn complex patterns but have significant limitations.',
         'Forecasts should be used as probabilistic estimates, not certainties.',
       ],
-      limitations: 'Stock Vanta uses LSTM/attention-based models as one analytical tool. Historical model evaluation metrics (such as backtesting accuracy) do not guarantee future prediction accuracy. Forecasts represent one possible scenario among many—not a guaranteed outcome. Always consider multiple sources of information.',
+      limitations: 'StockVantex uses LSTM/attention-based models as one analytical tool. Historical model evaluation metrics (such as backtesting accuracy) do not guarantee future prediction accuracy. Forecasts represent one possible scenario among many—not a guaranteed outcome. Always consider multiple sources of information.',
     },
   },
   'technical-vs-fundamental-analysis': {
@@ -648,7 +648,7 @@ const articles: Record<string, LearnArticle> = {
         },
         {
           heading: 'Using Both Approaches',
-          content: 'Many successful investors combine both approaches. Fundamental analysis can identify which stocks to buy; technical analysis can help determine when to buy them. Stock Vanta primarily provides technical, sentiment, and risk analysis—but understanding the fundamentals of a company remains important for long-term investment decisions.',
+          content: 'Many successful investors combine both approaches. Fundamental analysis can identify which stocks to buy; technical analysis can help determine when to buy them. StockVantex primarily provides technical, sentiment, and risk analysis—but understanding the fundamentals of a company remains important for long-term investment decisions.',
         },
       ],
       keyTakeaways: [
@@ -657,7 +657,7 @@ const articles: Record<string, LearnArticle> = {
         'Both approaches have strengths and limitations.',
         'Combining both approaches can provide a more complete analysis.',
       ],
-      limitations: 'Neither technical nor fundamental analysis guarantees investment success. Both are tools for research and decision-making—not crystal balls. Stock Vanta provides technical and sentiment analysis tools to support your research, but investment decisions are ultimately your own.',
+      limitations: 'Neither technical nor fundamental analysis guarantees investment success. Both are tools for research and decision-making—not crystal balls. StockVantex provides technical and sentiment analysis tools to support your research, but investment decisions are ultimately your own.',
     },
   },
 };

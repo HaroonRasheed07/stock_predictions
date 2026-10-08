@@ -1,6 +1,6 @@
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://stockvanta.vercel.app';
-export const SITE_NAME = 'Stock Vanta';
-export const SITE_DESCRIPTION = 'AI-powered stock research and decision intelligence with technical analysis, sentiment, forecasting, market opportunities, volatility insights and explainable stock signals.';
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://stockvantex.com';
+export const SITE_NAME = 'StockVantex';
+export const SITE_DESCRIPTION = 'StockVantex brings technical analysis, news sentiment, AI-assisted forecasting, risk assessment and market opportunities together in one stock research platform.';
 
 export const SEO_INDEXING_ENABLED = process.env.SEO_INDEXING_ENABLED !== 'false';
 

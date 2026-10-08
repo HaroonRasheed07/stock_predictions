@@ -1,5 +1,5 @@
 """
-news_engine/models.py — Canonical data models for Stock Vanta News Engine.
+news_engine/models.py — Canonical data models for StockVantex News Engine.
 
 All providers normalize to these models. All consumers read from these models.
 One ticker → one canonical article set → one canonical sentiment snapshot.

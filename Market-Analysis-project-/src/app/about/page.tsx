@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description: `${SITE_NAME} brings technical analysis, market sentiment, AI-assisted forecasting and risk intelligence into one focused stock-research experience.`,
   alternates: { canonical: `${SITE_URL}/about` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `About ${SITE_NAME}`,
     description: `${SITE_NAME} brings technical analysis, market sentiment, AI-assisted forecasting and risk intelligence into one focused stock-research experience.`,
     url: `${SITE_URL}/about`,

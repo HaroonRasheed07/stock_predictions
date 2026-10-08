@@ -527,7 +527,7 @@ class GDELTProvider(NewsProvider):
                     "sourcelang": "eng",
                     "include": "Title,Description",
                 }
-                headers = {"User-Agent": "StockVanta/1.0"}
+                headers = {"User-Agent": "StockVantex/1.0"}
                 resp = requests.get(self._base_url, params=params, timeout=self._timeout, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
@@ -701,7 +701,7 @@ class RSSProvider(NewsProvider):
 
     def _fetch_feed(self, source: dict, ticker: str, company: CompanyIdentity, lookback_days: int) -> List[NewsArticle]:
         """Fetch and parse a single RSS feed, filtering for ticker relevance."""
-        resp = requests.get(source["url"], timeout=self._timeout, headers={"User-Agent": "StockVanta/1.0"})
+        resp = requests.get(source["url"], timeout=self._timeout, headers={"User-Agent": "StockVantex/1.0"})
         resp.raise_for_status()
         content = resp.text
 

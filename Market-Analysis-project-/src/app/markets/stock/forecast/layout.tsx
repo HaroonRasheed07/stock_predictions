@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: `View AI-generated stock price forecasts using LSTM neural network models on ${SITE_NAME}. Probabilistic projections with confidence ranges.`,
   alternates: { canonical: `${SITE_URL}/markets/stock/forecast` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `AI Stock Forecasting | ${SITE_NAME}`,
     description: `LSTM-based stock price forecasting on ${SITE_NAME}.`,
     url: `${SITE_URL}/markets/stock/forecast`,

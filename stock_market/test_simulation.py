@@ -272,7 +272,7 @@ def test_article_ranking():
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("STOCK VANTA - 300-USER LOAD SIMULATION")
+    print("STOCKVANTEX - 300-USER LOAD SIMULATION")
     print("=" * 70)
     try:
         test_cache_hit_no_provider_calls()

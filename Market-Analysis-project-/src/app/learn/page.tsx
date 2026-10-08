@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   description: `Free educational guides on technical analysis, RSI, MACD, volatility, sentiment analysis, and AI forecasting. Built by ${SITE_NAME}.`,
   alternates: { canonical: `${SITE_URL}/learn` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `Learn | ${SITE_NAME}`,
     description: 'Free educational guides on stock market analysis, technical indicators, and AI forecasting.',
     url: `${SITE_URL}/learn`,
@@ -39,7 +40,7 @@ export default function LearnPage() {
           <div className="mt-6 mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Learn Stock Analysis</h1>
             <p className="text-muted-foreground max-w-2xl">
-              Understand the concepts behind Stock Vanta&apos;s analysis. These guides cover technical indicators, sentiment analysis, risk assessment, and AI forecasting—explained clearly for all experience levels.
+              Understand the concepts behind StockVantex&apos;s analysis. These guides cover technical indicators, sentiment analysis, risk assessment, and AI forecasting—explained clearly for all experience levels.
             </p>
           </div>
 

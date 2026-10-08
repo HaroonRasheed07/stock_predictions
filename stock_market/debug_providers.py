@@ -81,7 +81,7 @@ print("4. GDELT")
 print("=" * 60)
 url = f"https://api.gdeltproject.org/api/v2/doc/doc?query=%22{company_name}%22&mode=ArtList&maxrecords=5&format=json&sort=DateDesc&timespan=3d&sourcelang=eng"
 try:
-    resp = requests.get(url, timeout=15, headers={"User-Agent": "StockVanta/1.0"})
+    resp = requests.get(url, timeout=15, headers={"User-Agent": "StockVantex/1.0"})
     data = resp.json()
     articles = data.get("articles", [])
     print(f"  Status: {resp.status_code}")

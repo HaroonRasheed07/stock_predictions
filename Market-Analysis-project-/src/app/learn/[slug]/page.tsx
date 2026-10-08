@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: article.description,
     alternates: { canonical: `${SITE_URL}/learn/${slug}` },
     openGraph: {
+      images: ['/icon-512.png'],
       title: article.title,
       description: article.description,
       url: `${SITE_URL}/learn/${slug}`,
@@ -33,6 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       tags: article.tags,
     },
     twitter: {
+      images: ['/icon-512.png'],
       card: 'summary_large_image',
       title: article.title,
       description: article.description,

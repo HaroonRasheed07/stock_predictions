@@ -1,5 +1,5 @@
 """
-news_engine/engine.py — Main orchestrator for Stock Vanta News Engine.
+news_engine/engine.py — Main orchestrator for StockVantex News Engine.
 
 One ticker → one canonical article set → one canonical sentiment snapshot.
 """

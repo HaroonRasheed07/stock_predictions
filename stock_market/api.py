@@ -242,9 +242,22 @@ def load_models_at_startup():
     threading.Thread(target=_background_precompute_daemon, daemon=True).start()
     print("Background market-wide precomputation daemon started.")
 
+# CORS: explicit origins only (wildcard + credentials is unsafe and rejected by browsers' spec rules)
+ALLOWED_ORIGINS = [
+    "https://stockvantex.com",
+    "https://www.stockvantex.com",
+    "https://stockvanta.vercel.app",
+    "https://stockfutureprediction.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+_extra_origins = os.environ.get("ALLOWED_ORIGINS", "")
+if _extra_origins.strip():
+    ALLOWED_ORIGINS = [o.strip() for o in _extra_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

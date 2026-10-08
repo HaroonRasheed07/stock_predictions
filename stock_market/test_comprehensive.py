@@ -1,5 +1,5 @@
 """
-Comprehensive validation tests for Stock Vanta sentiment engine.
+Comprehensive validation tests for StockVantex sentiment engine.
 Measures: precision, recall, F1, confusion matrix, no-rule-match rate.
 All tests are deterministic and do not depend on wall-clock time.
 """

@@ -21,16 +21,16 @@ export const Footer = () => {
               {mounted && theme === 'dark' ? (
                 <Image
                   src="/logo-dark.png"
-                  alt="Stock Vanta"
-                  width={229}
+                  alt="StockVantex"
+                  width={243}
                   height={40}
                   className="object-contain h-full w-auto"
                 />
               ) : (
                 <Image
                   src="/logo.png"
-                  alt="Stock Vanta"
-                  width={229}
+                  alt="StockVantex"
+                  width={243}
                   height={40}
                   className="object-contain h-full w-auto"
                 />
@@ -141,7 +141,7 @@ export const Footer = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 Stock Vanta. All rights reserved.</p>
+          <p>&copy; 2026 StockVantex. All rights reserved.</p>
         </div>
       </div>
     </footer>

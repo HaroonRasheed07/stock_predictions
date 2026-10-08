@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description: 'AI-powered stock research with technical analysis, sentiment, risk metrics, and model-based forecasting. See the full picture before deciding.',
   alternates: { canonical: SITE_URL },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `${SITE_NAME} — AI Stock Analysis & Market Intelligence`,
     description: 'AI-powered stock research with technical analysis, sentiment, risk metrics, and model-based forecasting.',
     url: SITE_URL,
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     type: 'website',
   },
   twitter: {
+    images: ['/icon-512.png'],
     card: 'summary_large_image',
     title: `${SITE_NAME} — AI Stock Analysis & Market Intelligence`,
     description: 'AI-powered stock research with technical analysis, sentiment, risk metrics, and model-based forecasting.',

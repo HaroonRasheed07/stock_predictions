@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: `Analyze market sentiment for stocks using news-driven NLP scoring on ${SITE_NAME}. See bullish, bearish, and neutral sentiment breakdowns.`,
   alternates: { canonical: `${SITE_URL}/markets/stock/sentiment` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `Sentiment Analysis | ${SITE_NAME}`,
     description: `News-driven sentiment analysis for stocks on ${SITE_NAME}.`,
     url: `${SITE_URL}/markets/stock/sentiment`,

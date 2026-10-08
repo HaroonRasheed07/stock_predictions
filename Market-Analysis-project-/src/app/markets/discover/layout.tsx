@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: `Discover stocks worth investigating with ${SITE_NAME}'s screening tools. Find opportunities based on technical signals, sentiment, and risk.`,
   alternates: { canonical: `${SITE_URL}/markets/discover` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `Discover Stocks | ${SITE_NAME}`,
     description: `Find stock opportunities with ${SITE_NAME}'s screening tools.`,
     url: `${SITE_URL}/markets/discover`,

@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description: `Learn how ${SITE_NAME} analyzes stocks using technical indicators, sentiment analysis, LSTM forecasting, risk assessment, and opportunity scoring.`,
   alternates: { canonical: `${SITE_URL}/methodology` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `Methodology | ${SITE_NAME}`,
     description: `Learn how ${SITE_NAME} analyzes stocks using technical indicators, sentiment, forecasting, and risk assessment.`,
     url: `${SITE_URL}/methodology`,
@@ -36,7 +37,7 @@ export default function MethodologyPage() {
           <header className="mt-6 mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Analysis Methodology</h1>
             <p className="text-lg text-muted-foreground">
-              Stock Vanta combines multiple analytical approaches into a single evidence-based research platform. Here is how each layer works.
+              StockVantex combines multiple analytical approaches into a single evidence-based research platform. Here is how each layer works.
             </p>
           </header>
 
@@ -45,7 +46,7 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Technical Analysis</h2>
               <p className="text-muted-foreground mb-4">
-                Technical analysis examines price movements, volume, and market data to identify patterns and trends. Stock Vanta calculates and presents several key indicators:
+                Technical analysis examines price movements, volume, and market data to identify patterns and trends. StockVantex calculates and presents several key indicators:
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><strong>RSI (Relative Strength Index)</strong> — Measures momentum on a 0–100 scale. Values above 70 may suggest overbought conditions; below 30 may suggest oversold.</li>
@@ -64,7 +65,7 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Sentiment Analysis</h2>
               <p className="text-muted-foreground mb-4">
-                Sentiment analysis evaluates the overall market mood toward a stock by analyzing financial news coverage. Stock Vanta processes news articles using natural language processing (NLP) to classify coverage as positive, negative, or neutral.
+                Sentiment analysis evaluates the overall market mood toward a stock by analyzing financial news coverage. StockVantex processes news articles using natural language processing (NLP) to classify coverage as positive, negative, or neutral.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><strong>News Coverage Scanning</strong> — Aggregates recent financial news headlines and articles related to each stock.</li>
@@ -82,7 +83,7 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Price Forecasting</h2>
               <p className="text-muted-foreground mb-4">
-                Stock Vanta uses LSTM (Long Short-Term Memory) neural networks with attention mechanisms to generate probabilistic price forecasts. The model learns from historical price sequences and projects potential future price paths.
+                StockVantex uses LSTM (Long Short-Term Memory) neural networks with attention mechanisms to generate probabilistic price forecasts. The model learns from historical price sequences and projects potential future price paths.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><strong>Model Architecture</strong> — LSTM networks with attention, designed for sequential financial data.</li>
@@ -105,7 +106,7 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Risk Assessment</h2>
               <p className="text-muted-foreground mb-4">
-                Stock Vanta evaluates risk through multiple dimensions, combining volatility analysis, trend stability, and market conditions into a comprehensive risk profile.
+                StockVantex evaluates risk through multiple dimensions, combining volatility analysis, trend stability, and market conditions into a comprehensive risk profile.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><strong>Volatility Analysis</strong> — Daily and weekly volatility calculations based on historical price movement.</li>
@@ -139,7 +140,7 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Data Sources</h2>
               <p className="text-muted-foreground">
-                Stock Vanta uses market data from Yahoo Finance and news data from multiple financial news providers. All analysis is derived from this data and the models described above. Data may be delayed and is provided for informational purposes only.
+                StockVantex uses market data from Yahoo Finance and news data from multiple financial news providers. All analysis is derived from this data and the models described above. Data may be delayed and is provided for informational purposes only.
               </p>
             </section>
 
@@ -148,7 +149,7 @@ export default function MethodologyPage() {
               <h2 className="text-xl font-bold mb-3">Limitations & Disclaimers</h2>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  Stock Vanta is a research and analysis tool. It does not provide personalized investment advice, and its outputs should not be the sole basis for investment decisions.
+                  StockVantex is a research and analysis tool. It does not provide personalized investment advice, and its outputs should not be the sole basis for investment decisions.
                 </p>
                 <p>
                   All analysis is based on historical and current market data. Past performance and historical model evaluation metrics do not guarantee future results.

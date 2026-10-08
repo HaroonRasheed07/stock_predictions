@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Stock Vanta — AI Stock Analysis',
-    short_name: 'Stock Vanta',
-    description: 'AI-powered stock research with technical analysis, sentiment, forecasting, and risk intelligence.',
+    name: 'StockVantex — AI Stock Analysis',
+    short_name: 'StockVantex',
+    description: 'AI-assisted stock research with technical analysis, sentiment, forecasting, and risk intelligence.',
     start_url: '/',
     display: 'standalone',
     background_color: '#0f172a',

@@ -1,5 +1,5 @@
 """
-news_engine — Stock Vanta Multi-Source Financial News & Canonical Sentiment Engine.
+news_engine — StockVantex Multi-Source Financial News & Canonical Sentiment Engine.
 
 One ticker → one canonical article set → one canonical sentiment snapshot.
 """

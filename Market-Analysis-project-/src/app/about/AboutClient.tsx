@@ -14,7 +14,7 @@ export function AboutClient() {
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <p className="text-sm font-semibold text-primary uppercase tracking-widest mb-4">About Stock Vanta</p>
+            <p className="text-sm font-semibold text-primary uppercase tracking-widest mb-4">About StockVantex</p>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
               A clearer way to{' '}
               <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -22,7 +22,7 @@ export function AboutClient() {
               </span>
             </h1>
             <p className="text-lg md:text-xl text-foreground/70 max-w-2xl mx-auto">
-              Stock Vanta brings technical analysis, market sentiment, AI-assisted forecasting and risk intelligence into one focused stock-research experience.
+              StockVantex brings technical analysis, market sentiment, AI-assisted forecasting and risk intelligence into one focused stock-research experience.
             </p>
           </div>
 
@@ -46,7 +46,7 @@ export function AboutClient() {
         </div>
       </section>
 
-      {/* WHY STOCK VANTA */}
+      {/* WHY STOCKVANTEX */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="text-center mb-12">
@@ -54,7 +54,7 @@ export function AboutClient() {
               Built to turn market data into context.
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Investors and traders often need to interpret price action, technical indicators, news sentiment, volatility and risk across separate tools. Stock Vanta brings these analytical layers together.
+              Investors and traders often need to interpret price action, technical indicators, news sentiment, volatility and risk across separate tools. StockVantex brings these analytical layers together.
             </p>
           </div>
 
@@ -73,7 +73,7 @@ export function AboutClient() {
               {
                 icon: Target,
                 title: 'Form your own view',
-                desc: 'Stock Vanta presents evidence layers so you can evaluate a stock from multiple perspectives — not rely on a single number.',
+                desc: 'StockVantex presents evidence layers so you can evaluate a stock from multiple perspectives — not rely on a single number.',
               },
             ].map((item) => (
               <div
@@ -201,11 +201,11 @@ export function AboutClient() {
         </div>
       </section>
 
-      {/* HOW STOCK VANTA WORKS */}
+      {/* HOW STOCKVANTEX WORKS */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">How Stock Vanta Works</h2>
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">How StockVantex Works</h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
               A focused research workflow — from discovery to evidence-based analysis.
             </p>
@@ -299,7 +299,7 @@ export function AboutClient() {
             </div>
             <h2 className="text-2xl md:text-3xl font-bold mb-4">Transparent by design</h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              Stock Vanta should help you understand where an insight comes from — not simply display a score without context.
+              StockVantex should help you understand where an insight comes from — not simply display a score without context.
             </p>
             <Link href="/methodology">
               <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 gap-2">
@@ -323,7 +323,7 @@ export function AboutClient() {
               <p className="text-xs uppercase font-semibold text-muted-foreground tracking-wider mb-2">Built from research into a real product</p>
               <h3 className="text-xl font-bold mb-2">Haroon Rasheed</h3>
               <p className="text-sm text-muted-foreground">
-                AI Developer &amp; Creator of Stock Vanta. Stock Vanta began as an AI-focused market-analysis project and evolved into a broader stock research platform combining technical analysis, sentiment intelligence, forecasting and risk context.
+                AI Developer &amp; Creator of StockVantex. StockVantex began as an AI-focused market-analysis project and evolved into a broader stock research platform combining technical analysis, sentiment intelligence, forecasting and risk context.
               </p>
             </div>
           </div>
@@ -363,7 +363,7 @@ export function AboutClient() {
         <div className="container mx-auto px-4 max-w-3xl">
           <div className="rounded-xl border border-border/40 bg-card/30 p-5">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Stock Vanta provides market research and analytical information for educational and informational purposes. Forecasts, scores and signals involve uncertainty and should not be treated as guarantees or personalized financial advice. Always consider your personal financial situation, risk tolerance, and consult qualified financial advisors before making investment decisions.
+              StockVantex provides market research and analytical information for educational and informational purposes. Forecasts, scores and signals involve uncertainty and should not be treated as guarantees or personalized financial advice. Always consider your personal financial situation, risk tolerance, and consult qualified financial advisors before making investment decisions.
             </p>
           </div>
         </div>

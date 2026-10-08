@@ -587,7 +587,7 @@ export default function Home() {
               </Link>
               <Link href="/about">
                 <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 w-full sm:w-auto">
-                  How Stock Vanta Works
+                  How StockVantex Works
                 </Button>
               </Link>
             </div>

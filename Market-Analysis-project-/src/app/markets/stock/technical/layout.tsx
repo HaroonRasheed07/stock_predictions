@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: `Analyze stocks with technical indicators including RSI, MACD, moving averages, Bollinger Bands, and ATR on ${SITE_NAME}.`,
   alternates: { canonical: `${SITE_URL}/markets/stock/technical` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `Technical Analysis | ${SITE_NAME}`,
     description: `Technical analysis with RSI, MACD, and more on ${SITE_NAME}.`,
     url: `${SITE_URL}/markets/stock/technical`,

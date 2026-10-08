@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const displaySymbol = info?.symbol || symbol.toUpperCase();
 
   const title = { absolute: `${displaySymbol} Stock Analysis — Technical Signals, Sentiment & Forecast | ${SITE_NAME}` };
-  const description = `Analyze ${displayName} (${displaySymbol}) with technical indicators, market sentiment, risk assessment, and Stock Vanta's model-based forecast.`;
+  const description = `Analyze ${displayName} (${displaySymbol}) with technical indicators, market sentiment, risk assessment, and StockVantex's model-based forecast.`;
 
   return {
     title,
@@ -31,6 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: `${SITE_URL}/stocks/${symbol.toLowerCase()}` },
     robots: info ? undefined : { index: false, follow: true },
     openGraph: {
+      images: ['/icon-512.png'],
       title,
       description,
       url: `${SITE_URL}/stocks/${symbol.toLowerCase()}`,
@@ -38,6 +39,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: 'website',
     },
     twitter: {
+      images: ['/icon-512.png'],
       card: 'summary_large_image',
       title,
       description,
@@ -116,7 +118,7 @@ export default async function StockPage({ params }: PageProps) {
             <section className="rounded-xl border border-border/60 bg-card p-4">
               <h2 className="text-sm font-semibold mb-2">Analysis Methodology</h2>
               <p className="text-xs text-muted-foreground">
-                Stock Vanta combines technical indicators (RSI, MACD, moving averages, Bollinger Bands, ATR), news-based sentiment analysis, and LSTM/attention-based forecasting models to generate multi-layered stock analysis.{' '}
+                StockVantex combines technical indicators (RSI, MACD, moving averages, Bollinger Bands, ATR), news-based sentiment analysis, and LSTM/attention-based forecasting models to generate multi-layered stock analysis.{' '}
                 <Link href="/methodology" className="text-primary hover:underline">
                   Learn about our methodology
                 </Link>

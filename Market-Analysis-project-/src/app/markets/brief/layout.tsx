@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: `View ${SITE_NAME}'s stock brief: a concise evidence summary combining technical signals, sentiment, risk, and forecast for your selected stock.`,
   alternates: { canonical: `${SITE_URL}/markets/brief` },
   openGraph: {
+    images: ['/icon-512.png'],
     title: `Stock Brief | ${SITE_NAME}`,
     description: `Multi-layer stock evidence summary from ${SITE_NAME}.`,
     url: `${SITE_URL}/markets/brief`,
