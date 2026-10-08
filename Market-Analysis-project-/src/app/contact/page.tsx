@@ -27,7 +27,7 @@ export default function ContactPage() {
 
         <div className="grid gap-8 md:grid-cols-3 mt-12">
           <a
-            href="mailto:haroonchoudhary2322@gmail.com"
+            href="mailto:haroon@stockvantex.com"
             className="flex flex-col items-center justify-center p-8 rounded-xl border border-border/40 bg-card/30 backdrop-blur-sm hover:bg-primary/5 hover:border-primary/50 transition-all group"
           >
             <div className="p-4 rounded-full bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform">
@@ -35,7 +35,7 @@ export default function ContactPage() {
             </div>
             <h3 className="font-semibold mb-2">Email</h3>
             <p className="text-sm text-muted-foreground text-center">
-              haroonchoudhary2322@gmail.com
+              haroon@stockvantex.com
             </p>
           </a>
 

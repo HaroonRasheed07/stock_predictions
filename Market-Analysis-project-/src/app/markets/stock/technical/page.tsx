@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { fetchIndicators, fetchTrendStrength, fetchVolatilitySummary, fetchAssetSearch, AssetInfo } from '@/lib/api';
@@ -435,6 +436,11 @@ export default function TechnicalAnalysis() {
           </CardContent>
         </Card>
       </div>
+
+      <p className="text-xs text-muted-foreground text-center pt-2">
+        Technical indicators are mathematical descriptions of historical price data, not predictions. This analysis is for informational purposes only and does not constitute investment advice.{' '}
+        <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
+      </p>
     </div>
   );
 }

@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/learn`, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${SITE_URL}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/terms`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${SITE_URL}/disclaimer`, changeFrequency: 'yearly', priority: 0.3 },
   ];
 
   // Ticker pages: market data refreshes hourly (matches their ISR window).

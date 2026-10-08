@@ -386,7 +386,8 @@ export default async function StockPage({ params }: PageProps) {
                   <p className="text-xs text-muted-foreground mt-3">
                     LSTM/attention model output based on historical price data — an estimate, not a guaranteed outcome, and not investment advice.{' '}
                     <Link href="/learn/how-lstm-forecasting-works" className="text-primary hover:underline">How the model works</Link> ·{' '}
-                    <Link href="/methodology" className="text-primary hover:underline">Methodology</Link>
+                    <Link href="/methodology" className="text-primary hover:underline">Methodology</Link> ·{' '}
+                    <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
                   </p>
                 </section>
               )}
@@ -498,7 +499,8 @@ export default async function StockPage({ params }: PageProps) {
               {snapshot.updatedAt
                 ? `Market snapshot last computed ${fmtUtc(snapshot.updatedAt)}. `
                 : 'Market data is refreshed regularly but may be delayed. '}
-              This analysis is for informational purposes only and does not constitute investment advice.
+              This analysis is for informational purposes only and does not constitute investment advice.{' '}
+              <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
             </p>
           </div>
         </div>

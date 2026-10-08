@@ -50,6 +50,7 @@ const mustHaveMetadata = [
   'src/app/methodology/page.tsx',
   'src/app/privacy/page.tsx',
   'src/app/terms/page.tsx',
+  'src/app/disclaimer/page.tsx',
   'src/app/stocks/[symbol]/page.tsx',
 ];
 for (const rel of mustHaveMetadata) {
@@ -79,11 +80,12 @@ for (const [rel, re] of noindexChecks) {
   ok(`Noindex on ${rel}`, re.test(text));
 }
 
-// 4. Sitemap honesty: privacy/terms present, learn uses article updatedAt.
+// 4. Sitemap honesty: legal pages present, learn uses article updatedAt.
 {
   const sm = read('src/app/sitemap.ts');
   ok('Sitemap includes /privacy', sm.includes('/privacy'));
   ok('Sitemap includes /terms', sm.includes('/terms'));
+  ok('Sitemap includes /disclaimer', sm.includes('/disclaimer'));
   ok('Sitemap learn lastModified uses article updatedAt', sm.includes('article.updatedAt'));
 }
 
@@ -125,11 +127,37 @@ for (const [rel, re] of noindexChecks) {
   ok('next.config redirects www host to apex', cfg.includes('www.stockvantex.com'));
 }
 
-// 10. Footer exposes privacy/terms.
+// 10. Footer exposes the Legal section.
 {
   const footer = read('src/components/layout/Footer.tsx');
+  ok('Footer has a Legal section', footer.includes('>Legal</h3>'));
   ok('Footer links to /privacy', footer.includes('href="/privacy"'));
   ok('Footer links to /terms', footer.includes('href="/terms"'));
+  ok('Footer links to /disclaimer', footer.includes('href="/disclaimer"'));
+  ok('Footer labels terms as "Terms and Conditions"', footer.includes('Terms and Conditions'));
+}
+
+// 11. Legal pages: titles, contact email, no personal gmail in src.
+{
+  const privacy = read('src/app/privacy/page.tsx');
+  const terms = read('src/app/terms/page.tsx');
+  const disclaimer = read('src/app/disclaimer/page.tsx');
+  const contact = read('src/app/contact/page.tsx');
+  ok('Privacy title is "Privacy Policy"', privacy.includes('Privacy Policy |'));
+  ok('Terms title is "Terms and Conditions"', terms.includes('Terms and Conditions |'));
+  ok('Disclaimer page titled "Financial Disclaimer"', disclaimer.includes('Financial Disclaimer |'));
+  ok('Contact page uses haroon@stockvantex.com', contact.includes('haroon@stockvantex.com'));
+  ok('Contact page no longer exposes personal gmail', !/gmail\.com/i.test(contact));
+  const gmailHits = srcFiles.filter((f) => /\.(ts|tsx)$/.test(f) && /gmail\.com/i.test(fs.readFileSync(f, 'utf8')));
+  ok('No personal gmail address anywhere in src/', gmailHits.length === 0, gmailHits.map((f) => path.relative(root, f)).join(', '));
+}
+
+// 12. Disclaimer is linked from research pages.
+{
+  const ticker = read('src/app/stocks/[symbol]/page.tsx');
+  ok('Ticker page links to /disclaimer', ticker.includes('href="/disclaimer"'));
+  const methodology = read('src/app/methodology/page.tsx');
+  ok('Methodology links to /disclaimer', methodology.includes('href="/disclaimer"'));
 }
 
 console.log('');

@@ -163,6 +163,10 @@ export default async function LearnArticlePage({ params }: PageProps) {
             <section className="mt-8 rounded-lg border border-border/60 bg-muted/30 p-4">
               <h3 className="font-semibold mb-2 text-sm">Important Limitations</h3>
               <p className="text-xs text-muted-foreground">{article.content.limitations}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Educational content only, not investment advice.{' '}
+                <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
+              </p>
             </section>
           </div>
 

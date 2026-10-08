@@ -18,6 +18,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import Link from 'next/link';
 import { TrendingUp, Target, Brain, AlertTriangle, Search, AlertCircle, BarChart3, Zap } from 'lucide-react';
 import { useIsMobile, chartMargins, axisTickStyle, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 import { Badge } from '@/components/ui/badge';
@@ -629,7 +630,8 @@ export default function PriceForecasting() {
       </div>
 
       <p className="text-xs text-muted-foreground text-center py-2">
-        Forecasts are based on historical OHLCV data and technical indicators. Historical fit does not guarantee future prediction performance. This analysis is for informational purposes only and does not constitute investment advice.
+        Forecasts are based on historical OHLCV data and technical indicators. Historical fit does not guarantee future prediction performance. This analysis is for informational purposes only and does not constitute investment advice.{' '}
+        <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
       </p>
     </div>
   );

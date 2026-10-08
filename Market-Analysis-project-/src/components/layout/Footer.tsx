@@ -14,7 +14,7 @@ export const Footer = () => {
   return (
     <footer className="border-t border-border/40 bg-card/30 backdrop-blur-sm mt-20">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="space-y-4">
             <div className="relative w-auto" style={{ height: 'clamp(30px, 5vw, 40px)' }}>
@@ -109,11 +109,6 @@ export const Footer = () => {
                   About
                 </Link>
               </li>
-              <li>
-                <Link href="/contact" className="text-muted-foreground hover:text-primary transition-colors">
-                  Contact
-                </Link>
-              </li>
               <li className="pt-2">
                 <div className="flex space-x-3">
                   <a
@@ -138,14 +133,37 @@ export const Footer = () => {
               </li>
             </ul>
           </div>
+
+          {/* Legal */}
+          <div>
+            <h3 className="font-semibold mb-4">Legal</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors">
+                  Terms and Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/disclaimer" className="text-muted-foreground hover:text-primary transition-colors">
+                  Financial Disclaimer
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-muted-foreground hover:text-primary transition-colors">
+                  Contact
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
           <p>&copy; 2026 StockVantex. All rights reserved.</p>
-          <div className="mt-2 flex justify-center gap-4">
-            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-primary transition-colors">Terms of Use</Link>
-          </div>
         </div>
       </div>
     </footer>

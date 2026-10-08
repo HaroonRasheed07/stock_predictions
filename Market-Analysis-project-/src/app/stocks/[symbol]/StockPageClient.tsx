@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useStockStore } from '@/store/stockStore';
 import {
@@ -388,7 +389,8 @@ function ForecastSection({ ticker }: { ticker: string }) {
             <Badge variant="outline" className="text-[10px]">Active</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Predictions are based on historical OHLCV data and technical indicators. Past performance does not guarantee future results. Forecasts should be used as one input among many.
+            Predictions are based on historical OHLCV data and technical indicators. Past performance does not guarantee future results. Forecasts should be used as one input among many.{' '}
+            <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
           </p>
         </CardContent>
       </Card>

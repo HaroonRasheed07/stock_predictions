@@ -149,7 +149,8 @@ export default function MethodologyPage() {
               <h2 className="text-xl font-bold mb-3">Limitations & Disclaimers</h2>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  StockVantex is a research and analysis tool. It does not provide personalized investment advice, and its outputs should not be the sole basis for investment decisions.
+                  StockVantex is a research and analysis tool. It does not provide personalized investment advice, and its outputs should not be the sole basis for investment decisions.{' '}
+                  <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
                 </p>
                 <p>
                   All analysis is based on historical and current market data. Past performance and historical model evaluation metrics do not guarantee future results.
