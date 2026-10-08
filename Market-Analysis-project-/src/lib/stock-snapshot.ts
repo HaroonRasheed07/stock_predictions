@@ -6,6 +6,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://stock-predictions-b
 /** Matches the route's `revalidate` so prerendering stays static (no DynamicServerError). */
 const FETCH_OPTS = { next: { revalidate: 3600 } } as RequestInit;
 
+export type SnapshotDataStatus =
+  /** Overview payload received and usable. */
+  | 'ok'
+  /** Backend unreachable / timed out / circuit open — treat as outage, not 404. */
+  | 'outage'
+  /** Backend answered but does not know this symbol (invalid or nonexistent). */
+  | 'invalid-symbol';
+
 export interface StockSnapshot {
   overview: MarketOverviewResponse | null;
   forecast: ForecastResponse | null;
@@ -13,9 +21,17 @@ export interface StockSnapshot {
   updatedAt: number | null;
   /** True when the backend served stale-while-revalidate data. */
   overviewStale: boolean;
+  /** Why the snapshot is empty — lets routes 404 only for genuinely unknown symbols. */
+  dataStatus: SnapshotDataStatus;
 }
 
-const EMPTY: StockSnapshot = { overview: null, forecast: null, updatedAt: null, overviewStale: false };
+const EMPTY = (dataStatus: SnapshotDataStatus): StockSnapshot => ({
+  overview: null,
+  forecast: null,
+  updatedAt: null,
+  overviewStale: false,
+  dataStatus,
+});
 
 /**
  * Circuit breaker: if the backend is unreachable (network error / timeout),
@@ -26,6 +42,8 @@ let backendDownUntil = 0;
 interface PostResult<T> {
   data: T | null;
   networkError: boolean;
+  /** HTTP status when the server answered with an error, otherwise null. */
+  httpStatus: number | null;
 }
 
 async function postJson<T>(path: string, body: unknown, timeoutMs: number): Promise<PostResult<T>> {
@@ -37,10 +55,10 @@ async function postJson<T>(path: string, body: unknown, timeoutMs: number): Prom
       signal: AbortSignal.timeout(timeoutMs),
       ...FETCH_OPTS,
     });
-    if (!res.ok) return { data: null, networkError: false };
-    return { data: (await res.json()) as T, networkError: false };
+    if (!res.ok) return { data: null, networkError: false, httpStatus: res.status };
+    return { data: (await res.json()) as T, networkError: false, httpStatus: null };
   } catch {
-    return { data: null, networkError: true };
+    return { data: null, networkError: true, httpStatus: null };
   }
 }
 
@@ -56,16 +74,21 @@ interface OverviewWithMeta extends MarketOverviewResponse {
  * - React `cache()` dedupes between generateMetadata and the page render pass.
  */
 export const getStockSnapshot = cache(async (symbol: string): Promise<StockSnapshot> => {
-  if (Date.now() < backendDownUntil) return EMPTY;
+  if (Date.now() < backendDownUntil) return EMPTY('outage');
 
   const ov = await postJson<OverviewWithMeta>('/api/market/overview', { ticker: symbol, period: '1y' }, 20000);
   if (ov.networkError) {
     backendDownUntil = Date.now() + 60_000;
-    return EMPTY;
+    return EMPTY('outage');
+  }
+  if (ov.httpStatus !== null) {
+    // 5xx = provider failure (outage); 4xx = the backend rejected the symbol.
+    return EMPTY(ov.httpStatus >= 500 ? 'outage' : 'invalid-symbol');
   }
   const overview = ov.data;
   if (!overview || !overview.currentPrice || !Array.isArray(overview.data) || overview.data.length === 0) {
-    return EMPTY;
+    // Server answered successfully but produced no series for this symbol.
+    return EMPTY('invalid-symbol');
   }
 
   const meta = overview._cache_meta;
@@ -82,7 +105,7 @@ export const getStockSnapshot = cache(async (symbol: string): Promise<StockSnaps
       ? fc.data
       : null;
 
-  return { overview, forecast, updatedAt, overviewStale };
+  return { overview, forecast, updatedAt, overviewStale, dataStatus: 'ok' };
 });
 
 export interface TechnicalSnapshot {

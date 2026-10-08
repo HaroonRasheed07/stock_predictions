@@ -36,3 +36,18 @@ const createStockStore = () => {
 };
 
 export const useStockStore = createStockStore();
+
+/**
+ * Rehydrates the persisted ticker after mount (the store is created with
+ * `skipHydration` so SSR markup stays stable). Safe no-ops on the server.
+ */
+export function rehydrateStockStore(): void {
+  const store = useStockStore as typeof useStockStore & {
+    persist?: { rehydrate: () => Promise<void> | void };
+  };
+  try {
+    void store.persist?.rehydrate();
+  } catch {
+    // localStorage unavailable — fallback simply stays at the default ticker.
+  }
+}

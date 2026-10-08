@@ -28,6 +28,7 @@ import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHAR
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useStockStore } from '@/store/stockStore';
+import { parseTickerParam } from '@/lib/ticker-routing';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import ProfessionalCandlestickChart from '@/components/ProfessionalCandlestickChart';
 
@@ -85,6 +86,13 @@ export default function TechnicalAnalysis() {
     setTicker(selectedTicker);
     setInputTicker(selectedTicker);
   }, [selectedTicker]);
+
+  // Deep link support: /markets/stock/technical?ticker=MSFT
+  useEffect(() => {
+    const t = parseTickerParam(new URLSearchParams(window.location.search).get('ticker'));
+    if (t) setSelectedTicker(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelectSuggestion = (asset: AssetInfo) => {
     setInputTicker(asset.ticker);

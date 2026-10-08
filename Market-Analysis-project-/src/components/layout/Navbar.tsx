@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Moon, Sun } from 'lucide-react';
 import Image from 'next/image';
 import { useThemeStore } from '@/store/themeStore';
+import { rehydrateStockStore } from '@/store/stockStore';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,9 @@ export const Navbar = () => {
 
   useEffect(() => {
     setMounted(true);
+    // stockStore is created with skipHydration to keep SSR markup stable;
+    // hydrate it after mount so the persisted ticker fallback actually loads.
+    rehydrateStockStore();
   }, []);
 
   const isActive = (href: string) => {

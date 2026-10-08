@@ -1,14 +1,46 @@
-// Local mock of the StockVantex backend for SEO build validation.
+// Local mock of the StockVantex backend for SEO/routing build validation.
 // Serves POST /api/market/overview and /api/forecast/onnx with deterministic
-// canned data so `next build` never hits the live backend or news providers.
+// canned data so `next build` never hits the live backend or news providers,
+// plus GET /api/multi-asset/search for autocomplete tests.
+//
+// Symbols: the 52-symbol SEO allowlist (parsed from src/lib/stock-allowlist.ts)
+// plus EXTRA_KNOWN (valid non-allowlist tickers used by routing tests).
+// Unknown tickers return 404 so routes can prove genuine 404 behavior.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.MOCK_PORT || 8787);
 const UPDATED_AT = 1791444000; // fixed unix ts → deterministic "computed" timestamps
 const LOG_FILE = path.join(os.tmpdir(), 'mock-seo-requests.log');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+const EXTRA_KNOWN = [
+  { symbol: 'LYFT', name: 'Lyft, Inc.' },
+  { symbol: 'F', name: 'Ford Motor Company' },
+  { symbol: 'GM', name: 'General Motors Company' },
+  { symbol: 'MRNA', name: 'Moderna, Inc.' },
+];
+
+function loadAllowlist() {
+  try {
+    const src = fs.readFileSync(path.join(ROOT, 'src', 'lib', 'stock-allowlist.ts'), 'utf8');
+    const out = [];
+    const re = /symbol:\s*'([A-Za-z0-9.\-_]+)',\s*name:\s*(?:'([^']+)'|"([^"]+)")/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      out.push({ symbol: m[1].toUpperCase(), name: m[2] || m[3] || m[1] });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+const KNOWN = [...loadAllowlist(), ...EXTRA_KNOWN];
+const KNOWN_SET = new Set(KNOWN.map((k) => k.symbol));
 
 function log(line) {
   try {
@@ -107,23 +139,50 @@ function forecastFor(ticker) {
   };
 }
 
+function searchFor(query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return [];
+  return KNOWN.filter((k) => k.symbol.toLowerCase().includes(q) || k.name.toLowerCase().includes(q))
+    .slice(0, 10)
+    .map((k) => ({
+      ticker: k.symbol,
+      name: k.name,
+      asset_class: 'equity',
+      asset_class_label: 'Stock',
+      has_volume: true,
+      currency: 'USD',
+      logo_url: null,
+    }));
+}
+
 const server = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => (body += c));
   req.on('end', () => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
+    log(`${req.method} ${req.url}`);
+
+    if (req.method === 'GET' && url.pathname === '/api/multi-asset/search') {
+      res.end(JSON.stringify(searchFor(url.searchParams.get('q'))));
+      return;
+    }
+
     let ticker = 'AAPL';
     try {
       ticker = (JSON.parse(body || '{}').ticker || 'AAPL').toUpperCase();
     } catch {}
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    log(`${req.method} ${req.url} ticker=${ticker}`);
-    if (req.url === '/api/market/overview') {
-      res.end(JSON.stringify(overviewFor(ticker)));
-    } else if (req.url === '/api/forecast/onnx') {
-      res.end(JSON.stringify(forecastFor(ticker)));
+
+    if (req.url === '/api/market/overview' || req.url === '/api/forecast/onnx') {
+      if (!KNOWN_SET.has(ticker)) {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ detail: `unknown symbol ${ticker}` }));
+        return;
+      }
+      res.end(JSON.stringify(req.url === '/api/market/overview' ? overviewFor(ticker) : forecastFor(ticker)));
     } else if (req.method === 'GET') {
-      res.end(JSON.stringify({ status: 'mock' }));
+      res.end(JSON.stringify({ status: 'mock', known_symbols: KNOWN.length }));
     } else {
       res.statusCode = 404;
       res.end(JSON.stringify({ detail: 'not found' }));
@@ -132,5 +191,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`mock SEO API listening on http://127.0.0.1:${PORT}`);
+  console.log(`mock SEO API listening on http://127.0.0.1:${PORT} (${KNOWN.length} known symbols)`);
 });

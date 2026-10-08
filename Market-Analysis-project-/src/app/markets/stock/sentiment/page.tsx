@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { fetchSentiment, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { useStockStore } from '@/store/stockStore';
+import { parseTickerParam } from '@/lib/ticker-routing';
 import { getSentimentColorClass, getSentimentScoreColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { SentimentTrend } from '@/components/analysis/SentimentTrend';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
@@ -73,6 +74,13 @@ export default function SentimentAnalysis() {
     setTicker(selectedTicker);
     setInputTicker(selectedTicker);
   }, [selectedTicker]);
+
+  // Deep link support: /markets/stock/sentiment?ticker=MSFT
+  useEffect(() => {
+    const t = parseTickerParam(new URLSearchParams(window.location.search).get('ticker'));
+    if (t) setSelectedTicker(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelectSuggestion = (asset: AssetInfo) => {
     setInputTicker(asset.ticker);

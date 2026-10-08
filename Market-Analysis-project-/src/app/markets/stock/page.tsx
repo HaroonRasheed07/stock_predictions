@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useStockStore } from '@/store/stockStore';
+import { parseTickerParam } from '@/lib/ticker-routing';
 import { getSentimentColorClass } from '@/lib/sentiment';
 
 export default function StockOverview() {
@@ -87,12 +88,8 @@ export default function StockOverview() {
 
   // Deep link support: /markets/stock?ticker=NVDA
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('ticker');
-    if (!q) return;
-    const t = q.trim().toUpperCase();
-    if (/^[A-Z.]{1,10}$/.test(t)) {
-      setSelectedTicker(t);
-    }
+    const t = parseTickerParam(new URLSearchParams(window.location.search).get('ticker'));
+    if (t) setSelectedTicker(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

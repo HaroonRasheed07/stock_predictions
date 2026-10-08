@@ -1,13 +1,18 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getStockInfo, getRelatedStocks, getAllAllowlistedSymbols } from '@/lib/stock-allowlist';
 import { getStockSnapshot, extractTechnical, rsiZone } from '@/lib/stock-snapshot';
+import { isValidSymbolPath, normalizeSymbolPath } from '@/lib/ticker-routing';
+import { StockSearch } from '@/components/common/StockSearch';
+import { StockResearchNav, StockResearchNavFallback } from './StockResearchNav';
 import { StockPageClient } from './StockPageClient';
 
 interface PageProps {
   params: Promise<{ symbol: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export const dynamicParams = true;
@@ -21,8 +26,39 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { symbol } = await params;
-  const info = getStockInfo(symbol);
-  if (!info) return {};
+  const normalized = normalizeSymbolPath(symbol);
+  if (!normalized) return {};
+
+  const info = getStockInfo(normalized);
+
+  // Symbols outside the SEO allowlist stay researchable but are always
+  // noindexed so thin/unknown pages never compete with canonical research URLs.
+  if (!info) {
+    const sym = normalized.toUpperCase();
+    const title = { absolute: `${sym} Stock Research — Technicals & Market Data | ${SITE_NAME}` };
+    const description = `Research ${sym} with technical indicators, price data, and available market analysis on ${SITE_NAME}.`;
+    const canonical = `${SITE_URL}/stocks/${normalized}`;
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      robots: { index: false, follow: true },
+      openGraph: {
+        images: ['/icon-512.png'],
+        title,
+        description,
+        url: canonical,
+        siteName: SITE_NAME,
+        type: 'website',
+      },
+      twitter: {
+        images: ['/icon-512.png'],
+        card: 'summary_large_image',
+        title,
+        description,
+      },
+    };
+  }
 
   const displayName = info.name;
   const displaySymbol = info.symbol;
@@ -70,15 +106,28 @@ function fmtUtc(unix: number): string {
 
 export default async function StockPage({ params }: PageProps) {
   const { symbol } = await params;
-  const info = getStockInfo(symbol);
-  if (!info) notFound();
+  const normalized = normalizeSymbolPath(symbol);
+  if (!normalized) notFound();
 
-  const sym = info.symbol;
-  const lower = sym.toLowerCase();
+  // Canonical URLs are lowercase: /stocks/MSFT → /stocks/msft. Middleware
+  // normally intercepts case-variants first (and preserves the query string);
+  // this is the no-query fallback for direct renders — it must not touch
+  // `searchParams` here, because that is a dynamic API and this route is ISR.
+  if (symbol !== normalized) {
+    permanentRedirect(`/stocks/${normalized}`);
+  }
+
+  const info = getStockInfo(normalized);
+  const sym = info ? info.symbol : normalized.toUpperCase();
+  const displayName = info ? info.name : sym;
+  const lower = normalized;
   const url = `${SITE_URL}/stocks/${lower}`;
-  const related = getRelatedStocks(symbol);
+  const related = info ? getRelatedStocks(normalized) : [];
 
   const snapshot = await getStockSnapshot(sym);
+  // Valid ticker outside the allowlist: researchable while the backend knows it,
+  // genuine 404 when it does not, outage → degraded noindex page (never a 404).
+  if (!info && snapshot.dataStatus === 'invalid-symbol') notFound();
   const ov = snapshot.overview;
   const tech = extractTechnical(ov);
   const zone = rsiZone(tech?.rsi ?? null);
@@ -126,7 +175,7 @@ export default async function StockPage({ params }: PageProps) {
     const chg = ov.changePercent ?? 0;
     faqs.push({
       q: `What is the current price of ${sym} stock?`,
-      a: `${info.name} (${sym}) is priced at ${fmtUsd(ov.currentPrice)} in this snapshot, a change of ${fmtSigned(chg)}% versus the previous close. Market status: ${ov.marketStatus || 'unknown'}.${snapshot.updatedAt ? ` Data computed ${fmtUtc(snapshot.updatedAt)}.` : ''}`,
+      a: `${displayName} (${sym}) is priced at ${fmtUsd(ov.currentPrice)} in this snapshot, a change of ${fmtSigned(chg)}% versus the previous close. Market status: ${ov.marketStatus || 'unknown'}.${snapshot.updatedAt ? ` Data computed ${fmtUtc(snapshot.updatedAt)}.` : ''}`,
     });
     if (zone && tech && tech.rsi !== null) {
       faqs.push({
@@ -153,8 +202,8 @@ export default async function StockPage({ params }: PageProps) {
     '@type': 'WebPage',
     '@id': `${url}#webpage`,
     url,
-    name: `${sym} Stock Analysis — ${info.name}`,
-    description: `Technical indicators, news sentiment, risk assessment and model forecast snapshot for ${info.name} (${sym}).`,
+    name: `${sym} Stock Analysis — ${displayName}`,
+    description: `Technical indicators, news sentiment, risk assessment and model forecast snapshot for ${displayName} (${sym}).`,
     isPartOf: { '@id': `${SITE_URL}/#website` },
     publisher: { '@id': `${SITE_URL}/#organization` },
     ...(ov && snapshot.updatedAt
@@ -167,8 +216,8 @@ export default async function StockPage({ params }: PageProps) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Stock Analysis', item: `${SITE_URL}/markets/discover` },
-      { '@type': 'ListItem', position: 3, name: `${sym} — ${info.name}`, item: url },
+      { '@type': 'ListItem', position: 2, name: 'Stocks', item: `${SITE_URL}/stocks` },
+      { '@type': 'ListItem', position: 3, name: `${sym} — ${displayName}`, item: url },
     ],
   };
 
@@ -195,21 +244,37 @@ export default async function StockPage({ params }: PageProps) {
           <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground mb-4 flex flex-wrap items-center gap-1">
             <Link href="/" className="hover:text-primary">Home</Link>
             <span>/</span>
-            <Link href="/markets/discover" className="hover:text-primary">Stock Analysis</Link>
+            <Link href="/stocks" className="hover:text-primary">Stocks</Link>
             <span>/</span>
-            <span className="text-foreground font-medium">{sym}</span>
+            <span className="text-foreground font-medium">{info ? `${displayName} (${sym})` : sym}</span>
           </nav>
 
           <header className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold">{info.name} ({sym}) Stock Analysis</h1>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">{info.sector}</span>
-              <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">{info.industry}</span>
-            </div>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              {info ? `${displayName} (${sym}) Stock Analysis` : `${sym} Stock Research`}
+            </h1>
+            {info && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">{info.sector}</span>
+                <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">{info.industry}</span>
+              </div>
+            )}
             <p className="text-muted-foreground max-w-3xl mt-3">
-              Live snapshot of {info.name} ({sym}) — price, technical indicators, news sentiment, risk assessment, and a model-based price forecast — from {SITE_NAME}'s multi-layer research platform. All figures below are server-rendered from the latest cached market data.
+              Live snapshot of {displayName} ({sym}) — price, technical indicators, news sentiment, risk assessment, and a model-based price forecast — from {SITE_NAME}'s multi-layer research platform. All figures below are server-rendered from the latest cached market data.
             </p>
+            <div className="mt-4 max-w-md">
+              <StockSearch
+                label="Switch stock"
+                placeholder="Switch stock — search ticker or company…"
+              />
+            </div>
           </header>
+
+          <div className="mb-6 border-b border-border/40 pb-1">
+            <Suspense fallback={<StockResearchNavFallback symbol={lower} />}>
+              <StockResearchNav symbol={lower} />
+            </Suspense>
+          </div>
 
           {ov ? (
             <div className="space-y-6">
@@ -395,7 +460,7 @@ export default async function StockPage({ params }: PageProps) {
               <section aria-labelledby="summary-heading" className="rounded-xl border border-border/60 bg-muted/30 p-4">
                 <h2 id="summary-heading" className="text-lg font-semibold mb-2">Research summary</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  As of {snapshot.updatedAt ? fmtUtc(snapshot.updatedAt) : 'the latest cached session'}, {info.name} ({sym}) trades at {fmtUsd(ov.currentPrice)} ({fmtSigned(ov.changePercent)}% on the session).
+                  As of {snapshot.updatedAt ? fmtUtc(snapshot.updatedAt) : 'the latest cached session'}, {displayName} ({sym}) trades at {fmtUsd(ov.currentPrice)} ({fmtSigned(ov.changePercent)}% on the session).
                   {tech?.rsi !== null && tech?.rsi !== undefined && ` The 14-day RSI reads ${tech.rsi.toFixed(1)} (${zone}).`}
                   {tech?.macd !== null && tech?.signalLine !== null && tech?.macd !== undefined && tech?.signalLine !== undefined && ` MACD is ${tech.macd > tech.signalLine ? 'above' : 'below'} its signal line.`}
                   {trendLabel && ` The trend model rates the setup ${trendLabel.toLowerCase()}.`}
@@ -430,38 +495,68 @@ export default async function StockPage({ params }: PageProps) {
             </section>
           )}
 
-          <div className="mt-8">
+          <div id="analysis" className="mt-8 scroll-mt-24">
             <h2 className="text-lg font-semibold mb-3">Interactive research workspace</h2>
-            <StockPageClient symbol={sym} />
+            <Suspense
+              fallback={
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-32 rounded-xl bg-muted/30 animate-pulse" />
+                  ))}
+                </div>
+              }
+            >
+              <StockPageClient symbol={sym} />
+            </Suspense>
           </div>
 
           <div className="mt-8 space-y-6">
-            <section>
-              <h2 className="text-lg font-semibold mb-3">About {info.name}</h2>
-              <p className="text-sm text-muted-foreground">
-                {info.name} ({sym}) operates in the {info.sector} sector, within the {info.industry} industry. This page provides technical analysis, sentiment data, and forecasting tools to help you research {sym} as part of your broader investment analysis.{' '}
-                <Link href={`/markets/stock?ticker=${sym}`} className="text-primary hover:underline">
-                  Open {sym} in the full app
-                </Link>
-                .
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-semibold mb-3">Related stocks</h2>
-              <div className="flex flex-wrap gap-2">
-                {related.map((r) => (
-                  <Link
-                    key={r.symbol}
-                    href={`/stocks/${r.symbol.toLowerCase()}`}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm hover:border-primary/20 hover:shadow-sm transition-all"
-                  >
-                    <span className="font-semibold">{r.symbol}</span>
-                    <span className="text-muted-foreground">{r.name}</span>
+            {info ? (
+              <section>
+                <h2 className="text-lg font-semibold mb-3">About {displayName}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {displayName} ({sym}) operates in the {info.sector} sector, within the {info.industry} industry. This page provides technical analysis, sentiment data, and forecasting tools to help you research {sym} as part of your broader investment analysis.{' '}
+                  <Link href={`/markets/stock?ticker=${sym}`} className="text-primary hover:underline">
+                    Open {sym} in the full app
                   </Link>
-                ))}
-              </div>
-            </section>
+                  .
+                </p>
+              </section>
+            ) : (
+              <section>
+                <h2 className="text-lg font-semibold mb-3">Research {sym}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {sym} is outside the curated directory, but the analysis tools on this page work for any ticker
+                  supported by the market data service.{' '}
+                  <Link href={`/markets/stock?ticker=${sym}`} className="text-primary hover:underline">
+                    Open {sym} in the full app
+                  </Link>
+                  . You can also{' '}
+                  <Link href="/stocks" className="text-primary hover:underline">
+                    browse the curated directory
+                  </Link>
+                  .
+                </p>
+              </section>
+            )}
+
+            {related.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold mb-3">Related stocks</h2>
+                <div className="flex flex-wrap gap-2">
+                  {related.map((r) => (
+                    <Link
+                      key={r.symbol}
+                      href={`/stocks/${r.symbol.toLowerCase()}`}
+                      className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm hover:border-primary/20 hover:shadow-sm transition-all"
+                    >
+                      <span className="font-semibold">{r.symbol}</span>
+                      <span className="text-muted-foreground">{r.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section>
               <h2 className="text-lg font-semibold mb-3">Learn more about this analysis</h2>

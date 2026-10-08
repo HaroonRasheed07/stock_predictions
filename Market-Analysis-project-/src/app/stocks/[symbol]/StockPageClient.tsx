@@ -2,8 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useStockStore } from '@/store/stockStore';
+import { normalizeStockView, type StockView } from '@/lib/ticker-routing';
 import {
   fetchMarketOverview,
   fetchIndicators,
@@ -23,12 +25,13 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 
-type Tab = 'overview' | 'technical' | 'sentiment' | 'forecast';
+type Tab = StockView;
 
 const TABS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
   { key: 'technical', label: 'Technical', icon: Activity },
   { key: 'sentiment', label: 'Sentiment', icon: Brain },
+  { key: 'risk', label: 'Risk', icon: Shield },
   { key: 'forecast', label: 'Forecast', icon: Target },
 ];
 
@@ -398,13 +401,81 @@ function ForecastSection({ ticker }: { ticker: string }) {
   );
 }
 
+function RiskSection({ ticker }: { ticker: string }) {
+  const { data: overview, isLoading } = useQuery({
+    queryKey: ['market-overview', ticker, '1y'],
+    queryFn: () => fetchMarketOverview(ticker, '1y'),
+    staleTime: 30000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
+  });
+
+  if (isLoading) {
+    return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-32 rounded-xl bg-muted/30 animate-pulse" />)}</div>;
+  }
+
+  if (!overview?.risk) return <ErrorSection title="Risk data unavailable" />;
+
+  const risk = overview.risk;
+  const score = typeof risk.risk_score === 'number' ? risk.risk_score : 0;
+  const level = risk.risk_level || 'Unknown';
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-border/50 p-3 sm:p-4 bg-card/50">
+          <p className="text-[10px] sm:text-xs uppercase font-semibold text-muted-foreground">Risk Level</p>
+          <p className={cn('text-base sm:text-xl font-bold mt-1', level === 'High' ? 'text-red-500' : level === 'Low' ? 'text-green-500' : 'text-yellow-500')}>
+            {level}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border/50 p-3 sm:p-4 bg-card/50">
+          <p className="text-[10px] sm:text-xs uppercase font-semibold text-muted-foreground">Composite Score</p>
+          <p className="text-base sm:text-xl font-bold mt-1">{score}/100</p>
+        </div>
+        <div className="rounded-xl border border-border/50 p-3 sm:p-4 bg-card/50 col-span-2 md:col-span-1">
+          <p className="text-[10px] sm:text-xs uppercase font-semibold text-muted-foreground">Ticker</p>
+          <p className="text-base sm:text-xl font-bold mt-1">{ticker}</p>
+        </div>
+      </div>
+
+      <div className="h-2 rounded-full bg-muted/40 overflow-hidden" role="img" aria-label={`Risk score ${score} out of 100`}>
+        <div
+          className={cn('h-full rounded-full', score >= 66 ? 'bg-red-500' : score >= 33 ? 'bg-yellow-500' : 'bg-green-500')}
+          style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+        />
+      </div>
+
+      <Card className="glass">
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Assessment</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{risk.message || 'Risk assessment pending for this ticker.'}</p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Descriptive risk output for research purposes only, not investment advice.{' '}
+            <Link href="/learn/how-to-analyze-stock-risk" className="text-primary hover:underline">How this risk score is built</Link>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function StockPageClient({ symbol }: { symbol: string }) {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // URL is the single source of truth for the selected view; persisted state
+  // (stockStore) only ever acts as a fallback on routes without an explicit ticker.
+  const activeTab = normalizeStockView(searchParams.get('view'));
   const { setSelectedTicker } = useStockStore();
 
   useEffect(() => {
     setSelectedTicker(symbol);
   }, [symbol, setSelectedTicker]);
+
+  const setActiveTab = (tab: Tab) => {
+    router.replace(tab === 'overview' ? pathname : `${pathname}?view=${tab}`, { scroll: false });
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -435,6 +506,7 @@ export function StockPageClient({ symbol }: { symbol: string }) {
           {activeTab === 'overview' && <OverviewSection ticker={symbol} />}
           {activeTab === 'technical' && <TechnicalSection ticker={symbol} />}
           {activeTab === 'sentiment' && <SentimentSection ticker={symbol} />}
+          {activeTab === 'risk' && <RiskSection ticker={symbol} />}
           {activeTab === 'forecast' && <ForecastSection ticker={symbol} />}
         </div>
       </Suspense>

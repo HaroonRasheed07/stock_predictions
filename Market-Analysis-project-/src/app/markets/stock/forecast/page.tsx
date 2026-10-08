@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useStockStore } from '@/store/stockStore';
+import { parseTickerParam } from '@/lib/ticker-routing';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { TickerLogo } from '@/components/common/TickerLogo';
 
@@ -109,6 +110,13 @@ export default function PriceForecasting() {
     setTicker(selectedTicker);
     setInputTicker(selectedTicker);
   }, [selectedTicker]);
+
+  // Deep link support: /markets/stock/forecast?ticker=MSFT
+  useEffect(() => {
+    const t = parseTickerParam(new URLSearchParams(window.location.search).get('ticker'));
+    if (t) setSelectedTicker(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelectSuggestion = (asset: AssetInfo) => {
     setInputTicker(asset.ticker);

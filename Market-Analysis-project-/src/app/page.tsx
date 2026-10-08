@@ -63,7 +63,8 @@ export default function Home() {
                 )
             )}
             <Link
-              href="/markets/discover"
+              href="/stocks"
+              aria-label="Browse all stocks in the research directory"
               className="rounded-lg border border-dashed border-border/60 px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-all"
             >
               Browse all stocks →

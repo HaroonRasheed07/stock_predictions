@@ -160,6 +160,22 @@ for (const [rel, re] of noindexChecks) {
   ok('Methodology links to /disclaimer', methodology.includes('href="/disclaimer"'));
 }
 
+// 13. Stock URL SEO rules (canonical, noindex, sitemap, canonicalization).
+{
+  const page = read('src/app/stocks/[symbol]/page.tsx');
+  ok('Ticker canonical is lowercase self URL', page.includes('${SITE_URL}/stocks/${normalized}') || page.includes('${SITE_URL}/stocks/${displaySymbol.toLowerCase()}'));
+  ok('Non-allowlisted research pages are noindexed', page.includes('noindex'));
+  ok('Metadata has a robots noindex fallback for unknown symbols', page.includes('robots:'));
+  const sm = read('src/app/sitemap.ts');
+  ok('Sitemap lists /stocks directory', sm.includes('`${SITE_URL}/stocks`'));
+  const cfg = read('next.config.js');
+  ok('No redirect swallows /stocks anymore', !/source:\s*'\/stocks'/.test(cfg));
+  const home = read('src/app/page.tsx');
+  ok('Homepage browse-all targets /stocks', /href="\/stocks"/.test(home));
+  const client = read('src/app/stocks/[symbol]/StockPageClient.tsx');
+  ok('View switches are query-string based (single indexable URL)', client.includes('router.replace') && client.includes('?view='));
+}
+
 console.log('');
 if (failures > 0) {
   console.error(`${failures} SEO gate(s) failed.\n`);
