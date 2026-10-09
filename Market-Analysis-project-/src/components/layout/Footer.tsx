@@ -5,6 +5,7 @@ import { Github, Linkedin } from 'lucide-react';
 import Image from 'next/image';
 import { useThemeStore } from '@/store/themeStore';
 import { useState, useEffect } from 'react';
+import { dispatchOpenSettings } from '@/lib/analytics-consent';
 
 export const Footer = () => {
   const { theme } = useThemeStore();
@@ -142,6 +143,15 @@ export const Footer = () => {
                 <Link href="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
                   Privacy Policy
                 </Link>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={dispatchOpenSettings}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Privacy Settings
+                </button>
               </li>
               <li>
                 <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors">

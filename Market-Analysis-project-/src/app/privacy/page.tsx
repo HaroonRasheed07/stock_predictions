@@ -83,12 +83,16 @@ export default function PrivacyPage() {
               <p>
                 The platform sets one functional cookie: <code className="text-foreground">sidebar:state</code>,
                 which remembers whether the navigation sidebar is open and expires after seven days. Your
-                analytics consent choice is stored in this browser&apos;s local storage under{' '}
-                <code className="text-foreground">sv-analytics-consent</code>. Non-essential measurement
-                cookies are set only by Google Analytics after you give consent in the banner. We do not
-                set advertising, marketing, or cross-site tracking cookies. Hosting and analytics providers
-                may use strictly necessary or performance cookies to deliver their services; those uses are
-                governed by the providers&apos; own policies.
+                analytics choice is stored in this browser&apos;s local storage under{' '}
+                <code className="text-foreground">sv-analytics-consent</code>, and a short-lived record of the
+                consent tier derived from your connection&apos;s country is stored under{' '}
+                <code className="text-foreground">sv-analytics-region</code> (refreshed at most every 30 days).
+                Non-essential measurement cookies are set only by Google Analytics when analytics is active
+                for your visit — after you allow it in regions that require prior consent, or by default in
+                regions where it may run until you opt out. We do not set advertising, marketing, or
+                cross-site tracking cookies. Hosting and analytics providers may use strictly necessary or
+                performance cookies to deliver their services; those uses are governed by the providers&apos; own
+                policies.
               </p>
             </section>
 
@@ -97,12 +101,37 @@ export default function PrivacyPage() {
               <p>
                 The site uses Vercel Analytics and Vercel Speed Insights to understand aggregate traffic and page
                 performance (for example, which pages are slow). These tools collect anonymous, aggregated usage
-                statistics and do not build advertising profiles. If you consent via the banner, we also use Google
-                Analytics 4 to count aggregate page views; it is loaded only after you allow it, is never loaded for
-                visitors who decline, and receives no personal information, portfolio holdings, or financial data.
-                You can change your choice at any time by clearing this site&apos;s stored data. No third-party
-                advertising or marketing scripts
-                are included by us.
+                statistics and do not build advertising profiles.
+              </p>
+              <p className="mt-3">
+                We also use Google Analytics 4 to count aggregate page views (measurement ID{' '}
+                <code className="text-foreground">G-87F1WZ9KPF</code>). It receives no personal information,
+                portfolio holdings, or financial data, and no advertising features are enabled. Whether and
+                when it loads depends on where you are:
+              </p>
+              <ul className="list-disc pl-6 mt-2 space-y-1.5 text-sm text-muted-foreground">
+                <li>
+                  <span className="text-foreground">Regions that require prior consent</span> (including the
+                  EU/EEA, the UK, Switzerland, Canada, and several other jurisdictions — the full list is in{' '}
+                  <code className="text-foreground">src/lib/consent-region.ts</code>): a minimal one-time
+                  notice appears, and Google Analytics is not requested at all — no script, no cookie — until
+                  you click &quot;Allow analytics&quot;. Declining keeps it unloaded.
+                </li>
+                <li>
+                  <span className="text-foreground">All other regions</span>: analytics may be enabled by
+                  default where applicable law permits it, and you can turn it off at any time with the
+                  footer&apos;s <span className="text-foreground">Privacy Settings</span>. Disabling takes effect
+                  immediately (the tag is stopped, its cookies are removed, and it stays off on future visits).
+                </li>
+                <li>
+                  If your browser sends a Global Privacy Control signal, analytics stays off by default
+                  everywhere; you can still enable it yourself in Privacy Settings.
+                </li>
+              </ul>
+              <p className="mt-3">
+                The country used for this decision comes from the hosting edge (Vercel&apos;s own request
+                header) and never leaves our platform — no third-party geolocation service is queried. If the
+                country cannot be determined, we fail closed and treat the visit as requiring prior consent.
               </p>
             </section>
 
@@ -159,7 +188,10 @@ export default function PrivacyPage() {
               <h2 className="text-lg font-semibold text-foreground mb-2">12. Your choices and rights</h2>
               <p>
                 You can browse the platform without providing any personal information. You can clear the watchlist
-                and preference data and the functional cookie at any time through your browser&apos;s settings. If
+                and preference data and the functional cookie at any time through your browser&apos;s settings.
+                Analytics can be turned on or off at any time from{' '}
+                <span className="text-foreground">Privacy Settings</span> in the footer — disabling stops Google
+                Analytics immediately, removes its cookies, and is remembered on this device. If
                 you have emailed us, you may ask what information we hold about you, request correction or
                 deletion, or ask questions about this policy by contacting us below, and we will respond to your
                 request.
@@ -169,7 +201,10 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-2">13. International visitors</h2>
               <p>
-                The platform is accessible worldwide. Hosting and analytics providers may process technical
+                The platform is accessible worldwide. To decide whether prior consent is needed before analytics
+                loads, we read your connection&apos;s coarse country from the hosting edge (Vercel&apos;s request
+                header) on our own infrastructure; the result is cached in your browser&apos;s local storage and
+                no third-party geolocation service is used. Hosting and analytics providers may process technical
                 information in countries other than your own, under their own terms and privacy policies.
               </p>
             </section>

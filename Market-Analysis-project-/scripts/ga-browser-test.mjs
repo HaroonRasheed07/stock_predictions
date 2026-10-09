@@ -1,5 +1,12 @@
-// Real-browser GA4 behavior test: consent gating, initial page_view, and
-// client-side navigation page_views — exactly one per transition, no dupes.
+// Real-browser GA4 behavior test: regional consent gating, initial
+// page_view, client-side navigation page_views (exactly one per transition,
+// no dupes), the footer Privacy Settings opt-out/opt-in cycle, and the
+// default-on standard tier + GPC opt-out.
+//
+// Tier simulation: locally /api/region has no Vercel edge country header and
+// fails closed to 'strict', so flows A–G exercise the prior-consent tier
+// (minimal notice → allow/decline). Flows I–J seed the region cache to
+// simulate a standard tier visitor, and a Global Privacy Control browser.
 //
 // Delivery model under test: gtag('config') sends the initial page_view;
 // gtag.js's built-in history tracking (pushState/replaceState) sends exactly
@@ -56,7 +63,11 @@ function ok(name, cond, detail = '') {
 async function waitFor(fn, timeoutMs, everyMs = 250) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await fn()) return true;
+    // Evaluate can throw while a deliberate navigation/reload tears the
+    // execution context down — treat that as "not yet" and keep polling.
+    try {
+      if (await fn()) return true;
+    } catch {}
     await sleep(everyMs);
   }
   return false;
@@ -118,6 +129,17 @@ function trackCounts(page, counts, tag = '') {
   });
 }
 
+function seedStandardRegion(page) {
+  return page.evaluateOnNewDocument(() => {
+    try {
+      window.localStorage.setItem(
+        'sv-analytics-region',
+        JSON.stringify({ country: 'US', tier: 'standard', ts: Date.now() })
+      );
+    } catch {}
+  });
+}
+
 const mock = spawn(process.execPath, ['scripts/mock-seo-api.mjs'], { cwd: root, stdio: 'ignore' });
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', '3216'], { cwd: root, stdio: 'ignore' });
 let browser = null;
@@ -141,14 +163,14 @@ try {
   await page.setRequestInterception(true);
   trackCounts(page, counts);
 
-  // A. Pre-consent: zero Google requests of any kind.
+  // A. Pre-consent (strict tier, region resolving): zero Google requests.
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle2', timeout: 60000 });
   await sleep(2500);
   ok('A. Pre-consent: no gtag.js loaded', counts.gtagScript === 0, String(counts.gtagScript));
   ok('A. Pre-consent: zero page_view hits', counts.pageViews === 0, String(counts.pageViews));
 
   // B. Grant consent → exactly one initial page_view (gtag config).
-  ok('B. Consent banner visible', await clickButton(page, 'Allow analytics'));
+  ok('B. Consent notice visible (strict tier, local has no edge country)', await clickButton(page, 'Allow analytics'));
   await waitFor(() => counts.pageViews >= 1, 20000);
   await sleep(2000);
   ok('B. Initial load fires exactly 1 page_view', counts.pageViews === 1, `got ${counts.pageViews}`);
@@ -185,7 +207,7 @@ try {
   await sleep(2500);
   ok('E. Exactly one page_view per page (/, /stocks, aapl, learn)', counts.pageViews === 4 && JSON.stringify(counts.paths) === JSON.stringify(['/', '/stocks', '/stocks/aapl', '/learn/what-is-rsi']), `got ${counts.pageViews} paths=${JSON.stringify(counts.paths)}`);
 
-  // F. Fresh visitor declines → zero Google requests, banner gone.
+  // F. Fresh visitor declines → zero Google requests, choice persisted.
   const ctx = await browser.createBrowserContext();
   const fresh = await ctx.newPage();
   const freshCounts = { gtagScript: 0, pageViews: 0, paths: [] };
@@ -205,7 +227,75 @@ try {
   await sleep(1500);
   ok('G. Reload with consent tracks once (total 5, config not doubled)', counts.pageViews === 5 && counts.paths[4] === '/', `got ${counts.pageViews} paths=${JSON.stringify(counts.paths)}`);
   const bannerBack = await page.evaluate(() => Boolean(document.querySelector('[aria-label="Analytics consent"]')));
-  ok('G. No consent banner re-prompt after prior grant', !bannerBack);
+  ok('G. No consent notice re-prompt after prior grant', !bannerBack);
+
+  // H. Footer Privacy Settings: disable → GA stops (no further hits during
+  // navigation), then enable → reload gives one clean config page_view.
+  {
+    ok('H. Footer Privacy Settings entry opens the dialog', await clickButton(page, 'Privacy Settings'));
+    await sleep(600);
+    const dialogShown = await page.evaluate(() => document.body.innerText.includes('Google Analytics') && document.body.innerText.includes('Enabled'));
+    ok('H. Dialog shows analytics status Enabled', dialogShown);
+    ok('H. Disable analytics button works', await clickButton(page, 'Disable analytics'));
+    await sleep(800);
+    const afterDisable = await page.evaluate(() => window.localStorage.getItem('sv-analytics-consent'));
+    ok('H. Opt-out persisted in localStorage', afterDisable === 'denied', String(afterDisable));
+    const pvBefore = counts.pageViews;
+    const navigated = await page.evaluate(() => {
+      const a = [...document.querySelectorAll('a')].find((x) => x.getAttribute('href') === '/methodology');
+      if (a) { a.click(); return true; }
+      return false;
+    });
+    ok('H. Navigated client-side after opt-out', navigated && (await waitFor(() => page.evaluate(() => location.pathname === '/methodology'), 15000)));
+    await sleep(3500);
+    ok('H. Opt-out stops all further page_view hits', counts.pageViews === pvBefore, `before=${pvBefore} after=${counts.pageViews}`);
+    ok('H. Re-open settings and enable again', (await clickButton(page, 'Privacy Settings')) && (await clickButton(page, 'Enable analytics')));
+    await waitFor(() => page.evaluate(() => window.localStorage.getItem('sv-analytics-consent') === 'granted'), 8000);
+    await waitFor(() => counts.pageViews >= pvBefore + 1, 20000);
+    await sleep(1500);
+    const pvAfterEnable = counts.pageViews;
+    ok('H. Enable reloads and fires exactly one config page_view', pvAfterEnable === pvBefore + 1, `before=${pvBefore} after=${pvAfterEnable}`);
+    ok('H. No consent notice after re-enable', !(await page.evaluate(() => Boolean(document.querySelector('[aria-label="Analytics consent"]')))));
+  }
+
+  // I. Standard tier (seeded region cache): analytics allowed by default,
+  // no consent notice at all; footer opt-out still available.
+  const ctx2 = await browser.createBrowserContext();
+  const std = await ctx2.newPage();
+  const stdCounts = { gtagScript: 0, pageViews: 0, paths: [] };
+  await seedStandardRegion(std);
+  await std.setRequestInterception(true);
+  trackCounts(std, stdCounts);
+  await std.goto(`${BASE}/`, { waitUntil: 'networkidle2', timeout: 60000 });
+  await waitFor(() => stdCounts.pageViews >= 1, 20000);
+  await sleep(1500);
+  ok('I. Standard tier: analytics loads by default (1 page_view)', stdCounts.pageViews === 1, `pv=${stdCounts.pageViews}`);
+  ok('I. Standard tier: no consent notice shown', !(await std.evaluate(() => Boolean(document.querySelector('[aria-label="Analytics consent"]')))));
+  ok('I. Standard tier: footer opt-out available', await clickButton(std, 'Privacy Settings'));
+  await sleep(600);
+  ok('I. Standard tier: dialog shows Enabled', await std.evaluate(() => document.body.innerText.includes('Enabled')));
+  ok('I. Standard tier: disable works', await clickButton(std, 'Disable analytics'));
+  await sleep(800);
+  const stdStored = await std.evaluate(() => window.localStorage.getItem('sv-analytics-consent'));
+  ok('I. Standard tier: opt-out persisted', stdStored === 'denied', String(stdStored));
+  await ctx2.close();
+
+  // J. Global Privacy Control signal: analytics stays off by default even
+  // in a standard tier region, and no notice interrupts the visit.
+  const ctx3 = await browser.createBrowserContext();
+  const gpcPage = await ctx3.newPage();
+  const gpcCounts = { gtagScript: 0, pageViews: 0, paths: [] };
+  await seedStandardRegion(gpcPage);
+  await gpcPage.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { get: () => true });
+  });
+  await gpcPage.setRequestInterception(true);
+  trackCounts(gpcPage, gpcCounts);
+  await gpcPage.goto(`${BASE}/`, { waitUntil: 'networkidle2', timeout: 60000 });
+  await sleep(3000);
+  ok('J. GPC signal: no gtag.js, zero page_view hits', gpcCounts.gtagScript === 0 && gpcCounts.pageViews === 0, `script=${gpcCounts.gtagScript} pv=${gpcCounts.pageViews}`);
+  ok('J. GPC signal: no consent notice shown', !(await gpcPage.evaluate(() => Boolean(document.querySelector('[aria-label="Analytics consent"]')))));
+  await ctx3.close();
 } catch (err) {
   fail += 1;
   console.log(`  FAIL  unexpected error — ${err.message}`);
