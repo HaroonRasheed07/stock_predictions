@@ -82,10 +82,13 @@ export default function PrivacyPage() {
               <h2 className="text-lg font-semibold text-foreground mb-2">5. Cookies</h2>
               <p>
                 The platform sets one functional cookie: <code className="text-foreground">sidebar:state</code>,
-                which remembers whether the navigation sidebar is open and expires after seven days. We do not
-                set advertising, marketing, or cross-site tracking cookies. Hosting and analytics providers may
-                use strictly necessary or performance cookies to deliver their services; those uses are governed
-                by the providers&apos; own policies.
+                which remembers whether the navigation sidebar is open and expires after seven days. Your
+                analytics consent choice is stored in this browser&apos;s local storage under{' '}
+                <code className="text-foreground">sv-analytics-consent</code>. Non-essential measurement
+                cookies are set only by Google Analytics after you give consent in the banner. We do not
+                set advertising, marketing, or cross-site tracking cookies. Hosting and analytics providers
+                may use strictly necessary or performance cookies to deliver their services; those uses are
+                governed by the providers&apos; own policies.
               </p>
             </section>
 
@@ -94,7 +97,11 @@ export default function PrivacyPage() {
               <p>
                 The site uses Vercel Analytics and Vercel Speed Insights to understand aggregate traffic and page
                 performance (for example, which pages are slow). These tools collect anonymous, aggregated usage
-                statistics and do not build advertising profiles. No third-party advertising or marketing scripts
+                statistics and do not build advertising profiles. If you consent via the banner, we also use Google
+                Analytics 4 to count aggregate page views; it is loaded only after you allow it, is never loaded for
+                visitors who decline, and receives no personal information, portfolio holdings, or financial data.
+                You can change your choice at any time by clearing this site&apos;s stored data. No third-party
+                advertising or marketing scripts
                 are included by us.
               </p>
             </section>

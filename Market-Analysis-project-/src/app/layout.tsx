@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { LayoutWrapper } from './layout-wrapper';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { AnalyticsConsent } from '@/components/common/AnalyticsConsent';
 import { OrganizationJsonLd, WebsiteJsonLd } from '@/components/seo/StructuredData';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SEO_INDEXING_ENABLED } from '@/lib/seo';
 import '@/index.css';
@@ -74,6 +75,7 @@ export default function RootLayout({
             <LayoutWrapper>{children}</LayoutWrapper>
             <Analytics />
             <SpeedInsights />
+            <AnalyticsConsent />
           </TooltipProvider>
         </div>
       </body>
