@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "seo:checks": "node scripts/seo-checks.mjs",
-    "routing:checks": "node scripts/routing-checks.mjs"
+    "routing:checks": "node scripts/routing-checks.mjs",
+    "sitemap:checks": "node scripts/sitemap-checks.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

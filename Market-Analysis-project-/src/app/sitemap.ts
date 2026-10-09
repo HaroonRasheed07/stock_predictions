@@ -5,38 +5,56 @@ import { getAllArticles } from '@/lib/learn-articles';
 
 export const revalidate = 3600;
 
+/**
+ * Single canonical sitemap for https://stockvantex.com.
+ *
+ * Timestamp policy (honest `<lastmod>` only):
+ * - Learn articles: real editorial `updatedAt` from the article registry —
+ *   the same value their page metadata reports as `modifiedTime`.
+ * - Stock research pages: OMITTED. Their market data refreshes hourly, but a
+ *   cache refresh is not a content edit; a generation-time stamp would change
+ *   on every rebuild and misrepresent modifications.
+ * - Static pages: OMITTED (no tracked revision date — not invented).
+ *
+ * Generation is pure: local registries only, zero network/backend/API calls,
+ * deterministic across builds, cold starts, and consecutive requests.
+ * Google ignores `priority`/`changefreq`, so they are not emitted.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   if (!SEO_INDEXING_ENABLED) {
     return [];
   }
 
-  const staticPages: MetadataRoute.Sitemap = [
-    { url: SITE_URL, changeFrequency: 'daily', priority: 1 },
-    { url: `${SITE_URL}/stocks`, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${SITE_URL}/about`, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${SITE_URL}/contact`, changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${SITE_URL}/methodology`, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${SITE_URL}/learn`, changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${SITE_URL}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${SITE_URL}/terms`, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${SITE_URL}/disclaimer`, changeFrequency: 'yearly', priority: 0.3 },
+  const entries: MetadataRoute.Sitemap = [
+    // Core pages
+    { url: SITE_URL },
+    { url: `${SITE_URL}/stocks` },
+    { url: `${SITE_URL}/about` },
+    { url: `${SITE_URL}/contact` },
+    { url: `${SITE_URL}/methodology` },
+    { url: `${SITE_URL}/learn` },
+    // Legal pages
+    { url: `${SITE_URL}/privacy` },
+    { url: `${SITE_URL}/terms` },
+    { url: `${SITE_URL}/disclaimer` },
+    // Stock research (52-symbol SEO allowlist, lowercase canonical routes)
+    ...getAllAllowlistedSymbols().map((symbol) => ({
+      url: `${SITE_URL}/stocks/${symbol.toLowerCase()}`,
+    })),
+    // Educational content (every published Learn article)
+    ...getAllArticles().map((article) => ({
+      url: `${SITE_URL}/learn/${article.slug}`,
+      lastModified: new Date(article.updatedAt),
+    })),
   ];
 
-  // Ticker pages: market data refreshes hourly (matches their ISR window).
-  const tickerPages: MetadataRoute.Sitemap = getAllAllowlistedSymbols().map((symbol) => ({
-    url: `${SITE_URL}/stocks/${symbol.toLowerCase()}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.8,
-  }));
-
-  // Learn articles: use each article's own updatedAt (honest content date).
-  const learnPages: MetadataRoute.Sitemap = getAllArticles().map((article) => ({
-    url: `${SITE_URL}/learn/${article.slug}`,
-    lastModified: new Date(article.updatedAt),
-    changeFrequency: 'monthly' as const,
-    priority: 0.6,
-  }));
-
-  return [...staticPages, ...tickerPages, ...learnPages];
+  // Deterministic output: deduplicate by URL, then sort by URL codepoint.
+  const seen = new Set<string>();
+  const deduped = entries.filter((entry) => {
+    if (seen.has(entry.url)) return false;
+    seen.add(entry.url);
+    return true;
+  });
+  deduped.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
+  return deduped;
 }
