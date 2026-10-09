@@ -63,6 +63,7 @@ def get_coverage_status(count: int) -> str:
 
 # Provider roles
 ROLE_RSS = "rss"              # Free, always try first (fresh)
+ROLE_TICKER_RSS = "ticker_rss"  # Free per-ticker headlines (Yahoo)
 ROLE_FRESH = "fresh"          # Primary fresh source (Currents)
 ROLE_ENRICHMENT = "enrichment" # Scarce source (Marketaux)
 ROLE_GAP_FILL = "gap_fill"    # Delayed/fallback (NewsData)
@@ -71,20 +72,31 @@ ROLE_SUPPLEMENT = "supplement" # Backup (GDELT)
 # Provider role assignments — WATERFALL ORDER
 PROVIDER_ROLES = {
     "rss": ROLE_RSS,
+    "yahoo_rss": ROLE_TICKER_RSS,
     "currents": ROLE_FRESH,
     "marketaux": ROLE_ENRICHMENT,
     "newsdata": ROLE_GAP_FILL,
     "gdelt": ROLE_SUPPLEMENT,
+    "google_news_rss": ROLE_SUPPLEMENT,
+    "alphavantage": ROLE_SUPPLEMENT,
 }
 
-# Provider waterfall priority (lower = earlier)
+# Provider waterfall priority (lower = earlier).
+# All FREE providers rank before quota/credit providers so a stop-break on a
+# scarce provider can never starve a free one (gives source diversity for free).
 PROVIDER_WATERFALL_PRIORITY = {
     "rss": 0,
-    "currents": 1,
-    "marketaux": 2,
-    "newsdata": 3,
-    "gdelt": 4,
+    "yahoo_rss": 1,
+    "gdelt": 2,
+    "currents": 3,
+    "marketaux": 4,
+    "newsdata": 5,
+    "google_news_rss": 6,
+    "alphavantage": 7,
 }
+
+# Providers that never count against paid quota (skipped in stop rules)
+FREE_PROVIDERS = {"rss", "yahoo_rss", "gdelt", "google_news_rss", "sec_edgar"}
 
 # Budget tiers at which Marketaux is NOT called
 # CONSERVE: only call if coverage is PARTIAL or worse
@@ -218,11 +230,12 @@ class ProviderRouter:
         """Determine if we should stop calling providers.
 
         ONLY stops when unique relevant articles >= target.
-        Free providers (rss, gdelt) are NEVER stopped — they cost nothing.
-        Raw count is NOT used — only unique relevant count after dedup.
+        Free providers (rss, yahoo_rss, gdelt, ...) are NEVER stopped — they
+        cost nothing. Raw count is NOT used — only unique relevant count after
+        dedup.
         """
         # Never stop free providers — they cost nothing
-        if current_provider in ("rss", "gdelt"):
+        if current_provider in FREE_PROVIDERS:
             return False
 
         # Stop when we have enough unique relevant articles

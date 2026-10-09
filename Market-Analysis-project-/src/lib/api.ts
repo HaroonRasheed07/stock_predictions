@@ -206,8 +206,37 @@ export interface WatchlistMonitorResponse {
   summary_text: string;
 }
 
+export interface SentimentArticle {
+  article_id?: string | number;
+  title: string;
+  url: string;
+  publisher?: string;
+  published_at?: string;
+  relevance_score?: number;
+  finbert_label?: string;
+  finbert_positive?: number;
+  finbert_neutral?: number;
+  finbert_negative?: number;
+  weighted_score?: number;
+  source_quality?: number | string;
+  source_type?: string;
+  confidence?: number;
+  rule_score?: number;
+}
+
+export interface SentimentNewsItem {
+  title: string;
+  source: string;
+  url: string;
+  published_at: string;
+  sentiment?: number;
+  confidence?: number;
+  source_type?: string;
+}
+
 export interface EnhancedSentiment {
   ticker?: string;
+  company_name?: string;
   sentiment_score: number;
   sentiment_label: string;
   status: 'sufficient' | 'insufficient' | 'error' | 'no_relevant_news' | 'news_unavailable';
@@ -225,7 +254,10 @@ export interface EnhancedSentiment {
   news_count: number;
   source_providers: string[];
   providers_attempted?: string[];
-  news: Array<{ title: string; source: string; url: string; published_at: string; sentiment?: number }>;
+  news: SentimentNewsItem[];
+  articles?: SentimentArticle[];
+  initial_count?: number;
+  has_more_articles?: boolean;
   sentiment_trend_7d: Array<{ date: string; timestamp?: string; score: number; label?: string }>;
   drivers: Array<{ category: string; direction: string; article_count: number; contribution: number }>;
   explanation: string;
@@ -234,10 +266,33 @@ export interface EnhancedSentiment {
   methodology_version?: string;
   data_freshness?: string;
   score_available?: boolean;
+  confidence?: number;
+  confidence_label?: 'high' | 'medium' | 'low';
+  limited_evidence?: boolean;
+  source_attributions?: string[];
   coverage_status?: string;
   freshest_article_at?: string;
   oldest_article_at?: string;
   target_count?: number;
+}
+
+// ─── SEC Company Filings ────────────────────────────────────────────────────
+
+export interface SecFiling {
+  form: string;
+  filing_date: string;
+  report_date?: string;
+  accession: string;
+  url: string;
+  description?: string;
+}
+
+export interface CompanyFilingsResponse {
+  ticker: string;
+  filings: SecFiling[];
+  count: number;
+  source?: string;
+  attribution?: string;
 }
 
 
@@ -354,6 +409,30 @@ export async function fetchSentiment(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ticker }),
   });
+
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      message = data.detail || data.error || JSON.stringify(data);
+    } catch {
+      const text = await res.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+
+  return res.json();
+}
+
+// Fetch SEC company filings for a ticker
+export async function fetchCompanyFilings(
+  ticker: string,
+  limit: number = 10
+): Promise<CompanyFilingsResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/news/filings?ticker=${encodeURIComponent(ticker)}&limit=${limit}`
+  );
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;

@@ -125,16 +125,35 @@ class ProviderBudgetManager:
 
     DEFAULT_LIMITS = {
         "marketaux": 80,
-        "newsdata": 500,
+        "newsdata": 200,          # Free plan: 200 credits/day
         "currents": 250,
-        "gdelt": 10000,    # Effectively unlimited
+        "gdelt": 10000,    # Effectively unlimited (rate-limited, not quota)
         "rss": 10000,      # Unlimited
+        "yahoo_rss": 10000,      # Unlimited (free RSS)
+        "sec_edgar": 3000,       # SEC allows 10 req/s; we use far less
+        "google_news_rss": 10000,  # Free but disabled by default (ToS)
+        "alphavantage": 25,           # Free tier: 25/day; disabled by default (license)
     }
 
     ENV_KEYS = {
         "marketaux": "MARKETAUX_DAILY_BUDGET",
         "newsdata": "NEWSDATA_DAILY_BUDGET",
         "currents": "CURRENTS_DAILY_BUDGET",
+        "alphavantage": "ALPHAVANTAGE_DAILY_BUDGET",
+    }
+
+    # Rate-limit (429) cooldowns per provider — these are SHORT, not daily.
+    # Daily-quota errors get a cooldown until the next UTC midnight instead.
+    RATE_COOLDOWN_SECONDS = {
+        "gdelt": 15,        # GDELT asks for >= 1 req / 5 s
+        "newsdata": 90,     # newsdata free: 30 credits / 15 min
+        "marketaux": 60,
+        "currents": 60,
+        "yahoo_rss": 30,
+        "sec_edgar": 15,
+        "alphavantage": 60,
+        "rss": 30,
+        "google_news_rss": 30,
     }
 
     # Marketaux-specific: per-ticker cooldown (default 4 hours)
@@ -389,33 +408,58 @@ class ProviderBudgetManager:
         if not success and error:
             self._check_cooldown(provider, error)
 
-        # Record ticker fetch for per-ticker cooldown
-        if success and ticker and provider == "marketaux":
+        # Record ticker fetch for per-ticker cooldown (only when we actually
+        # got articles — an empty result must NOT burn the 4h cooldown, or the
+        # provider never gets retried with a wider window).
+        if success and ticker and provider == "marketaux" and articles_returned > 0:
             self.record_ticker_fetch(provider, ticker)
 
     def _check_cooldown(self, provider: str, error: str):
-        """Set cooldown if quota exhaustion detected."""
-        error_lower = error.lower()
-        is_quota_error = any(kw in error_lower for kw in [
-            "429", "402", "quota", "rate limit", "too many",
-            "billing", "payment", "limit exceeded", "usage_limit"
+        """Set a cooldown when a quota/rate error is detected.
+
+        Two very different cases:
+        - DAILY QUOTA exhausted ("Daily quota exceeded", 402 billing, ...):
+          provider unusable until the next UTC day reset.
+        - RATE LIMIT hit (429, "too many requests", "one every 5 seconds"):
+          provider is fine — just pause briefly (per-provider seconds).
+          (Old behavior put EVERY 429 into a 24h cooldown, which took healthy
+          providers like GDELT/NewsData offline for a full day after ONE call.)
+        """
+        error_lower = (error or "").lower()
+
+        is_daily_quota = any(kw in error_lower for kw in [
+            "daily quota", "daily limit", "quota exceeded", "quota_exceeded",
+            "402", "billing", "payment", "insufficient credit", "upgrade your plan",
+        ])
+        is_rate_limit = any(kw in error_lower for kw in [
+            "429", "rate limit", "rate-limit", "too many request", "too many calls",
+            "one every 5 seconds", "usage limit", "limit exceeded", "per minute",
         ])
 
-        if is_quota_error:
-            # Use 24-hour cooldown for daily quota exhaustion
-            cooldown_end = datetime.now(timezone.utc) + timedelta(hours=24)
-            with _lock:
-                try:
-                    conn = sqlite3.connect(_DB_PATH)
-                    conn.execute(
-                        "UPDATE provider_usage SET cooldown_until=? WHERE provider=? AND date=?",
-                        (cooldown_end.isoformat(), provider, self._today())
-                    )
-                    conn.commit()
-                    conn.close()
-                    logger.warning(f"[BUDGET] {provider} quota exhausted (error: {error}), cooldown until {cooldown_end}")
-                except Exception:
-                    pass
+        if is_daily_quota:
+            # Cooldown until just after next UTC midnight (daily reset)
+            now = datetime.now(timezone.utc)
+            cooldown_end = (now + timedelta(days=1)).replace(hour=0, minute=5, second=0, microsecond=0)
+            kind = "daily quota"
+        elif is_rate_limit:
+            seconds = self.RATE_COOLDOWN_SECONDS.get(provider, 60)
+            cooldown_end = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+            kind = f"rate limit ({seconds}s)"
+        else:
+            return
+
+        with _lock:
+            try:
+                conn = sqlite3.connect(_DB_PATH)
+                conn.execute(
+                    "UPDATE provider_usage SET cooldown_until=? WHERE provider=? AND date=?",
+                    (cooldown_end.isoformat(), provider, self._today())
+                )
+                conn.commit()
+                conn.close()
+                logger.warning(f"[BUDGET] {provider} {kind} cooldown until {cooldown_end.isoformat()} (error: {error})")
+            except Exception:
+                pass
 
     def record_success(self, provider: str, quota_remaining: Optional[int] = None,
                        ticker: str = "", reason: str = "", http_status: int = 200,

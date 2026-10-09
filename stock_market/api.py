@@ -317,6 +317,60 @@ def get_news_budget_status():
         return {"error": str(e)}
 
 
+@app.get("/api/news/usage")
+def get_news_usage(hours: int = 24, limit: int = 100):
+    """Aggregated provider usage for observability (no secrets exposed)."""
+    try:
+        from news_engine.provider_budget import budget_manager
+        ledger = budget_manager.get_request_ledger(hours=min(hours, 168), limit=min(limit, 500))
+        per_provider: Dict[str, Dict[str, int]] = {}
+        for entry in ledger:
+            p = entry.get("provider", "unknown")
+            bucket = per_provider.setdefault(p, {
+                "calls": 0, "success_2xx": 0, "errors_429": 0, "errors_402": 0,
+                "articles_returned": 0, "articles_selected": 0,
+            })
+            bucket["calls"] += 1
+            status = entry.get("http_status", 0)
+            if 200 <= status < 300:
+                bucket["success_2xx"] += 1
+            elif status == 429:
+                bucket["errors_429"] += 1
+            elif status == 402:
+                bucket["errors_402"] += 1
+            bucket["articles_returned"] += int(entry.get("articles_returned", 0) or 0)
+            bucket["articles_selected"] += int(entry.get("articles_selected", 0) or 0)
+        return {
+            "window_hours": min(hours, 168),
+            "ledger_entries": len(ledger),
+            "per_provider": per_provider,
+            "recent": ledger[:20],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/news/filings")
+def get_company_filings(ticker: str, limit: int = 10):
+    """Recent SEC filings (8-K/10-Q/10-K/...) for the Company Filings section."""
+    ticker = (ticker or "").upper().strip()
+    if not ticker or len(ticker) > 10:
+        return {"ticker": ticker, "filings": [], "count": 0, "error": "invalid_ticker"}
+    try:
+        from news_engine.sec_edgar import fetch_filings
+        filings = fetch_filings(ticker, limit=min(max(limit, 1), 25))
+        return {
+            "ticker": ticker,
+            "filings": filings,
+            "count": len(filings),
+            "source": "SEC EDGAR",
+            "attribution": "Filing data provided by the U.S. Securities and Exchange Commission (EDGAR).",
+        }
+    except Exception as e:
+        logger.warning(f"[FILINGS] {ticker} error: {e}")
+        return {"ticker": ticker, "filings": [], "count": 0, "error": str(e)}
+
+
 @app.post("/api/data/catalysts")
 def get_catalysts(req: SentimentRequest):
     """
@@ -2131,6 +2185,23 @@ def get_sentiment(request: SentimentRequest):
             "methodology_version": result.get("methodology_version", "4"),
             "data_freshness": result.get("data_freshness", "fresh"),
             "score_available": result.get("score_available", True),
+            # v7 additions: full article list (10 initial / 20 max for Load More),
+            # confidence, coverage, limited-evidence flag, required attributions
+            "articles": result.get("articles", []),
+            "initial_count": result.get("initial_count", min(10, len(result.get("articles", [])))),
+            "has_more_articles": result.get("has_more_articles", False),
+            "confidence": result.get("confidence", 0.0),
+            "confidence_label": result.get("confidence_label", "low"),
+            "limited_evidence": result.get("limited_evidence", False),
+            "coverage_status": result.get("coverage_status", "unknown"),
+            "freshest_article_at": result.get("freshest_article_at", ""),
+            "oldest_article_at": result.get("oldest_article_at", ""),
+            "source_attributions": result.get("source_attributions", []),
+            "drivers": result.get("drivers", []),
+            "explanation": result.get("explanation", ""),
+            "company_name": result.get("company_name", ""),
+            "refreshed_at": result.get("refreshed_at", ""),
+            "age_minutes": result.get("age_minutes", 0),
         }
 
     payload, meta = cache_manager.get_swr(

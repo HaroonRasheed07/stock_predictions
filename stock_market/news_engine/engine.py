@@ -14,6 +14,7 @@ import threading
 import sqlite3
 import json
 import os
+import re
 import sys
 import hashlib
 from datetime import datetime, timezone, timedelta
@@ -31,7 +32,7 @@ from .provider_budget import budget_manager
 from .provider_router import (
     provider_router, fetch_metrics, TARGET_NEWS_COUNT, MIN_DESIRED_NEWS_COUNT,
     NEWS_PRIMARY_WINDOW_DAYS, NEWS_SECONDARY_WINDOW_DAYS, NEWS_MAX_AGE_DAYS,
-    get_coverage_status, COVERAGE_NONE,
+    get_coverage_status, COVERAGE_NONE, FREE_PROVIDERS,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 RELEVANCE_THRESHOLD = 0.15        # Minimum relevance to include article
 MIN_RELEVANT_ARTICLES = 2        # Minimum for "sufficient" status
-METHODOLOGY_VERSION = "6"        # Bump when rule engine changes materially
+METHODOLOGY_VERSION = "7"        # v7: word-boundary relevance, negative cache, confidence
 
 # ─── News Freshness Configuration ──────────────────────────────────────────
 # These control the SWR behavior for news cache.
@@ -52,7 +53,18 @@ NEWS_FRESH_TTL_SECONDS = 1800     # 30 minutes — cache is completely fresh
 NEWS_STALE_SERVE_SECONDS = 14400  # 4 hours — stale data can still be served
 NEWS_OVERLAP_HOURS = 3            # Overlap window for incremental refresh
 LOOKBACK_DAYS = 3                # How far back to look for news
-MAX_ARTICLES_PER_TICKER = 20     # Cap per ticker
+MAX_ARTICLES_PER_TICKER = 20     # Cap per ticker (Load More shows up to 20)
+INITIAL_ARTICLES = 10            # First page shown in the UI
+
+# Negative caching: snapshots with little/no relevant news are re-fetched only
+# after this window (prevents zero-result tickers re-burning providers on
+# every request while still recovering within minutes).
+NEGATIVE_CACHE_SECONDS = int(os.environ.get("NEGATIVE_CACHE_SECONDS", "600"))
+
+# Per-symbol fresh TTLs: high-traffic tickers get shorter TTLs (fresher data),
+# everything else gets longer TTLs (fewer provider calls).
+POPULAR_FRESH_TTL_SECONDS = int(os.environ.get("POPULAR_FRESH_TTL_SECONDS", "1800"))
+BASE_FRESH_TTL_SECONDS = int(os.environ.get("BASE_FRESH_TTL_SECONDS", "3600"))
 
 # Recency buckets for freshness status reporting
 FRESHNESS_FRESH = "FRESH"
@@ -73,7 +85,22 @@ SOURCE_QUALITY = {
     "newsdata": 0.7,
     "currents": 0.7,
     "gdelt": 0.6,
-    "rss": 0.8,  # RSS from established publishers
+    "rss": 0.8,           # RSS from established publishers
+    "yahoo_rss": 0.75,    # Per-ticker Yahoo headlines
+    "google_news_rss": 0.7,
+    "alphavantage": 0.85,
+    "sec_edgar": 0.9,     # Regulatory filings (company official)
+}
+
+# Required attributions per provider (licensing — surfaced in the UI footer)
+PROVIDER_ATTRIBUTIONS = {
+    "currents": "Powered by Currents News API",
+    "gdelt": "GDELT Project",
+    "yahoo_rss": "Yahoo Finance",
+    "google_news_rss": "Google News",
+    "marketaux": "Marketaux",
+    "newsdata": "NewsData.io",
+    "alphavantage": "Alpha Vantage",
 }
 
 # Sentiment history persistence interval
@@ -91,7 +118,7 @@ def _l1_get(ticker: str) -> Optional[SentimentSnapshot]:
         if ticker in _l1_cache:
             ts, snapshot = _l1_cache[ticker]
             age_seconds = time.time() - ts
-            if age_seconds < NEWS_FRESH_TTL_SECONDS:
+            if age_seconds < _effective_fresh_ttl(ticker, snapshot):
                 return snapshot
     return None
 
@@ -101,7 +128,36 @@ def _l1_set(ticker: str, snapshot: SentimentSnapshot):
         _l1_cache[ticker] = (time.time(), snapshot)
 
 
-def _get_freshness_status(generated_at: str) -> str:
+def _is_broken_snapshot(snapshot: SentimentSnapshot) -> bool:
+    """A snapshot with little/no relevant news (may be a temporary source gap)."""
+    return snapshot.relevant_article_count <= 1 and snapshot.status != SentimentStatus.SUFFICIENT
+
+
+def _fresh_ttl_seconds(ticker: str) -> float:
+    """Per-symbol fresh TTL: popular tickers refresh sooner; market-closed extends."""
+    try:
+        from .company_resolver import is_known_company
+        base = POPULAR_FRESH_TTL_SECONDS if is_known_company(ticker) else BASE_FRESH_TTL_SECONDS
+    except Exception:
+        base = POPULAR_FRESH_TTL_SECONDS
+    try:
+        from cache_manager import get_market_aware_fresh_ttl
+        return float(get_market_aware_fresh_ttl(base))
+    except Exception:
+        return float(base)
+
+
+def _effective_fresh_ttl(ticker: str, snapshot: Optional[SentimentSnapshot] = None) -> float:
+    """Fresh window for this snapshot — shorter for zero/one-article snapshots
+    so empty results are negative-cached (not refetched every request) but
+    still recover quickly."""
+    ttl = _fresh_ttl_seconds(ticker)
+    if snapshot is not None and _is_broken_snapshot(snapshot):
+        ttl = min(ttl, float(NEGATIVE_CACHE_SECONDS))
+    return ttl
+
+
+def _get_freshness_status(generated_at: str, ttl_seconds: Optional[float] = None) -> str:
     """Determine freshness status of a cached snapshot."""
     try:
         gen_str = generated_at.replace("Z", "+00:00")
@@ -110,7 +166,8 @@ def _get_freshness_status(generated_at: str) -> str:
             gen_time = gen_time.replace(tzinfo=timezone.utc)
         now = datetime.now(timezone.utc)
         age_seconds = (now - gen_time).total_seconds()
-        if age_seconds < NEWS_FRESH_TTL_SECONDS:
+        fresh_window = NEWS_FRESH_TTL_SECONDS if ttl_seconds is None else ttl_seconds
+        if age_seconds < fresh_window:
             return FRESHNESS_FRESH
         elif age_seconds < NEWS_STALE_SERVE_SECONDS:
             return FRESHNESS_STALE_SERVABLE
@@ -225,9 +282,11 @@ def _sqlite_get_snapshot(ticker: str) -> Optional[SentimentSnapshot]:
                 logger.info(f"[CACHE] {ticker} rejecting old methodology v{cached_version} (current=v{METHODOLOGY_VERSION})")
                 return None
             snapshot = _dict_to_snapshot(data)
-            # Mark freshness based on generated_at vs current time
-            now = datetime.now(timezone.utc)
-            snapshot.data_freshness = _get_freshness_status(generated_at)
+            # Mark freshness based on generated_at vs current time (per-symbol
+            # TTL; short negative-cache window for empty/one-article snapshots)
+            snapshot.data_freshness = _get_freshness_status(
+                generated_at, _effective_fresh_ttl(ticker, snapshot)
+            )
             return snapshot
     except Exception as e:
         logger.debug(f"[CACHE] SQLite read error for {ticker}: {e}")
@@ -280,9 +339,11 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
                 "finbert_negative": a.finbert_negative,
                 "weighted_score": a.weighted_score,
                 "source_quality": a.source_quality,
+                "source_type": getattr(a, "source_type", "aggregator"),
                 "entity_match_score": a.entity_match_score,
                 "entity_count": a.entity_count,
                 "rule_score": getattr(a, 'rule_score', 0.0),
+                "confidence": getattr(a, 'confidence', 0.0),
                 "events": getattr(a, 'events', []),
             }
             for a in s.articles
@@ -293,6 +354,10 @@ def _snapshot_to_dict(s: SentimentSnapshot) -> dict:
         "coverage_status": getattr(s, 'coverage_status', 'unknown'),
         "freshest_article_at": getattr(s, 'freshest_article_at', ''),
         "oldest_article_at": getattr(s, 'oldest_article_at', ''),
+        "confidence": getattr(s, 'confidence', 0.0),
+        "confidence_label": getattr(s, 'confidence_label', 'low'),
+        "limited_evidence": getattr(s, 'limited_evidence', False),
+        "source_attributions": getattr(s, 'source_attributions', []),
         "provider_summary": s.provider_summary,
         "drivers": getattr(s, 'drivers', []),
         "explanation": getattr(s, 'explanation', ''),
@@ -318,6 +383,8 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
             entity_match_score=a.get("entity_match_score", 0.0),
             entity_count=a.get("entity_count", 0),
             rule_score=a.get("rule_score", 0.0),
+            confidence=a.get("confidence", 0.0),
+            source_type=a.get("source_type", "aggregator"),
             events=a.get("events", []),
         )
         for a in d.get("articles", [])
@@ -358,6 +425,10 @@ def _dict_to_snapshot(d: dict) -> SentimentSnapshot:
         coverage_status=d.get("coverage_status", "unknown"),
         freshest_article_at=d.get("freshest_article_at", ""),
         oldest_article_at=d.get("oldest_article_at", ""),
+        confidence=d.get("confidence", 0.0),
+        confidence_label=d.get("confidence_label", "low"),
+        limited_evidence=d.get("limited_evidence", False),
+        source_attributions=d.get("source_attributions", []),
         news_impact_summary=d.get("news_impact_summary", ""),
     )
 
@@ -397,62 +468,95 @@ def _wait_for_inflight(ticker: str, timeout: float = 15.0) -> Optional[Sentiment
 
 # ─── Relevance Scoring ──────────────────────────────────────────────────────
 
+def _term_in_text(term: str, text: str) -> bool:
+    """Word-boundary match (lowercase) — 'cat' never matches 'catch'."""
+    if not term or not text:
+        return False
+    return bool(re.search(r"(?<![\w])" + re.escape(term.lower()) + r"(?![\w])", text))
+
+
 def _score_relevance(article: NewsArticle, company: CompanyIdentity) -> float:
     """
     Score article relevance to the target company.
     Returns 0.0-1.0. Higher = more relevant.
 
-    Tier-based approach:
-    - Tier A (0.5+): Direct ticker/entity match via provider metadata
-    - Tier B (0.3+): Company name clearly present in text
-    - Tier C (0.15+): Contextual mention (alias, short name)
-    - Tier D (<0.15): Weak/indirect — candidate for rejection
+    Methodology (v7):
+    - Identity terms are deduplicated first. When the ticker IS the short name
+      or an alias (DELL/Dell, IBM/IBM), a single mention scores ONCE — the old
+      code added ticker+canonical+short+alias for the same word (0.90 for one
+      "dell" mention), which let junk through.
+    - All matching is word-boundary safe: short tickers (T, C, V, MA, CAT...)
+      can no longer match inside unrelated words ('the', 'capture', ...).
+    - Title mentions weigh more than description-only mentions.
+    - Provider entity metadata (Marketaux) adds a bounded bonus.
 
-    Entity diversity penalty: if provider identified many entities and our
-    ticker is just one of many, reduce weight to avoid incidental mentions.
+    Tiers (approximate):
+    - 0.70+: company + ticker both present, in title
+    - 0.40-0.65: clear company/ticker mention
+    - 0.15-0.40: single weaker mention
+    - <0.15: reject
     """
+    title = (article.title or "").lower()
     text = f"{article.title} {article.description}".lower()
     score = 0.0
 
-    # Check provider entity matches (Marketaux etc.)
+    # Deduplicated name-group terms (canonical, short, aliases)
+    name_terms: List[str] = []
+    seen_terms = set()
+    for t in [company.canonical_name, company.short_name] + list(company.aliases):
+        if t and len(t.strip()) >= 2 and t.strip().lower() not in seen_terms:
+            seen_terms.add(t.strip().lower())
+            name_terms.append(t.strip())
+
+    name_hit = any(_term_in_text(t, text) for t in name_terms)
+    name_in_title = any(_term_in_text(t, title) for t in name_terms)
+
+    # Ticker term — separate group ONLY when the ticker isn't already a name
+    # term (IBM's short name IS "ibm", so it must not be counted twice).
+    ticker = (company.ticker or "").lower()
+    ticker_is_name_term = bool(ticker) and ticker in seen_terms
+    ticker_hit = False
+    ticker_in_title = False
+    if ticker and not ticker_is_name_term:
+        if len(ticker) >= 2:
+            ticker_hit = _term_in_text(ticker, text)
+            ticker_in_title = _term_in_text(ticker, title)
+        else:
+            # Single-letter tickers (T, C, V): require a $-prefixed or
+            # parenthesized symbol form to avoid matching every word.
+            m = re.search(r"[\$\(" + re.escape(ticker) + r"]" + re.escape(ticker) + r"(?![a-z])", text)
+            ticker_hit = bool(m)
+            ticker_in_title = bool(re.search(r"[\$\(" + re.escape(ticker) + r"]" + re.escape(ticker) + r"(?![a-z])", title))
+
+    # Text signals (each group counted at most once)
+    if name_hit:
+        score += 0.40
+    if ticker_hit and not name_hit:
+        score += 0.35  # symbol-only mention (e.g., "$AAPL" or "AAPL" with no name)
+    elif ticker_hit and name_hit:
+        score += 0.10  # both full name AND symbol — strongest textual signal
+    if name_in_title or ticker_in_title:
+        score += 0.15
+
+    # Provider entity metadata (Marketaux entity tagging)
     if article.matched_entities:
+        entity_bonus = 0.0
         for entity_name in article.matched_entities:
-            entity_lower = entity_name.lower()
-            if company.canonical_name.lower() in entity_lower or entity_lower in company.canonical_name.lower():
-                score += 0.5  # Strong entity match
+            el = (entity_name or "").lower()
+            if not el:
+                continue
+            if any(_term_in_text(t, el) for t in name_terms):
+                entity_bonus = 0.35
                 break
-            if company.ticker.lower() in entity_lower:
-                score += 0.4
+            if ticker and len(ticker) >= 2 and _term_in_text(ticker, el):
+                entity_bonus = 0.30
                 break
-            for alias in company.aliases:
-                if alias.lower() in entity_lower:
-                    score += 0.3
-                    break
+        score += entity_bonus
 
-    # Explicit ticker match (strongest signal in text)
-    if company.ticker.lower() in text:
-        score += 0.3
-
-    # Canonical company name match
-    if company.canonical_name.lower() in text:
-        score += 0.25
-
-    # Short name match
-    if company.short_name and company.short_name.lower() in text:
-        score += 0.2
-
-    # Alias match
-    for alias in company.aliases:
-        if alias.lower() in text:
-            score += 0.15
-            break
-
-    # Entity diversity penalty from provider metadata:
-    # If the provider identified many entities (e.g., 5+), and our ticker
-    # is just one of them, this is likely a comparison/market-roundup article.
-    # Reduce relevance to avoid treating incidental mentions as primary.
+    # Entity diversity penalty: if the provider identified many entities and
+    # our ticker is just one of many, reduce weight to avoid incidental
+    # mentions (comparison/roundup articles).
     if article.entity_count >= 4 and article.entity_match_score > 0:
-        # Penalize proportionally: 4 entities → 0.85x, 5 → 0.8x, 8+ → 0.65x
         diversity_penalty = max(0.65, 1.0 - (article.entity_count - 3) * 0.05)
         score *= diversity_penalty
 
@@ -516,10 +620,10 @@ def _deduplicate_articles(articles: List[NewsArticle]) -> List[NewsArticle]:
             groups[group_counter] = [article]
             group_counter += 1
 
-    # Fuzzy dedup: merge if titles are VERY similar
-    # Cross-publisher: if Jaccard > 0.85 (nearly identical titles) → same story syndicated
-    # Same-publisher: if Jaccard > 0.7 → same story updated
-    titles = [(i, re.sub(r'[^a-z0-9]', '', a.title.lower()), a.publisher.lower()) for i, a in enumerate(articles)]
+    # Fuzzy dedup: merge only near-identical titles (word-level Jaccard).
+    # Cross-publisher: sim > 0.8 + >=3 shared words → syndicated copy
+    # Same-publisher: sim > 0.55 + >=3 shared words → updated/reformatted story
+    titles = [(i, a.title, a.publisher.lower()) for i, a in enumerate(articles)]
     for i in range(len(titles)):
         for j in range(i + 1, len(titles)):
             t1 = titles[i][1]
@@ -528,16 +632,22 @@ def _deduplicate_articles(articles: List[NewsArticle]) -> List[NewsArticle]:
             pub2 = titles[j][2]
             if not t1 or not t2:
                 continue
+            set1 = set(re.findall(r'[a-z0-9]+', t1.lower()))
+            set2 = set(re.findall(r'[a-z0-9]+', t2.lower()))
+            shared = set1 & set2
+            if len(shared) < 3 and min(len(set1), len(set2)) >= 3:
+                continue
             sim = _jaccard_similarity(t1, t2)
-            # Cross-publisher dedup: very high similarity = same syndicated story
-            should_merge = (sim > 0.85) or (sim > 0.7 and pub1 == pub2)
+            should_merge = (sim > 0.8) or (sim > 0.55 and pub1 == pub2)
             if should_merge:
+                n1 = re.sub(r'[^a-z0-9]', '', t1.lower())
+                n2 = re.sub(r'[^a-z0-9]', '', t2.lower())
                 gid1 = seen_fingerprints.get(
-                    hashlib.md5(f"{t1}|{re.sub(r'[?#].*', '', articles[titles[i][0]].url.lower())}".encode()).hexdigest(),
+                    hashlib.md5(f"{n1}|{re.sub(r'[?#].*', '', articles[titles[i][0]].url.lower())}".encode()).hexdigest(),
                     -1
                 )
                 gid2 = seen_fingerprints.get(
-                    hashlib.md5(f"{t2}|{re.sub(r'[?#].*', '', articles[titles[j][0]].url.lower())}".encode()).hexdigest(),
+                    hashlib.md5(f"{n2}|{re.sub(r'[?#].*', '', articles[titles[j][0]].url.lower())}".encode()).hexdigest(),
                     -1
                 )
                 if gid1 != gid2 and gid1 >= 0 and gid2 >= 0:
@@ -566,9 +676,11 @@ def _deduplicate_articles(articles: List[NewsArticle]) -> List[NewsArticle]:
 
 
 def _jaccard_similarity(s1: str, s2: str) -> float:
-    """Simple Jaccard similarity for short strings."""
-    set1 = set(s1)
-    set2 = set(s2)
+    """Word-token Jaccard similarity (character-set Jaccard wrongly merged
+    distinct titles from the same publisher because English text shares most
+    letters of the alphabet)."""
+    set1 = set(re.findall(r'[a-z0-9]+', s1.lower()))
+    set2 = set(re.findall(r'[a-z0-9]+', s2.lower()))
     intersection = set1 & set2
     union = set1 | set2
     return len(intersection) / len(union) if union else 0.0
@@ -1151,7 +1263,10 @@ def _compute_fresh_snapshot(
         if provider_name == "marketaux":
             nonlocal marketaux_called_this_ticker, marketaux_articles_selected
             marketaux_called_this_ticker = True
-            marketaux_articles_selected = articles_selected
+            # Raw articles (relevance isn't scored yet at record time): a
+            # non-empty response means Marketaux gave us what it has for this
+            # ticker — only an EMPTY response warrants a wider-window retry.
+            marketaux_articles_selected = articles_returned
 
     # Start with stale articles in the reservoir (if doing incremental refresh)
     if existing_stale_articles:
@@ -1171,6 +1286,12 @@ def _compute_fresh_snapshot(
             continue
 
         try:
+            # Quota/credit providers add nothing once the target is reached —
+            # skip them (free providers still run for source diversity).
+            if (provider_name not in FREE_PROVIDERS
+                    and len(unique_relevant_urls) >= TARGET_NEWS_COUNT):
+                provider_results.append({"provider": provider_name, "status": "skipped_enough", "count": 0})
+                continue
             # Per-ticker cooldown check for Marketaux
             if provider_name == "marketaux":
                 if not budget_manager.can_call_ticker("marketaux", ticker):
@@ -1226,8 +1347,9 @@ def _compute_fresh_snapshot(
     if len(unique_relevant_urls) < TARGET_NEWS_COUNT:
         logger.info(f"[ENGINE] {ticker} only {len(unique_relevant_urls)} unique relevant, expanding to {NEWS_SECONDARY_WINDOW_DAYS}d window")
         for provider_name in selected_providers:
-            # Skip Marketaux if already called this ticker (don't call twice)
-            if provider_name == "marketaux" and marketaux_called_this_ticker:
+            # Skip Marketaux only if it already RETURNED articles this run —
+            # an empty Stage-A result must be retried with the wider window.
+            if provider_name == "marketaux" and marketaux_called_this_ticker and marketaux_articles_selected > 0:
                 continue
             provider = all_providers.get(provider_name)
             if not provider or not provider.is_available():
@@ -1244,13 +1366,14 @@ def _compute_fresh_snapshot(
                     lookback_days=NEWS_SECONDARY_WINDOW_DAYS,
                     max_results=20,
                 )
-                if result.success and result.articles:
-                    _record_provider_call(provider_name, result, NEWS_SECONDARY_WINDOW_DAYS)
+                _record_provider_call(provider_name, result, NEWS_SECONDARY_WINDOW_DAYS)
+                metrics.record_provider_call(provider_name, result.success)
+                if result.articles:
                     _add_to_reservoir(result.articles)
                     metrics.articles_fetched += len(result.articles)
                     logger.info(f"[ENGINE] {provider_name} (72h) returned {len(result.articles)} articles (unique relevant: {len(unique_relevant_urls)})")
-                    if len(unique_relevant_urls) >= TARGET_NEWS_COUNT:
-                        break
+                if len(unique_relevant_urls) >= TARGET_NEWS_COUNT:
+                    break
             except Exception:
                 continue
 
@@ -1260,8 +1383,8 @@ def _compute_fresh_snapshot(
     if len(unique_relevant_urls) < TARGET_NEWS_COUNT:
         logger.info(f"[ENGINE] {ticker} only {len(unique_relevant_urls)} unique relevant, expanding to {NEWS_MAX_AGE_DAYS}d window")
         for provider_name in selected_providers:
-            # Skip Marketaux if already called this ticker (don't call twice)
-            if provider_name == "marketaux" and marketaux_called_this_ticker:
+            # Skip Marketaux only if it already RETURNED articles this run
+            if provider_name == "marketaux" and marketaux_called_this_ticker and marketaux_articles_selected > 0:
                 continue
             provider = all_providers.get(provider_name)
             if not provider or not provider.is_available():
@@ -1278,13 +1401,14 @@ def _compute_fresh_snapshot(
                     lookback_days=NEWS_MAX_AGE_DAYS,
                     max_results=20,
                 )
-                if result.success and result.articles:
-                    _record_provider_call(provider_name, result, NEWS_MAX_AGE_DAYS)
+                _record_provider_call(provider_name, result, NEWS_MAX_AGE_DAYS)
+                metrics.record_provider_call(provider_name, result.success)
+                if result.articles:
                     _add_to_reservoir(result.articles)
                     metrics.articles_fetched += len(result.articles)
                     logger.info(f"[ENGINE] {provider_name} (7d) returned {len(result.articles)} articles (unique relevant: {len(unique_relevant_urls)})")
-                    if len(unique_relevant_urls) >= TARGET_NEWS_COUNT:
-                        break
+                if len(unique_relevant_urls) >= TARGET_NEWS_COUNT:
+                    break
             except Exception:
                 continue
 
@@ -1300,8 +1424,9 @@ def _compute_fresh_snapshot(
     unique_articles = _deduplicate_articles(relevant_articles)
     logger.info(f"[ENGINE] {ticker} {len(unique_articles)} unique articles after dedup")
 
-    # Rank and select top articles with source diversity
-    unique_articles = _rank_and_select_articles(unique_articles, TARGET_NEWS_COUNT)
+    # Rank and select: store up to MAX_ARTICLES_PER_TICKER (20) so the UI can
+    # page from 10 initial → 20 with Load More without another API round trip.
+    unique_articles = _rank_and_select_articles(unique_articles, MAX_ARTICLES_PER_TICKER)
     logger.info(f"[ENGINE] {ticker} {len(unique_articles)} articles after ranking and diversity selection")
 
     # Track metrics
@@ -1311,6 +1436,8 @@ def _compute_fresh_snapshot(
     # Determine status and coverage
     article_count_for_status = len(unique_articles)
     coverage = get_coverage_status(article_count_for_status)
+    # 1-2 articles: still returned + displayed, but flagged as limited evidence
+    limited_evidence = 0 < article_count_for_status < MIN_RELEVANT_ARTICLES
 
     if not all_articles:
         status = SentimentStatus.NEWS_UNAVAILABLE
@@ -1324,6 +1451,16 @@ def _compute_fresh_snapshot(
     else:
         status = SentimentStatus.SUFFICIENT
         label = SentimentLabel.NEUTRAL
+
+    def _rule_confidence(rule_result: Dict[str, Any], rule_score: float) -> float:
+        """Per-article sentiment confidence from the rule engine: more matched
+        signals + stronger directional score = higher confidence."""
+        hits = int(rule_result.get("positive_count", 0) or 0) + int(rule_result.get("negative_count", 0) or 0)
+        signal = min(1.0, hits / 4.0)
+        if hits == 0:
+            signal = 0.1
+        agreement = min(1.0, abs(rule_score))
+        return round(min(1.0, 0.6 * signal + 0.4 * agreement), 3)
 
     # Run FinBERT (only if we have enough articles)
     article_sentiments: List[ArticleSentiment] = []
@@ -1355,6 +1492,7 @@ def _compute_fresh_snapshot(
                 _rule_result = _score_article(article.title, article.description)
                 _rule_score = _rule_result["score"]
             except Exception:
+                _rule_result = {"positive_count": 0, "negative_count": 0}
                 _rule_score = 0.0
 
             _label_score = fb["positive"] - fb["negative"]
@@ -1371,9 +1509,11 @@ def _compute_fresh_snapshot(
                 finbert_neutral=article.finbert_neutral,
                 finbert_negative=article.finbert_negative,
                 source_quality=source_q,
+                source_type=str(article.source_type.value if hasattr(article.source_type, "value") else article.source_type),
                 entity_match_score=article.entity_match_score,
                 entity_count=article.entity_count,
                 rule_score=_label_score,
+                confidence=_rule_confidence(_rule_result, _rule_score),
             ))
     elif unique_articles:
         _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1407,6 +1547,10 @@ def _compute_fresh_snapshot(
             fb_label = result["label"]
 
             source_q = SOURCE_QUALITY.get(article.provider, 0.5)
+            if article.source_type == SourceType.COMPANY_OFFICIAL:
+                source_q = 1.0
+            elif article.source_type == SourceType.REGULATORY:
+                source_q = 0.9
             article_sentiments.append(ArticleSentiment(
                 article_id=article.id,
                 title=article.title,
@@ -1419,9 +1563,11 @@ def _compute_fresh_snapshot(
                 finbert_negative=round(fb_neg, 4),
                 finbert_neutral=round(fb_neu, 4),
                 source_quality=source_q,
+                source_type=str(article.source_type.value if hasattr(article.source_type, "value") else article.source_type),
                 entity_match_score=article.entity_match_score,
                 entity_count=article.entity_count,
                 rule_score=rule_score,
+                confidence=_rule_confidence(result, rule_score),
                 events=rule_events,
             ))
 
@@ -1443,13 +1589,20 @@ def _compute_fresh_snapshot(
     sources = list(set(a.publisher for a in unique_articles if a.publisher))
     provider_summary = {r["provider"]: r for r in provider_results}
 
+    # Licensing attributions for sources actually used this run
+    attributions: List[str] = []
+    for p in providers_attempted:
+        credit = PROVIDER_ATTRIBUTIONS.get(p)
+        if credit and credit not in attributions:
+            attributions.append(credit)
+
     # Compute freshness metadata from final article set
     freshest_at = ""
     oldest_at = ""
     if article_sentiments:
         parsed_dates = []
         now_utc = datetime.now(timezone.utc)
-        for a in article_sentiments[:TARGET_NEWS_COUNT]:
+        for a in article_sentiments:
             try:
                 if a.published_at:
                     # Normalize: try parsing with timezone, fallback to assuming UTC
@@ -1469,6 +1622,22 @@ def _compute_fresh_snapshot(
             freshest_at = parsed_dates[0][1]  # Most recent
             oldest_at = parsed_dates[-1][1]   # Oldest
 
+    # Overall confidence: coverage + source diversity + freshness, heavily
+    # discounted when evidence is limited.
+    n_sent = len(article_sentiments)
+    cov_component = min(1.0, n_sent / max(1, TARGET_NEWS_COUNT))
+    div_component = min(1.0, len(sources) / 3.0)
+    if freshest_at:
+        freshest_age = _article_age_hours(freshest_at)
+        fresh_component = 1.0 if freshest_age <= 24 else (0.7 if freshest_age <= 72 else 0.4)
+    else:
+        fresh_component = 0.3
+    confidence = 0.45 * cov_component + 0.30 * div_component + 0.25 * fresh_component
+    if status != SentimentStatus.SUFFICIENT:
+        confidence *= 0.35
+    confidence = round(min(1.0, max(0.0, confidence)), 3)
+    confidence_label = "high" if confidence >= 0.7 else ("medium" if confidence >= 0.4 else "low")
+
     snapshot = SentimentSnapshot(
         ticker=ticker,
         company_name=company.canonical_name,
@@ -1482,10 +1651,10 @@ def _compute_fresh_snapshot(
         relevant_article_count=len(unique_articles),
         source_count=len(sources),
         providers_attempted=providers_attempted,
-        articles=article_sentiments[:TARGET_NEWS_COUNT],
+        articles=article_sentiments[:MAX_ARTICLES_PER_TICKER],
         news_headlines=[
             {"title": a.title, "source": a.publisher, "url": a.url, "published_at": a.published_at}
-            for a in article_sentiments[:TARGET_NEWS_COUNT]
+            for a in article_sentiments[:INITIAL_ARTICLES]
         ],
         data_freshness="fresh",
         provider_summary=provider_summary,
@@ -1493,6 +1662,10 @@ def _compute_fresh_snapshot(
         coverage_status=coverage,
         freshest_article_at=freshest_at,
         oldest_article_at=oldest_at,
+        confidence=confidence,
+        confidence_label=confidence_label,
+        limited_evidence=limited_evidence,
+        source_attributions=attributions,
     )
 
     # Extract drivers and generate explanation
@@ -1569,25 +1742,26 @@ def get_sentiment_snapshot(
     if not force_refresh:
         sqlite_cached = _sqlite_get_snapshot(ticker)
         if sqlite_cached:
-            # Reject broken snapshots (1 article = likely provider failure)
-            if (sqlite_cached.relevant_article_count <= 1 and
-                    sqlite_cached.status != SentimentStatus.SUFFICIENT):
-                logger.info(f"[CACHE] {ticker} rejecting broken snapshot ({sqlite_cached.relevant_article_count} articles) — will re-fetch")
+            broken = _is_broken_snapshot(sqlite_cached)
+            freshness = sqlite_cached.data_freshness
+            if freshness == FRESHNESS_FRESH:
+                # FRESH (incl. negative-cached empty snapshots) → serve
+                _l1_set(ticker, sqlite_cached)
+                logger.info(f"[CACHE] {ticker} SQLite cache HIT (fresh, broken={broken})")
+                return sqlite_cached
+            elif freshness == FRESHNESS_STALE_SERVABLE and not broken:
+                # STALE_SERVABLE: return stale immediately + trigger background refresh
+                logger.info(f"[SWR] {ticker} SQLite cache STALE_SERVABLE — serving stale + triggering background refresh")
+                _trigger_background_refresh(ticker)
+                return sqlite_cached
+            elif broken:
+                # Negative cache expired — recompute (blocking). Without this
+                # guard, zero-result tickers refetched providers on EVERY
+                # request (the old unconditional "reject broken snapshot" loop).
+                logger.info(f"[CACHE] {ticker} negative cache expired ({sqlite_cached.relevant_article_count} articles) — re-fetching")
             else:
-                freshness = sqlite_cached.data_freshness
-                if freshness == FRESHNESS_FRESH:
-                    # FRESH: promote to L1, return immediately
-                    _l1_set(ticker, sqlite_cached)
-                    logger.info(f"[CACHE] {ticker} SQLite cache HIT (fresh)")
-                    return sqlite_cached
-                elif freshness == FRESHNESS_STALE_SERVABLE:
-                    # STALE_SERVABLE: return stale immediately + trigger background refresh
-                    logger.info(f"[SWR] {ticker} SQLite cache STALE_SERVABLE — serving stale + triggering background refresh")
-                    _trigger_background_refresh(ticker)
-                    return sqlite_cached
-                else:
-                    # EXPIRED: fall through to compute (no cached data is usable)
-                    logger.info(f"[CACHE] {ticker} SQLite cache EXPIRED — must recompute")
+                # EXPIRED: fall through to compute (no cached data is usable)
+                logger.info(f"[CACHE] {ticker} SQLite cache EXPIRED — must recompute")
 
     # 3. Acquire single-flight: if another request is computing, wait
     if not _acquire_inflight(ticker):

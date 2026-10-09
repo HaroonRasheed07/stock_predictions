@@ -45,7 +45,7 @@ _COMPANY_DB: Dict[str, Dict[str, Any]] = {
     "CSCO": {"name": "Cisco Systems Inc.", "short": "Cisco", "aliases": ["cisco", "csco"]},
     "NFLX": {"name": "Netflix Inc.", "short": "Netflix", "aliases": ["netflix", "nflx"]},
     "CRM": {"name": "Salesforce Inc.", "short": "Salesforce", "aliases": ["salesforce", "crm"]},
-    "AMD": {"name": "Advanced Micro Devices Inc.", "short": "AMD", "aliases": ["advanced micro", "amd"]},
+    "AMD": {"name": "Advanced Micro Devices Inc.", "short": "AMD", "aliases": ["advanced micro devices", "amd"]},
     "INTC": {"name": "Intel Corporation", "short": "Intel", "aliases": ["intel", "intc"]},
     "KO": {"name": "Coca-Cola Company", "short": "Coca-Cola", "aliases": ["coca cola", "coke", "ko"]},
     "PEP": {"name": "PepsiCo Inc.", "short": "PepsiCo", "aliases": ["pepsi", "pepsico", "pep"]},
@@ -106,7 +106,21 @@ _COMPANY_DB: Dict[str, Dict[str, Any]] = {
     "LCID": {"name": "Lucid Group Inc.", "short": "Lucid", "aliases": ["lucid", "lcid"]},
     "SOFI": {"name": "SoFi Technologies Inc.", "short": "SoFi", "aliases": ["sofi"]},
     "HOOD": {"name": "Robinhood Markets Inc.", "short": "Robinhood", "aliases": ["robinhood", "hood"]},
+    # Allowlist gaps + previously missing high-value tickers
+    "DELL": {"name": "Dell Technologies Inc.", "short": "Dell", "aliases": ["dell technologies", "dell", "dell inc", "dell tech"]},
+    "VZ": {"name": "Verizon Communications Inc.", "short": "Verizon", "aliases": ["verizon"]},
+    "T": {"name": "AT&T Inc.", "short": "AT&T", "aliases": ["at&t", "att", "american telephone and telegraph"]},
+    "MS": {"name": "Morgan Stanley", "short": "Morgan Stanley", "aliases": ["morgan stanley"]},
+    "PYPL": {"name": "PayPal Holdings Inc.", "short": "PayPal", "aliases": ["paypal"]},
+    "ABNB": {"name": "Airbnb Inc.", "short": "Airbnb", "aliases": ["airbnb"]},
+    "TSM": {"name": "Taiwan Semiconductor Manufacturing Company", "short": "TSMC", "aliases": ["tsmc", "taiwan semiconductor"]},
+    "C": {"name": "Citigroup Inc.", "short": "Citigroup", "aliases": ["citigroup", "citi"]},
 }
+
+
+def is_known_company(ticker: str) -> bool:
+    """True when the ticker has a curated identity entry (treated as popular)."""
+    return ticker.upper().strip() in _COMPANY_DB
 
 
 def resolve_company(ticker: str) -> CompanyIdentity:
@@ -130,6 +144,7 @@ def resolve_company(ticker: str) -> CompanyIdentity:
             canonical_name=entry["name"],
             short_name=entry.get("short", ""),
             aliases=entry.get("aliases", []),
+            sector=entry.get("sector", ""),
         )
         _identity_cache[ticker] = (time.time(), identity)
         logger.info(f"[RESOLVER] {ticker} → {identity.canonical_name} (from DB)")
@@ -169,11 +184,23 @@ def resolve_company(ticker: str) -> CompanyIdentity:
 
 
 def get_search_queries(identity: CompanyIdentity) -> List[str]:
-    """Generate optimized search queries for news providers."""
-    queries = []
-    queries.append(identity.canonical_name)
-    if identity.short_name and identity.short_name != identity.canonical_name:
-        queries.append(identity.short_name)
-    for alias in identity.aliases[:2]:
-        queries.append(alias)
+    """Generate optimized search queries for news providers (deduplicated)."""
+    queries: List[str] = []
+    seen = set()
+
+    def _add(q: str):
+        q = (q or "").strip()
+        if not q or len(q) < 2:
+            return
+        key = q.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        queries.append(q)
+
+    _add(identity.canonical_name)
+    _add(identity.short_name)
+    for alias in identity.aliases:
+        _add(alias)
+    _add(identity.ticker)
     return queries

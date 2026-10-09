@@ -5,6 +5,9 @@ stock_market/__pycache__/
 # stock_market/venv/
 stock_market/.env
 stock_market/provider_budget.db
+stock_market/news_cache.db
+stock_market/*.db-wal
+stock_market/*.db-shm
 *.pyc
 
 # =========================

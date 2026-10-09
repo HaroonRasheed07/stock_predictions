@@ -127,9 +127,11 @@ class ArticleSentiment:
     finbert_negative: float
     weighted_score: float = 0.0
     source_quality: float = 0.5
+    source_type: str = "aggregator"
     entity_match_score: float = 0.0
     entity_count: int = 0
     rule_score: float = 0.0  # Raw rule-engine score before pseudo-prob conversion
+    confidence: float = 0.0  # Rule-engine confidence for this article (0-1)
     drivers: List[Dict[str, Any]] = field(default_factory=list)  # Extracted sentiment drivers
     events: List[str] = field(default_factory=list)  # Event types from rule engine
 
@@ -264,6 +266,12 @@ class SentimentSnapshot:
     freshest_article_at: str = ""
     oldest_article_at: str = ""
 
+    # Confidence + display metadata
+    confidence: float = 0.0          # Overall snapshot confidence (0-1)
+    confidence_label: str = "low"     # low | medium | high
+    limited_evidence: bool = False    # True when 1-2 relevant articles (show with caveat)
+    source_attributions: List[str] = field(default_factory=list)  # Required credits for used sources
+
     provider_summary: Dict[str, Any] = field(default_factory=dict)
 
     # Legacy compatibility fields (for existing frontend)
@@ -342,8 +350,10 @@ class SentimentSnapshot:
         neg_count = self.negative_count if has_articles else 0
         neu_count = neutral_count if has_articles else 0
 
+        initial_count = min(10, len(self.articles))
         return {
             "ticker": self.ticker,
+            "company_name": self.company_name,
             "sentiment_score": self.score if is_available else 0.0,
             "sentiment_label": self.sentiment_label,
             "status": self.status.value,
@@ -364,6 +374,12 @@ class SentimentSnapshot:
             "generated_at": self.generated_at,
             "data_freshness": self.data_freshness,
             "score_available": is_available,
+            "confidence": round(getattr(self, "confidence", 0.0), 3),
+            "confidence_label": getattr(self, "confidence_label", "low"),
+            "limited_evidence": bool(getattr(self, "limited_evidence", False)),
+            "source_attributions": getattr(self, "source_attributions", []),
+            "initial_count": initial_count,
+            "has_more_articles": len(self.articles) > 10,
             "news": [
                 {
                     "title": a.title,
@@ -371,8 +387,11 @@ class SentimentSnapshot:
                     "url": a.url,
                     "published_at": a.published_at,
                     "sentiment": a.weighted_score,
+                    "relevance_score": a.relevance_score,
+                    "confidence": round(getattr(a, "confidence", 0.0), 3),
+                    "source_type": getattr(a, "source_type", "aggregator"),
                 }
-                for a in self.articles[:8]
+                for a in self.articles[:10]
             ],
             "articles": [
                 {
@@ -388,6 +407,8 @@ class SentimentSnapshot:
                     "finbert_negative": a.finbert_negative,
                     "weighted_score": a.weighted_score,
                     "source_quality": a.source_quality,
+                    "source_type": getattr(a, "source_type", "aggregator"),
+                    "confidence": round(getattr(a, "confidence", 0.0), 3),
                     "rule_score": getattr(a, 'rule_score', 0.0),
                 }
                 for a in self.articles[:20]

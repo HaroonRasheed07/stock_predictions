@@ -7,9 +7,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, TrendingUp, AlertCircle, Search, ExternalLink, Newspaper } from 'lucide-react';
+import { MessageSquare, TrendingUp, AlertCircle, AlertTriangle, Search, ExternalLink, Newspaper } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { fetchSentiment, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { useStockStore } from '@/store/stockStore';
 import { parseTickerParam } from '@/lib/ticker-routing';
@@ -18,6 +19,7 @@ import { SentimentTrend } from '@/components/analysis/SentimentTrend';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import ProfessionalSentimentChart from '@/components/ProfessionalSentimentChart';
+import { CompanyFilings } from './CompanyFilings';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -29,6 +31,7 @@ export default function SentimentAnalysis() {
   const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [showAllArticles, setShowAllArticles] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -82,6 +85,10 @@ export default function SentimentAnalysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    setShowAllArticles(false);
+  }, [ticker]);
+
   const handleSelectSuggestion = (asset: AssetInfo) => {
     setInputTicker(asset.ticker);
     setTicker(asset.ticker);
@@ -124,6 +131,73 @@ export default function SentimentAnalysis() {
     gcTime: 300000,
     refetchOnWindowFocus: false,
   });
+
+  const formatAge = (value?: string) => {
+    if (!value) return '';
+    const time = new Date(value).getTime();
+    if (Number.isNaN(time)) return '';
+    const diffMinutes = Math.floor((Date.now() - time) / 60000);
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const hours = Math.floor(diffMinutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+
+  const coverageLabel = (value?: string) => {
+    const key = (value || '').toUpperCase();
+    if (key === 'FULL') return 'Full coverage';
+    if (key === 'PARTIAL') return 'Partial coverage';
+    if (key === 'INSUFFICIENT') return 'Insufficient coverage';
+    return value || '';
+  };
+
+  const feedItems = (
+    sentimentData?.articles && sentimentData.articles.length > 0
+      ? sentimentData.articles
+      : sentimentData?.news || []
+  ).map((item: any, idx: number) => ({
+    id: String(item.article_id ?? item.url ?? idx),
+    title: item.title || '',
+    url: item.url || '',
+    source: item.publisher || item.source || 'Unknown',
+    published_at: item.published_at,
+  }));
+
+  const initialCount = sentimentData?.initial_count ?? 10;
+  const remainingArticles = feedItems.length - initialCount;
+  const hasMoreArticles =
+    remainingArticles > 0 && (sentimentData?.has_more_articles ?? true);
+  const visibleItems =
+    showAllArticles || !hasMoreArticles ? feedItems : feedItems.slice(0, initialCount);
+
+  const relevantCount =
+    sentimentData?.relevant_article_count ?? sentimentData?.news_count ?? 0;
+  const showLimitedBanner =
+    Boolean(sentimentData?.limited_evidence) ||
+    (sentimentData?.status === 'insufficient' && relevantCount >= 1);
+
+  const coverageText = coverageLabel(sentimentData?.coverage_status);
+  const freshAge = formatAge(sentimentData?.freshest_article_at);
+  const coverageLine = [coverageText, freshAge ? `Newest article: ${freshAge}` : '']
+    .filter(Boolean)
+    .join(' · ');
+
+  const confidenceLabel = (sentimentData?.confidence_label || '').toLowerCase();
+  const confidencePct =
+    typeof sentimentData?.confidence === 'number'
+      ? Math.round(sentimentData.confidence * 100)
+      : null;
+  const confidenceClass =
+    confidenceLabel === 'high'
+      ? 'bg-success/10 text-success border-success/20'
+      : confidenceLabel === 'medium'
+        ? 'bg-warning/10 text-warning border-warning/20'
+        : 'bg-muted/50 text-muted-foreground border-border/60';
+
+  const sourceAttributions = sentimentData?.source_attributions || [];
 
   // ALWAYS show the search header — never block it behind a skeleton
   const headerSection = (
@@ -218,12 +292,26 @@ export default function SentimentAnalysis() {
     <div className="space-y-4 sm:space-y-6">
       {headerSection}
 
+      {showLimitedBanner && (
+        <Alert className="border-yellow-600 bg-yellow-600/10">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-600">
+            Limited evidence — {relevantCount === 0
+              ? 'no relevant articles'
+              : `only ${relevantCount} relevant article${relevantCount === 1 ? '' : 's'}`} found in the last 24h.{' '}
+            {sentimentData?.score_available === false
+              ? 'Sentiment score is withheld until more coverage is available.'
+              : 'Sentiment score should be treated as provisional until more coverage is available.'}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Sentiment Score */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
         <Card className="glass">
           <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Overall Score</p>
                 <p className="text-xl sm:text-3xl font-bold">
                   {sentimentData?.score_available === false
@@ -233,8 +321,17 @@ export default function SentimentAnalysis() {
                 <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`}>
                   {formatSentimentLabel(sentimentData?.sentiment_label || '', sentimentData?.status)}
                 </p>
+                {confidenceLabel && (
+                  <span className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] sm:text-[11px] font-medium ${confidenceClass}`}>
+                    {confidenceLabel.charAt(0).toUpperCase() + confidenceLabel.slice(1)} confidence
+                    {confidencePct !== null && <span className="opacity-70">{confidencePct}%</span>}
+                  </span>
+                )}
+                {coverageLine && (
+                  <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{coverageLine}</p>
+                )}
               </div>
-              <TrendingUp className={`h-7 w-7 sm:h-10 sm:w-10 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`} />
+              <TrendingUp className={`h-7 w-7 sm:h-10 sm:w-10 shrink-0 ${getSentimentColorClass(sentimentData?.sentiment_label || '', sentimentData?.status)}`} />
             </div>
           </CardContent>
         </Card>
@@ -327,16 +424,16 @@ export default function SentimentAnalysis() {
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">Latest headlines for {ticker}</p>
                 </div>
-                <Badge variant="outline" className="shrink-0">{sentimentData?.news?.length || 0} items</Badge>
+                <Badge variant="outline" className="shrink-0">{feedItems.length} items</Badge>
               </div>
               <Separator className="mt-4 bg-border/60" />
             </CardHeader>
             <CardContent className="relative pt-2">
               <ScrollArea className="h-[320px] sm:h-[380px] md:h-[420px] w-full pr-4">
                 <div className="space-y-3 pb-1">
-                  {sentimentData?.news && sentimentData.news.map((news: any, idx: number) => (
+                  {visibleItems.map((news) => (
                     <div
-                      key={idx}
+                      key={news.id}
                       className="group rounded-xl border border-border/50 bg-background/40 p-3 sm:p-4 shadow-sm hover:shadow-md hover:bg-muted/25 hover:border-border/80 transition-all"
                     >
                       <div className="flex items-start gap-3">
@@ -381,7 +478,7 @@ export default function SentimentAnalysis() {
                       </div>
                     </div>
                   ))}
-                  {(!sentimentData?.news || sentimentData.news.length === 0) && (
+                  {(feedItems.length === 0) && (
                     <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
                       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
                         <Newspaper className="h-5 w-5 text-muted-foreground" />
@@ -392,10 +489,30 @@ export default function SentimentAnalysis() {
                   )}
                 </div>
               </ScrollArea>
+              {hasMoreArticles && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={() => setShowAllArticles((prev) => !prev)}
+                >
+                  {showAllArticles
+                    ? 'Show less'
+                    : `Show ${remainingArticles} more article${remainingArticles === 1 ? '' : 's'}`}
+                </Button>
+              )}
+              {sourceAttributions.length > 0 && (
+                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                  Sources: {sourceAttributions.join(' · ')}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* SEC Company Filings */}
+      <CompanyFilings ticker={ticker} />
     </div>
   );
 }
