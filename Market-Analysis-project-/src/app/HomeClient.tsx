@@ -7,11 +7,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp, TrendingDown, BarChart3, Brain, Shield,
   Activity, ArrowUpRight, ArrowDownRight, Minus, Clock,
-  Search, ChevronRight, AlertTriangle, Target, Sparkles,
-  Layers, Eye, LineChart, PieChart,
-  ArrowRight,
+  Search, ChevronRight, AlertTriangle, Sparkles,
+  Eye, LineChart,
+  ArrowRight, Star, Newspaper,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
+import { useWatchlistStore } from '@/store/watchlistStore';
 import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { getSentimentColorClass, formatSentimentLabel } from '@/lib/sentiment';
@@ -19,84 +20,134 @@ import { TickerLogo } from '@/components/common/TickerLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-function HeroSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO SEARCH — Autocomplete stock search with debounce
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function HeroSearch({ onSelect, id }: { onSelect: (ticker: string) => void; id?: string }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AssetInfo[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = useCallback((q: string) => {
     setQuery(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (q.length < 1) { setResults([]); setShowResults(false); return; }
+    if (q.length < 1) { setResults([]); setShowResults(false); setIsSearching(false); return; }
+    setIsSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
         const data = await fetchAssetSearch(q);
         setResults(data.slice(0, 8));
         setShowResults(true);
       } catch { setResults([]); }
+      setIsSearching(false);
     }, 300);
   }, []);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = query.trim().toUpperCase();
+    if (trimmed.length > 0) {
+      onSelect(trimmed);
+      setQuery('');
+      setShowResults(false);
+    }
+  };
+
   return (
-    <div className="relative w-full max-w-xl mx-auto">
+    <form onSubmit={handleSubmit} className="relative w-full max-w-xl mx-auto" role="search">
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
+          id={id}
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search any stock ticker or company..."
-          className="pl-12 h-14 text-base rounded-2xl bg-background/80 border-border/60 backdrop-blur-sm shadow-lg"
+          placeholder="Search any stock ticker or company…"
+          className="pl-12 pr-28 h-14 text-base rounded-2xl bg-background/80 border-border/60 backdrop-blur-sm shadow-lg focus-visible:ring-primary/40"
           onFocus={() => results.length > 0 && setShowResults(true)}
           onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          aria-label="Stock ticker search"
+          autoComplete="off"
         />
+        <Button
+          type="submit"
+          size="sm"
+          className="absolute right-2 top-1/2 -translate-y-1/2 bg-gradient-primary text-white hover:opacity-90 transition-opacity rounded-xl px-4 h-10"
+          disabled={query.trim().length === 0}
+        >
+          Analyze
+          <ArrowRight className="h-3.5 w-3.5 ml-1" />
+        </Button>
       </div>
       {showResults && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/60 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
           {results.map((r) => (
             <button
               key={r.ticker}
+              type="button"
               onClick={() => { onSelect(r.ticker); setQuery(''); setShowResults(false); }}
               className="flex items-center gap-3 w-full px-4 py-3 hover:bg-muted/50 transition-colors text-left"
             >
               <TickerLogo ticker={r.ticker} size="sm" />
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{r.ticker}</p>
                 <p className="text-xs text-muted-foreground truncate">{r.name}</p>
               </div>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             </button>
           ))}
         </div>
       )}
-    </div>
+      {isSearching && query.length > 0 && !showResults && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/60 rounded-xl shadow-xl z-50 px-4 py-6 text-center">
+          <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Searching…</p>
+        </div>
+      )}
+    </form>
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIGNAL BADGE — Visual indicator for Buy/Hold/Sell signals
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 function SignalBadge({ signal, compact = false }: { signal: string; compact?: boolean }) {
-  const config: Record<string, { bg: string; icon: any }> = {
-    'Buy': { bg: 'bg-success/10 border-success/20 text-success', icon: TrendingUp },
-    'Strong Buy': { bg: 'bg-success/10 border-success/20 text-success', icon: TrendingUp },
-    'Sell': { bg: 'bg-destructive/10 border-destructive/20 text-destructive', icon: TrendingDown },
-    'Strong Sell': { bg: 'bg-destructive/10 border-destructive/20 text-destructive', icon: TrendingDown },
-    'Hold': { bg: 'bg-warning/10 border-warning/20 text-warning', icon: Minus },
+  const config: Record<string, { bg: string; icon: any; ariaLabel: string }> = {
+    'Buy': { bg: 'bg-success/10 border-success/20 text-success', icon: TrendingUp, ariaLabel: 'Buy signal' },
+    'Strong Buy': { bg: 'bg-success/10 border-success/20 text-success', icon: TrendingUp, ariaLabel: 'Strong buy signal' },
+    'Sell': { bg: 'bg-destructive/10 border-destructive/20 text-destructive', icon: TrendingDown, ariaLabel: 'Sell signal' },
+    'Strong Sell': { bg: 'bg-destructive/10 border-destructive/20 text-destructive', icon: TrendingDown, ariaLabel: 'Strong sell signal' },
+    'Hold': { bg: 'bg-warning/10 border-warning/20 text-warning', icon: Minus, ariaLabel: 'Hold signal' },
   };
   const c = config[signal] || config['Hold'];
   const Icon = c.icon;
   return (
-    <div className={cn(
-      'inline-flex items-center gap-1 rounded-full border font-semibold',
-      c.bg,
-      compact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'
-    )}>
-      <Icon className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
+    <div
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border font-semibold',
+        c.bg,
+        compact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'
+      )}
+      role="status"
+      aria-label={c.ariaLabel}
+    >
+      <Icon className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} aria-hidden="true" />
       {signal}
     </div>
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN HOMEPAGE COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 export default function Home() {
   const router = useRouter();
   const { setSelectedTicker } = useStockStore();
+  const { watchlist } = useWatchlistStore();
 
   const { data: tickerData } = useQuery({
     queryKey: ['home-ticker'],
@@ -147,126 +198,118 @@ export default function Home() {
   const discover = discoverData?.discover || [];
   const marketStatus = tickerData?.marketStatus || 'Unknown';
 
-  // discover data already includes technical/sentiment from /api/home/intelligence → /api/discover/scan
-  const discoverWithSentiment = discover;
+  /* ─────────────────────────────────────────────────────────────────────────
+     FEATURE CARDS DATA
+     ───────────────────────────────────────────────────────────────────────── */
 
-  const evidenceSteps = [
-    { icon: BarChart3, label: 'Technical', description: 'Indicators, momentum, and pattern recognition', link: '/markets/stock/technical' },
-    { icon: Activity, label: 'Sentiment', description: 'News mood, social signals, and market context', link: '/markets/stock/sentiment' },
-    { icon: Brain, label: 'Forecast', description: 'ML price projections with confidence intervals', link: '/markets/stock/forecast' },
-    { icon: Shield, label: 'Risk', description: 'Volatility, drawdown, and downside exposure', link: '/markets/stock/technical' },
-    { icon: Target, label: 'Decision', description: 'Evidence-scored trade confirmation', link: '/markets/brief' },
-  ];
-
-  const capabilities = [
-    {
-      icon: BarChart3,
-      title: 'Multi-Layer Stock Brief',
-      description: 'Signal, sentiment, catalysts, and risk in one concise brief.',
-      link: '/markets/brief',
-    },
-    {
-      icon: Search,
-      title: 'Discover & Screen',
-      description: 'Find opportunities across the market with smart filtering.',
-      link: '/markets/discover',
-    },
+  const features = [
     {
       icon: LineChart,
       title: 'Technical Analysis',
-      description: 'Real indicators, charts, and pattern recognition for equities.',
+      description: 'RSI, MACD, Bollinger Bands, moving averages, and pattern analysis across multiple timeframes.',
       link: '/markets/stock/technical',
+      color: 'from-blue-500/20 to-blue-600/10 dark:from-blue-500/15 dark:to-blue-600/5',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+    },
+    {
+      icon: Newspaper,
+      title: 'News Sentiment',
+      description: 'AI-scored news articles with positive, neutral, and negative sentiment tracking across sources.',
+      link: '/markets/stock/sentiment',
+      color: 'from-purple-500/20 to-purple-600/10 dark:from-purple-500/15 dark:to-purple-600/5',
+      iconColor: 'text-purple-600 dark:text-purple-400',
     },
     {
       icon: Brain,
-      title: 'Forecast Models',
-      description: 'ML-based 10-day price projections with confidence bands.',
+      title: 'AI Forecasting',
+      description: 'LSTM-based price projections with confidence intervals over a 10-day forecast horizon.',
       link: '/markets/stock/forecast',
+      color: 'from-emerald-500/20 to-emerald-600/10 dark:from-emerald-500/15 dark:to-emerald-600/5',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
     },
     {
-      icon: PieChart,
-      title: 'Sentiment Analysis',
-      description: 'News-driven sentiment scoring and mood tracking.',
-      link: '/markets/stock/sentiment',
-    },
-    {
-      icon: AlertTriangle,
-      title: 'Risk Intelligence',
-      description: 'Multi-factor risk assessment and real-time monitoring.',
+      icon: Shield,
+      title: 'Risk Insights',
+      description: 'Volatility, drawdown, and multi-factor risk assessment to understand downside exposure.',
       link: '/markets/stock/technical',
+      color: 'from-amber-500/20 to-amber-600/10 dark:from-amber-500/15 dark:to-amber-600/5',
+      iconColor: 'text-amber-600 dark:text-amber-400',
     },
   ];
 
-  const trustPillars = [
+  /* ─────────────────────────────────────────────────────────────────────────
+     HOW IT WORKS STEPS
+     ───────────────────────────────────────────────────────────────────────── */
+
+  const howItWorks = [
     {
-      icon: BarChart3,
-      title: 'Real Market Data',
-      description: 'All analysis is built on live and historical market data — not estimates.',
+      step: '1',
+      title: 'Search for a stock',
+      description: 'Enter any ticker symbol or company name. We support hundreds of stocks and ETFs.',
     },
     {
-      icon: Layers,
-      title: 'Multiple Evidence Layers',
-      description: 'Technical, sentiment, forecast, and risk signals evaluated together.',
+      step: '2',
+      title: 'Review multiple perspectives',
+      description: 'See technical signals, news sentiment, model forecasts, and risk — each with its timeframe and data source clearly labeled.',
     },
     {
-      icon: Eye,
-      title: 'Explainable Analysis',
-      description: 'Every brief tells you why — not just what the signal says.',
-    },
-    {
-      icon: Clock,
-      title: 'Timeframe Awareness',
-      description: 'Signals are framed for short, medium, and long-term horizons.',
+      step: '3',
+      title: 'Inform your own research',
+      description: 'Different timeframes and methods can disagree. Use the combined evidence to understand the full picture, not just one number.',
     },
   ];
 
   return (
     <div className="min-h-screen">
 
-      {/* SECTION 1 — HERO */}
-      <section className="relative overflow-hidden gradient-hero py-16 md:py-24 lg:py-28">
-        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION A — HERO
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden gradient-hero py-12 md:py-20 lg:py-24" aria-labelledby="hero-heading">
+        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" aria-hidden="true" />
         <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+          <div className="text-center max-w-3xl mx-auto">
+            {/* Market status pill */}
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-5">
+              <span className="relative flex h-2 w-2" aria-hidden="true">
+                <span className={cn(
+                  "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                  marketStatus === 'Open' ? 'bg-success' : 'bg-muted-foreground'
+                )} />
+                <span className={cn(
+                  "relative inline-flex rounded-full h-2 w-2",
+                  marketStatus === 'Open' ? 'bg-success' : 'bg-muted-foreground'
+                )} />
               </span>
-              <span className="text-sm font-medium">Live Market Data</span>
-              <span className={cn(
-                'text-xs ml-1 px-2 py-0.5 rounded-full font-medium',
-                marketStatus === 'Open' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
-              )}>
-                <Clock className="h-3 w-3 inline mr-1" />
+              <span className="text-sm font-medium">
                 Market {marketStatus}
               </span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 leading-tight">
-              Research Stocks With Evidence,{' '}
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Not Guesswork.
+            <h1 id="hero-heading" className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-[1.15] tracking-tight">
+              Understand the stock.{' '}
+              <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                Not just the price.
               </span>
             </h1>
 
-            <p className="text-lg md:text-xl text-foreground/70 mb-8 max-w-2xl mx-auto">
-              Every brief layers technical indicators, sentiment, forecast models, and risk so you can see the full picture before deciding.
+            <p className="text-base sm:text-lg text-foreground/70 mb-8 max-w-2xl mx-auto leading-relaxed">
+              Explore technical signals, news sentiment, model-based price forecasts, and risk insights for the stocks you follow — all in one research experience.
             </p>
 
-            <HeroSearch onSelect={goToStock} />
+            <HeroSearch onSelect={goToStock} id="hero-search" />
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
-              <Link href="/markets/brief">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+              <Link href="/markets/stock">
                 <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
-                  <Sparkles className="h-4 w-4" />
-                  View Stock Brief
+                  <BarChart3 className="h-4 w-4" />
+                  Analyze a Stock
                 </Button>
               </Link>
               <Link href="/markets/discover">
                 <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 gap-2 w-full sm:w-auto">
                   <Search className="h-4 w-4" />
-                  Discover Stocks
+                  Explore Stock Intelligence
                 </Button>
               </Link>
             </div>
@@ -274,56 +317,66 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 2 — LIVE TICKER BAR */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION B — LIVE TICKER BAR (Market Overview)
+          ═══════════════════════════════════════════════════════════════════ */}
       {topStocks.length > 0 && (
-        <div className="bg-card/50 border-y border-border/40 backdrop-blur-sm py-3 overflow-hidden">
+        <div className="bg-card/50 border-y border-border/40 backdrop-blur-sm py-3 overflow-hidden" role="region" aria-label="Market overview ticker">
           <div className="flex space-x-8 whitespace-nowrap ticker-scroll">
             {[...topStocks.slice(0, 8), ...topStocks.slice(0, 8)].map((stock, idx) => (
               <button
                 key={`${stock.symbol}-${idx}`}
                 onClick={() => goToStock(stock.symbol)}
                 className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+                aria-label={`${stock.symbol} at $${stock.price.toFixed(2)}, ${stock.changePercent >= 0 ? 'up' : 'down'} ${Math.abs(stock.changePercent).toFixed(2)}%`}
               >
                 <span className="font-semibold text-sm">{stock.symbol}</span>
                 <span className="text-foreground/70 text-sm">${stock.price.toFixed(2)}</span>
-                <span className={cn('text-sm font-medium', stock.changePercent >= 0 ? 'text-success' : 'text-destructive')}>
+                <span className={cn('text-sm font-medium flex items-center gap-0.5', stock.changePercent >= 0 ? 'text-success' : 'text-destructive')}>
+                  {stock.changePercent >= 0 ? <ArrowUpRight className="h-3 w-3" aria-hidden="true" /> : <ArrowDownRight className="h-3 w-3" aria-hidden="true" />}
                   {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                 </span>
               </button>
             ))}
           </div>
+          <p className="text-center text-[10px] text-muted-foreground/60 mt-1">Data may be delayed. Not investment advice.</p>
         </div>
       )}
 
-      {/* SECTION 3 — TODAY'S STOCK INTELLIGENCE */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION C — TODAY'S STOCK INTELLIGENCE (Brief Preview)
+          ═══════════════════════════════════════════════════════════════════ */}
       {selected ? (
-        <section className="py-12 md:py-16">
+        <section className="py-10 md:py-14" aria-labelledby="intelligence-heading">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                A real snapshot from our engine not a recommendation, just an evidence layer.
+            <div className="text-center mb-6">
+              <h2 id="intelligence-heading" className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto text-sm">
+                A real snapshot from our analysis engine — not a recommendation, just an evidence layer.
               </p>
             </div>
 
             <div className="max-w-2xl mx-auto">
               <button
                 onClick={() => goToStock(selected.ticker)}
-                className="w-full text-left rounded-2xl border border-border/60 bg-card p-6 transition-all duration-200 hover:shadow-lg hover:border-primary/20 active:scale-[0.99]"
+                className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 md:p-6 transition-all duration-200 hover:shadow-lg hover:border-primary/20 active:scale-[0.99] group"
+                aria-label={`View full analysis for ${selected.ticker}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <TickerLogo ticker={selected.ticker} size="lg" />
                     <div>
                       <h3 className="text-xl font-bold">{selected.ticker}</h3>
-                      <p className="text-2xl font-bold tracking-tight mt-1">
+                      <p className="text-2xl font-bold tracking-tight mt-0.5">
                         ${selected.price.toFixed(2)}
                       </p>
                       <div className={cn(
-                        'flex items-center gap-1 text-sm font-medium mt-1',
+                        'flex items-center gap-1 text-sm font-medium mt-0.5',
                         selected.changePercent >= 0 ? 'text-success' : 'text-destructive'
                       )}>
-                        {selected.changePercent >= 0 ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                        {selected.changePercent >= 0
+                          ? <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                          : <ArrowDownRight className="h-4 w-4" aria-hidden="true" />}
                         {selected.changePercent >= 0 ? '+' : ''}{selected.change.toFixed(2)} ({selected.changePercent.toFixed(2)}%)
                       </div>
                     </div>
@@ -333,14 +386,14 @@ export default function Home() {
                     <SignalBadge signal={selected.signal} />
                     <div className="flex flex-col items-end gap-1">
                       <div className="flex items-center gap-1.5 text-xs">
-                        <Shield className={cn('h-3.5 w-3.5', selected.risk === 'High' ? 'text-destructive' : selected.risk === 'Low' ? 'text-success' : 'text-warning')} />
+                        <Shield className={cn('h-3.5 w-3.5', selected.risk === 'High' ? 'text-destructive' : selected.risk === 'Low' ? 'text-success' : 'text-warning')} aria-hidden="true" />
                         <span className="text-muted-foreground">Risk:</span>
                         <span className={cn('font-medium', selected.risk === 'High' ? 'text-destructive' : selected.risk === 'Low' ? 'text-success' : 'text-warning')}>
                           {selected.risk}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs">
-                        <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Activity className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                         <span className="text-muted-foreground">Vol:</span>
                         <span className="font-medium">{selected.volatility.toFixed(1)}%</span>
                       </div>
@@ -350,7 +403,7 @@ export default function Home() {
 
                 <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border/40">
                   <div className="text-center">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Sentiment</p>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Sentiment</p>
                     <p className={cn(
                       'text-xs font-semibold mt-0.5',
                       getSentimentColorClass(selected.sentiment || '', selected.sentiment_status)
@@ -359,7 +412,7 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Score</p>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Score</p>
                     <p className={cn(
                       'text-xs font-semibold mt-0.5',
                       selected.score >= 70 ? 'text-success' : selected.score >= 40 ? 'text-warning' : 'text-destructive'
@@ -368,26 +421,24 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Signal</p>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Signal</p>
                     <p className="text-xs font-semibold mt-0.5">{selected.signal}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-1 text-xs text-primary mt-4 font-medium">
-                  View Full Brief <ArrowRight className="h-3 w-3" />
+                <div className="flex items-center justify-center gap-1 text-xs text-primary mt-4 font-medium group-hover:gap-2 transition-all">
+                  View Full Analysis <ArrowRight className="h-3 w-3" />
                 </div>
               </button>
             </div>
           </div>
         </section>
       ) : briefData === undefined ? (
-        <section className="py-12 md:py-16">
+        <section className="py-10 md:py-14" aria-labelledby="intelligence-heading-loading">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                A real snapshot from our engine not a recommendation, just an evidence layer.
-              </p>
+            <div className="text-center mb-6">
+              <h2 id="intelligence-heading-loading" className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto text-sm">Loading real-time analysis…</p>
             </div>
             <div className="max-w-2xl mx-auto">
               <div className="h-48 rounded-2xl bg-muted/30 animate-pulse" />
@@ -396,13 +447,49 @@ export default function Home() {
         </section>
       ) : null}
 
-      {/* SECTION 4 — STOCKS WORTH INVESTIGATING */}
-      <section className="py-12 md:py-16 border-t border-border/60">
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION D — FEATURE DISCOVERY (4 pillars)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="features-heading">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 id="features-heading" className="text-2xl md:text-3xl font-bold mb-2">Four Perspectives, One Stock</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">
+              Each perspective uses different data and methods — together they reveal what no single metric can.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+            {features.map((feature) => (
+              <Link key={feature.title} href={feature.link} className="group">
+                <div className="rounded-2xl border border-border/60 bg-card p-5 h-full transition-all duration-200 hover:shadow-md hover:border-primary/20">
+                  <div className={cn(
+                    'w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center mb-4 transition-transform group-hover:scale-105',
+                    feature.color
+                  )}>
+                    <feature.icon className={cn('h-5 w-5', feature.iconColor)} aria-hidden="true" />
+                  </div>
+                  <h3 className="text-base font-semibold mb-1.5">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                  <div className="flex items-center gap-1 text-xs text-primary mt-3 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    Explore <ArrowRight className="h-3 w-3" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION E — STOCKS WORTH INVESTIGATING (Discover Preview)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="discover-heading">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold">Stocks Worth Investigating</h2>
-              <p className="text-muted-foreground mt-1">A daily universe based on real screening conditions.</p>
+              <h2 id="discover-heading" className="text-2xl md:text-3xl font-bold">Stocks Worth Investigating</h2>
+              <p className="text-muted-foreground mt-1 text-sm">Surfaced by screening for notable technical signals, momentum, and risk conditions.</p>
             </div>
             <Link href="/markets/discover" className="text-sm text-primary hover:underline flex items-center gap-1 shrink-0">
               See All <ChevronRight className="h-4 w-4" />
@@ -415,13 +502,14 @@ export default function Home() {
                 <div key={i} className="h-36 rounded-2xl bg-muted/30 animate-pulse" />
               ))}
             </div>
-          ) : discoverWithSentiment.length > 0 ? (
+          ) : discover.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {discoverWithSentiment.slice(0, 6).map((stock) => (
+              {discover.slice(0, 6).map((stock) => (
                 <button
                   key={stock.ticker}
                   onClick={() => goToStock(stock.ticker)}
-                  className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.99]"
+                  className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.99] group"
+                  aria-label={`Analyze ${stock.ticker}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -443,7 +531,7 @@ export default function Home() {
                   </div>
                   <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/40">
                     <div className="text-center">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Technical</p>
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Technical</p>
                       <p className={cn(
                         'text-xs font-semibold mt-0.5',
                         stock.technical?.includes('Bullish') ? 'text-success' :
@@ -452,14 +540,14 @@ export default function Home() {
                       )}>{stock.technical || '—'}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Risk</p>
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Risk</p>
                       <p className={cn(
                         'text-xs font-semibold mt-0.5',
                         stock.risk === 'High' ? 'text-destructive' : stock.risk === 'Low' ? 'text-success' : 'text-warning'
                       )}>{stock.risk || '—'}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Score</p>
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Score</p>
                       <p className={cn(
                         'text-xs font-semibold mt-0.5',
                         (stock.score || 0) >= 70 ? 'text-success' : (stock.score || 0) >= 40 ? 'text-warning' : 'text-destructive'
@@ -471,7 +559,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="rounded-2xl border border-border/40 bg-card/50 p-10 text-center">
-              <Search className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3 animate-pulse" />
+              <Search className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3 animate-pulse" aria-hidden="true" />
               <p className="text-sm text-muted-foreground">Building your discovery universe…</p>
               <p className="text-xs text-muted-foreground/70 mt-1">This updates as fresh data arrives.</p>
             </div>
@@ -479,110 +567,120 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 5 — ONE STOCK, MULTIPLE LAYERS */}
-      <section className="py-12 md:py-16 border-t border-border/60">
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION F — WATCHLIST PREVIEW
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="watchlist-heading">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">One Stock, Multiple Layers</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              We don&apos;t give you a single number and hope. We show you every evidence layer behind the brief.
-            </p>
-          </div>
+          <div className="max-w-3xl mx-auto">
+            <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Star className="h-5 w-5 text-primary" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 id="watchlist-heading" className="text-xl font-bold">Your Watchlist</h2>
+                  <p className="text-sm text-muted-foreground">Track and revisit stocks you&apos;re researching.</p>
+                </div>
+              </div>
 
-          <div className="max-w-lg mx-auto space-y-3">
-            {evidenceSteps.map((step, idx) => (
-              <Link
-                key={step.label}
-                href={step.link}
-                className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20 group"
-              >
-                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                  <step.icon className="h-5 w-5 text-primary" />
+              {watchlist.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {watchlist.slice(0, 8).map((ticker) => (
+                    <button
+                      key={ticker}
+                      onClick={() => goToStock(ticker)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm hover:border-primary/20 hover:text-primary transition-all"
+                    >
+                      <TickerLogo ticker={ticker} size="sm" />
+                      <span className="font-semibold">{ticker}</span>
+                    </button>
+                  ))}
+                  {watchlist.length > 8 && (
+                    <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground">
+                      +{watchlist.length - 8} more
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-primary uppercase tracking-wide">Step {idx + 1}</span>
-                    <span className="text-base font-semibold">{step.label}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">{step.description}</p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              ) : (
+                <p className="text-sm text-muted-foreground mb-4">
+                  Your watchlist is empty. Search for a stock above and add it to your watchlist.
+                </p>
+              )}
+
+              <Link href="/markets/stock/watchlist">
+                <Button variant="outline" className="border-primary/30 hover:bg-primary/10 gap-2">
+                  <Star className="h-4 w-4" />
+                  {watchlist.length > 0 ? 'Manage Watchlist' : 'Set Up Watchlist'}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
               </Link>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* SECTION 6 — RESEARCH CAPABILITIES */}
-      <section className="py-12 md:py-16 border-t border-border/60">
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION G — HOW TO USE STOCKVANTEX
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="howto-heading">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Research Capabilities</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              Everything available inside the product built around evidence and transparency.
+          <div className="text-center mb-8">
+            <h2 id="howto-heading" className="text-2xl md:text-3xl font-bold mb-2">How to Use StockVantex</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">
+              Research in three steps. No account needed.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
-            {capabilities.map((cap) => (
-              <Link key={cap.title} href={cap.link}>
-                <div className="rounded-2xl border border-border/60 bg-card p-6 h-full transition-all duration-200 hover:shadow-md hover:border-primary/20 group">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <cap.icon className="h-5 w-5 text-white" />
-                  </div>
-                  <h3 className="text-base font-semibold mb-1">{cap.title}</h3>
-                  <p className="text-sm text-muted-foreground">{cap.description}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            {howItWorks.map((item) => (
+              <div key={item.step} className="rounded-2xl border border-border/60 bg-card p-5 text-center">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-lg font-bold text-primary">{item.step}</span>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 7 — BUILT FOR EVIDENCE */}
-      <section className="py-12 md:py-16 border-t border-border/60">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Built for Evidence</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              Not a prediction tool. A research system that shows its work.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
-            {trustPillars.map((pillar) => (
-              <div key={pillar.title} className="text-center">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                  <pillar.icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-base font-semibold mb-1">{pillar.title}</h3>
-                <p className="text-sm text-muted-foreground">{pillar.description}</p>
+                <h3 className="text-base font-semibold mb-1.5">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
+
+          <div className="mt-6 max-w-2xl mx-auto">
+            <div className="rounded-xl bg-muted/50 border border-border/40 px-4 py-3 text-center">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground/80">Signals can disagree — that&apos;s informative</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Technical indicators, sentiment, and forecasts look at different data over different time horizons.
+                Divergence between signals is expected and reveals the stock&apos;s complexity.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* SECTION 8 — FINAL CTA */}
-      <section className="py-12 md:py-16 border-t border-border/60">
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION H — FINAL CTA & CLOSING
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="final-cta-heading">
         <div className="container mx-auto px-4">
-          <div className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto glow-primary">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3">
-              Start With Evidence
+          <div className="glass rounded-3xl p-6 md:p-10 text-center max-w-3xl mx-auto glow-primary">
+            <h2 id="final-cta-heading" className="text-2xl md:text-3xl font-bold mb-3">
+              Start Researching
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-              Search a stock and see the full brief — technical, sentiment, forecast, risk, and decision evidence in one view.
+            <p className="text-base text-muted-foreground mb-6 max-w-xl mx-auto">
+              Search a stock and see the full analysis — technical, sentiment, forecast, and risk in one view.
             </p>
 
-            <div className="mb-8">
-              <HeroSearch onSelect={goToStock} />
+            <div className="mb-6">
+              <HeroSearch onSelect={goToStock} id="footer-search" />
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/markets/brief">
+              <Link href="/markets/stock">
                 <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
                   <Sparkles className="h-4 w-4" />
-                  View Stock Brief
+                  Analyze a Stock
                 </Button>
               </Link>
               <Link href="/about">

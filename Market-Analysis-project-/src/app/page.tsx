@@ -5,13 +5,13 @@ import { getStockInfo } from '@/lib/stock-allowlist';
 import HomeClient from './HomeClient';
 
 export const metadata: Metadata = {
-  title: { absolute: `${SITE_NAME} — AI Stock Analysis, Signals & Market Intelligence` },
-  description: 'AI-powered stock research with technical analysis, sentiment, risk metrics, and model-based forecasting. See the full picture before deciding.',
+  title: { absolute: `${SITE_NAME} — Understand the Stock. Not Just the Price.` },
+  description: 'AI-powered stock research combining technical analysis, news sentiment, model-based forecasting, and risk insights. Explore the full picture before deciding.',
   alternates: { canonical: SITE_URL },
   openGraph: {
     images: ['/icon-512.png'],
-    title: `${SITE_NAME} — AI Stock Analysis & Market Intelligence`,
-    description: 'AI-powered stock research with technical analysis, sentiment, risk metrics, and model-based forecasting.',
+    title: `${SITE_NAME} — AI Stock Research & Market Intelligence`,
+    description: 'Technical analysis, news sentiment, AI forecasting, and risk insights — all in one stock research experience.',
     url: SITE_URL,
     siteName: SITE_NAME,
     type: 'website',
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   twitter: {
     images: ['/icon-512.png'],
     card: 'summary_large_image',
-    title: `${SITE_NAME} — AI Stock Analysis & Market Intelligence`,
-    description: 'AI-powered stock research with technical analysis, sentiment, risk metrics, and model-based forecasting.',
+    title: `${SITE_NAME} — AI Stock Research & Market Intelligence`,
+    description: 'Technical analysis, news sentiment, AI forecasting, and risk insights — all in one stock research experience.',
   },
 };
 

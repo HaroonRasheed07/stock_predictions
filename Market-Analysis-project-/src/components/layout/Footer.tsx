@@ -172,7 +172,10 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
+        <div className="mt-8 pt-8 border-t border-border/40 text-center text-sm text-muted-foreground space-y-2">
+          <p className="text-xs text-muted-foreground/70 max-w-xl mx-auto">
+            StockVantex is a research tool, not a financial advisor. All analysis is informational and should not be construed as investment advice.
+          </p>
           <p>&copy; 2026 StockVantex. All rights reserved.</p>
         </div>
       </div>
