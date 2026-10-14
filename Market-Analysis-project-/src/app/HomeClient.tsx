@@ -339,7 +339,7 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <p className="text-center text-[10px] text-muted-foreground/60 mt-1">Data may be delayed. Not investment advice.</p>
+          <p className="text-center text-[10px] text-muted-foreground/60 mt-1"></p>
         </div>
       )}
 
