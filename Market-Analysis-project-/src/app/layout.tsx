@@ -19,7 +19,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: `${SITE_NAME} | AI-Powered Stock Research`,
+    default: `${SITE_NAME} | Evidence-Based Stock Research`,
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: `${SITE_NAME} | AI-Powered Stock Research`,
+    title: `${SITE_NAME} | Evidence-Based Stock Research`,
     description: SITE_DESCRIPTION,
     images: [
       {
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${SITE_NAME} | AI-Powered Stock Research`,
+    title: `${SITE_NAME} | Evidence-Based Stock Research`,
     description: SITE_DESCRIPTION,
     images: ['/icon-512.png'],
   },

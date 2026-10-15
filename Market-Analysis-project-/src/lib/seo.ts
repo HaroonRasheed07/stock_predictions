@@ -1,6 +1,6 @@
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://stockvantex.com';
 export const SITE_NAME = 'StockVantex';
-export const SITE_DESCRIPTION = 'StockVantex brings technical analysis, news sentiment, AI-assisted forecasting, risk assessment and market opportunities together in one stock research platform.';
+export const SITE_DESCRIPTION = 'StockVantex connects technical analysis, news sentiment, LSTM forecasting, and risk assessment into one evidence-based Research Brief. See the full picture behind every stock.';
 
 export const SEO_INDEXING_ENABLED = process.env.SEO_INDEXING_ENABLED !== 'false';
 

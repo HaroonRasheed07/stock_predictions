@@ -10,6 +10,7 @@ import {
   Search, ChevronRight, AlertTriangle, Sparkles,
   Eye, LineChart,
   ArrowRight, Star, Newspaper,
+  FileText, Compass, Layers,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
@@ -19,6 +20,8 @@ import { getSentimentColorClass, formatSentimentLabel } from '@/lib/sentiment';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+
+const POPULAR_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'TSLA', 'GOOGL'];
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HERO SEARCH — Autocomplete stock search with debounce
@@ -141,6 +144,31 @@ function SignalBadge({ signal, compact = false }: { signal: string; compact?: bo
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   PILLAR ROW — Single evidence pillar in the brief preview
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function PillarRow({ icon: Icon, label, reading, detail, color }: {
+  icon: any;
+  label: string;
+  reading: string;
+  detail: string;
+  color: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-border/30 last:border-b-0">
+      <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', color)}>
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="text-sm font-semibold mt-0.5">{reading}</p>
+      </div>
+      <p className="text-xs text-muted-foreground text-right max-w-[45%] leading-relaxed hidden sm:block">{detail}</p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN HOMEPAGE COMPONENT
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -193,13 +221,18 @@ export default function Home() {
     router.push('/markets/stock');
   };
 
+  const goToBrief = (ticker: string) => {
+    setSelectedTicker(ticker);
+    router.push('/markets/brief');
+  };
+
   const topStocks = tickerData?.topStocks || [];
   const selected = briefData?.selectedStock;
   const discover = discoverData?.discover || [];
   const marketStatus = tickerData?.marketStatus || 'Unknown';
 
   /* ─────────────────────────────────────────────────────────────────────────
-     FEATURE CARDS DATA
+     FEATURE CARDS DATA — "Everything you need to research a stock"
      ───────────────────────────────────────────────────────────────────────── */
 
   const features = [
@@ -207,6 +240,7 @@ export default function Home() {
       icon: LineChart,
       title: 'Technical Analysis',
       description: 'RSI, MACD, Bollinger Bands, moving averages, and pattern analysis across multiple timeframes.',
+      indicators: ['RSI', 'MACD', 'Bollinger Bands', 'Moving Averages'],
       link: '/markets/stock/technical',
       color: 'from-blue-500/20 to-blue-600/10 dark:from-blue-500/15 dark:to-blue-600/5',
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -215,6 +249,7 @@ export default function Home() {
       icon: Newspaper,
       title: 'News Sentiment',
       description: 'AI-scored news articles with positive, neutral, and negative sentiment tracking across sources.',
+      indicators: ['FinBERT Scoring', 'Source Quality', 'Trend Tracking', 'Catalyst Detection'],
       link: '/markets/stock/sentiment',
       color: 'from-purple-500/20 to-purple-600/10 dark:from-purple-500/15 dark:to-purple-600/5',
       iconColor: 'text-purple-600 dark:text-purple-400',
@@ -223,15 +258,17 @@ export default function Home() {
       icon: Brain,
       title: 'AI Forecasting',
       description: 'LSTM-based price projections with confidence intervals over a 10-day forecast horizon.',
+      indicators: ['10-Day Horizon', 'Confidence Intervals', 'Historical Fit', 'Trend Projection'],
       link: '/markets/stock/forecast',
       color: 'from-emerald-500/20 to-emerald-600/10 dark:from-emerald-500/15 dark:to-emerald-600/5',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
     },
     {
       icon: Shield,
-      title: 'Risk Insights',
+      title: 'Risk Assessment',
       description: 'Volatility, drawdown, and multi-factor risk assessment to understand downside exposure.',
-      link: '/markets/stock/technical',
+      indicators: ['Volatility', 'Drawdown', 'ATR', 'Risk Score'],
+      link: '/markets/brief',
       color: 'from-amber-500/20 to-amber-600/10 dark:from-amber-500/15 dark:to-amber-600/5',
       iconColor: 'text-amber-600 dark:text-amber-400',
     },
@@ -287,29 +324,44 @@ export default function Home() {
             </div>
 
             <h1 id="hero-heading" className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-[1.15] tracking-tight">
-              Understand the stock.{' '}
+              Know what the signals say.{' '}
               <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                Not just the price.
+                Understand why.
               </span>
             </h1>
 
             <p className="text-base sm:text-lg text-foreground/70 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Explore technical signals, news sentiment, model-based price forecasts, and risk insights for the stocks you follow — all in one research experience.
+              Stock Vantex connects technical analysis, news sentiment, price forecasting, and risk assessment into one evidence-based research brief — so you can see the full picture behind every stock.
             </p>
 
             <HeroSearch onSelect={goToStock} id="hero-search" />
 
+            {/* Popular ticker shortcuts */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
+              <span className="text-xs text-muted-foreground mr-1">Popular:</span>
+              {POPULAR_TICKERS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => goToStock(t)}
+                  className="rounded-lg border border-border/50 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-primary transition-all"
+                  aria-label={`Analyze ${t}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-              <Link href="/markets/stock">
+              <Link href="/markets/brief">
                 <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
-                  <BarChart3 className="h-4 w-4" />
-                  Analyze a Stock
+                  <FileText className="h-4 w-4" />
+                  View Research Brief
                 </Button>
               </Link>
               <Link href="/markets/discover">
                 <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 gap-2 w-full sm:w-auto">
-                  <Search className="h-4 w-4" />
-                  Explore Stock Intelligence
+                  <Compass className="h-4 w-4" />
+                  Explore Stocks
                 </Button>
               </Link>
             </div>
@@ -339,130 +391,148 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <p className="text-center text-[10px] text-muted-foreground/60 mt-1"></p>
         </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION C — TODAY'S STOCK INTELLIGENCE (Brief Preview)
+          SECTION C — SEE THE COMPLETE PICTURE (Research Brief Preview)
           ═══════════════════════════════════════════════════════════════════ */}
       {selected ? (
-        <section className="py-10 md:py-14" aria-labelledby="intelligence-heading">
+        <section className="py-10 md:py-14" aria-labelledby="complete-picture-heading">
           <div className="container mx-auto px-4">
             <div className="text-center mb-6">
-              <h2 id="intelligence-heading" className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
+              <h2 id="complete-picture-heading" className="text-2xl md:text-3xl font-bold mb-2">See the Complete Picture</h2>
               <p className="text-muted-foreground max-w-xl mx-auto text-sm">
-                A real snapshot from our analysis engine — not a recommendation, just an evidence layer.
+                Every stock gets a Research Brief that connects technical signals, sentiment, forecasting, and risk — with each evidence source clearly labeled.
               </p>
             </div>
 
             <div className="max-w-2xl mx-auto">
-              <button
-                onClick={() => goToStock(selected.ticker)}
-                className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 md:p-6 transition-all duration-200 hover:shadow-lg hover:border-primary/20 active:scale-[0.99] group"
-                aria-label={`View full analysis for ${selected.ticker}`}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <TickerLogo ticker={selected.ticker} size="lg" />
-                    <div>
-                      <h3 className="text-xl font-bold">{selected.ticker}</h3>
-                      <p className="text-2xl font-bold tracking-tight mt-0.5">
-                        ${selected.price.toFixed(2)}
-                      </p>
-                      <div className={cn(
-                        'flex items-center gap-1 text-sm font-medium mt-0.5',
-                        selected.changePercent >= 0 ? 'text-success' : 'text-destructive'
+              <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+                {/* Header */}
+                <div className="p-5 md:p-6 border-b border-border/40">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <TickerLogo ticker={selected.ticker} size="lg" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold">{selected.ticker}</h3>
+                          <SignalBadge signal={selected.signal} compact />
+                        </div>
+                        <p className="text-2xl font-bold tracking-tight mt-1">
+                          ${selected.price.toFixed(2)}
+                        </p>
+                        <div className={cn(
+                          'flex items-center gap-1 text-sm font-medium mt-0.5',
+                          selected.changePercent >= 0 ? 'text-success' : 'text-destructive'
+                        )}>
+                          {selected.changePercent >= 0
+                            ? <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                            : <ArrowDownRight className="h-4 w-4" aria-hidden="true" />}
+                          {selected.changePercent >= 0 ? '+' : ''}{selected.change.toFixed(2)} ({selected.changePercent.toFixed(2)}%)
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Score</p>
+                      <p className={cn(
+                        'text-2xl font-bold',
+                        selected.score >= 70 ? 'text-success' : selected.score >= 40 ? 'text-warning' : 'text-destructive'
                       )}>
-                        {selected.changePercent >= 0
-                          ? <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                          : <ArrowDownRight className="h-4 w-4" aria-hidden="true" />}
-                        {selected.changePercent >= 0 ? '+' : ''}{selected.change.toFixed(2)} ({selected.changePercent.toFixed(2)}%)
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <SignalBadge signal={selected.signal} />
-                    <div className="flex flex-col items-end gap-1">
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <Shield className={cn('h-3.5 w-3.5', selected.risk === 'High' ? 'text-destructive' : selected.risk === 'Low' ? 'text-success' : 'text-warning')} aria-hidden="true" />
-                        <span className="text-muted-foreground">Risk:</span>
-                        <span className={cn('font-medium', selected.risk === 'High' ? 'text-destructive' : selected.risk === 'Low' ? 'text-success' : 'text-warning')}>
-                          {selected.risk}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <Activity className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        <span className="text-muted-foreground">Vol:</span>
-                        <span className="font-medium">{selected.volatility.toFixed(1)}%</span>
-                      </div>
+                        {selected.score.toFixed(0)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">/100</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border/40">
-                  <div className="text-center">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Sentiment</p>
-                    <p className={cn(
-                      'text-xs font-semibold mt-0.5',
-                      getSentimentColorClass(selected.sentiment || '', selected.sentiment_status)
-                    )}>
-                      {formatSentimentLabel(selected.sentiment || '', selected.sentiment_status)}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Score</p>
-                    <p className={cn(
-                      'text-xs font-semibold mt-0.5',
-                      selected.score >= 70 ? 'text-success' : selected.score >= 40 ? 'text-warning' : 'text-destructive'
-                    )}>
-                      {selected.score.toFixed(0)}/100
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Signal</p>
-                    <p className="text-xs font-semibold mt-0.5">{selected.signal}</p>
-                  </div>
+                {/* Four Pillars */}
+                <div className="px-5 md:px-6 py-2">
+                  <PillarRow
+                    icon={LineChart}
+                    label="Technical"
+                    reading={selected.signal}
+                    detail="RSI, MACD, moving averages, and pattern analysis"
+                    color="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                  />
+                  <PillarRow
+                    icon={Newspaper}
+                    label="Sentiment"
+                    reading={formatSentimentLabel(selected.sentiment || '', selected.sentiment_status)}
+                    detail="AI-scored news articles across multiple sources"
+                    color="bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                  />
+                  <PillarRow
+                    icon={Brain}
+                    label="Forecast"
+                    reading="10-day outlook available"
+                    detail="LSTM model with confidence intervals"
+                    color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  />
+                  <PillarRow
+                    icon={Shield}
+                    label="Risk"
+                    reading={`${selected.risk} · ${selected.volatility.toFixed(1)}% vol`}
+                    detail="Volatility, drawdown, and multi-factor scoring"
+                    color="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  />
                 </div>
 
-                <div className="flex items-center justify-center gap-1 text-xs text-primary mt-4 font-medium group-hover:gap-2 transition-all">
-                  View Full Analysis <ArrowRight className="h-3 w-3" />
+                {/* Footer */}
+                <div className="px-5 md:px-6 py-4 border-t border-border/40 bg-muted/20">
+                  <div className="flex items-start gap-2 mb-3">
+                    <Eye className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Signals can disagree — and that&apos;s informative. Technical indicators, sentiment, and forecasts use different data over different time horizons. Divergence reveals a stock&apos;s complexity.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => goToBrief(selected.ticker)}
+                    className="w-full flex items-center justify-center gap-1.5 text-sm text-primary font-medium hover:gap-2.5 transition-all group"
+                    aria-label={`View full Research Brief for ${selected.ticker}`}
+                  >
+                    View Full Research Brief
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
                 </div>
-              </button>
+              </div>
             </div>
           </div>
         </section>
       ) : briefData === undefined ? (
-        <section className="py-10 md:py-14" aria-labelledby="intelligence-heading-loading">
+        <section className="py-10 md:py-14" aria-labelledby="complete-picture-loading">
           <div className="container mx-auto px-4">
             <div className="text-center mb-6">
-              <h2 id="intelligence-heading-loading" className="text-2xl md:text-3xl font-bold mb-2">Today&apos;s Stock Intelligence</h2>
+              <h2 id="complete-picture-loading" className="text-2xl md:text-3xl font-bold mb-2">See the Complete Picture</h2>
               <p className="text-muted-foreground max-w-xl mx-auto text-sm">Loading real-time analysis…</p>
             </div>
             <div className="max-w-2xl mx-auto">
-              <div className="h-48 rounded-2xl bg-muted/30 animate-pulse" />
+              <div className="h-72 rounded-2xl bg-muted/30 animate-pulse" />
             </div>
           </div>
         </section>
       ) : null}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION D — FEATURE DISCOVERY (4 pillars)
+          SECTION D — EVERYTHING YOU NEED TO RESEARCH A STOCK
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="features-heading">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
-            <h2 id="features-heading" className="text-2xl md:text-3xl font-bold mb-2">Four Perspectives, One Stock</h2>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
+              <Layers className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              <span className="text-xs font-medium text-primary">Research Toolkit</span>
+            </div>
+            <h2 id="features-heading" className="text-2xl md:text-3xl font-bold mb-2">Everything You Need to Research a Stock</h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-sm">
-              Each perspective uses different data and methods — together they reveal what no single metric can.
+              Four analysis pillars, each using different data and methods. Together they reveal what no single metric can.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
             {features.map((feature) => (
               <Link key={feature.title} href={feature.link} className="group">
-                <div className="rounded-2xl border border-border/60 bg-card p-5 h-full transition-all duration-200 hover:shadow-md hover:border-primary/20">
+                <div className="rounded-2xl border border-border/60 bg-card p-5 h-full transition-all duration-200 hover:shadow-md hover:border-primary/20 flex flex-col">
                   <div className={cn(
                     'w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center mb-4 transition-transform group-hover:scale-105',
                     feature.color
@@ -470,9 +540,18 @@ export default function Home() {
                     <feature.icon className={cn('h-5 w-5', feature.iconColor)} aria-hidden="true" />
                   </div>
                   <h3 className="text-base font-semibold mb-1.5">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-                  <div className="flex items-center gap-1 text-xs text-primary mt-3 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                    Explore <ArrowRight className="h-3 w-3" />
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">{feature.description}</p>
+                  <div className="mt-auto">
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {feature.indicators.map((ind) => (
+                        <span key={ind} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">
+                          {ind}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                      Explore <ArrowRight className="h-3 w-3" />
+                    </div>
                   </div>
                 </div>
               </Link>
@@ -677,10 +756,10 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/markets/stock">
+              <Link href="/markets/brief">
                 <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
                   <Sparkles className="h-4 w-4" />
-                  Analyze a Stock
+                  View Research Brief
                 </Button>
               </Link>
               <Link href="/about">

@@ -5,13 +5,14 @@ import { getStockInfo } from '@/lib/stock-allowlist';
 import HomeClient from './HomeClient';
 
 export const metadata: Metadata = {
-  title: { absolute: `${SITE_NAME} — Understand the Stock. Not Just the Price.` },
-  description: 'AI-powered stock research combining technical analysis, news sentiment, model-based forecasting, and risk insights. Explore the full picture before deciding.',
+  title: { absolute: `${SITE_NAME} — Know What the Signals Say. Understand Why.` },
+  description: 'Evidence-based stock research combining technical analysis, news sentiment, LSTM forecasting, and risk assessment into one Research Brief. See the full picture before deciding.',
   alternates: { canonical: SITE_URL },
+  keywords: ['stock research', 'technical analysis', 'stock sentiment', 'AI forecasting', 'risk assessment', 'research brief', 'market intelligence'],
   openGraph: {
     images: ['/icon-512.png'],
-    title: `${SITE_NAME} — AI Stock Research & Market Intelligence`,
-    description: 'Technical analysis, news sentiment, AI forecasting, and risk insights — all in one stock research experience.',
+    title: `${SITE_NAME} — Evidence-Based Stock Research & Market Intelligence`,
+    description: 'Technical analysis, news sentiment, AI forecasting, and risk assessment — connected in one Research Brief.',
     url: SITE_URL,
     siteName: SITE_NAME,
     type: 'website',
@@ -19,8 +20,8 @@ export const metadata: Metadata = {
   twitter: {
     images: ['/icon-512.png'],
     card: 'summary_large_image',
-    title: `${SITE_NAME} — AI Stock Research & Market Intelligence`,
-    description: 'Technical analysis, news sentiment, AI forecasting, and risk insights — all in one stock research experience.',
+    title: `${SITE_NAME} — Evidence-Based Stock Research`,
+    description: 'Technical analysis, news sentiment, AI forecasting, and risk assessment — connected in one Research Brief.',
   },
 };
 

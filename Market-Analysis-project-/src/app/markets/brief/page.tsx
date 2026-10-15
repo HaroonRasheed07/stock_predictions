@@ -39,6 +39,11 @@ import {
   History,
   ArrowUpRight,
   ArrowDownRight,
+  FileText,
+  Eye,
+  HelpCircle,
+  Compass,
+  Newspaper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSentimentScoreColorClass, formatSentimentLabel, getSentimentBadgeClass } from '@/lib/sentiment';
@@ -242,6 +247,88 @@ export default function StockBriefPage() {
       }));
   }, [tradeConfirmation]);
 
+  // ── Overall Assessment & Signal Agreement ──────────────────────────────
+  const overallAssessment = useMemo(() => {
+    if (!tradeConfirmation) return null;
+    const sig = tradeConfirmation.signal || 'Hold';
+    const tfConsensus = timeframes?.consensus;
+    const sentimentLabel = sentiment?.status === 'sufficient' ? sentiment.sentiment_label : null;
+    const sentimentPositive = sentimentLabel === 'Positive' || sentimentLabel === 'Bullish' || sentimentLabel === 'Slightly Bullish';
+    const sentimentNegative = sentimentLabel === 'Negative' || sentimentLabel === 'Bearish' || sentimentLabel === 'Slightly Bearish';
+
+    // Determine signal directions for agreement calculation
+    const signals: Array<{ name: string; direction: 'bullish' | 'bearish' | 'neutral'; available: boolean }> = [
+      { name: 'Technical', direction: sig === 'Buy' || sig === 'Strong Buy' ? 'bullish' : sig === 'Sell' || sig === 'Strong Sell' ? 'bearish' : 'neutral', available: true },
+      { name: 'Sentiment', direction: sentimentPositive ? 'bullish' : sentimentNegative ? 'bearish' : 'neutral', available: sentiment?.status === 'sufficient' },
+      { name: 'Timeframe', direction: tfConsensus === 'Buy' ? 'bullish' : tfConsensus === 'Sell' ? 'bearish' : 'neutral', available: !!tfConsensus },
+    ];
+
+    const available = signals.filter((s) => s.available);
+    const bullish = available.filter((s) => s.direction === 'bullish').length;
+    const bearish = available.filter((s) => s.direction === 'bearish').length;
+    const neutral = available.filter((s) => s.direction === 'neutral').length;
+    const total = available.length;
+
+    let agreement: 'aligned' | 'mixed' | 'diverging' = 'aligned';
+    if (total >= 2) {
+      const maxCount = Math.max(bullish, bearish, neutral);
+      if (maxCount <= 1 && total >= 3) agreement = 'diverging';
+      else if (bullish > 0 && bearish > 0) agreement = 'mixed';
+    }
+
+    const assessmentLabel = sig === 'Strong Buy' || sig === 'Buy' ? 'Bullish' : sig === 'Strong Sell' || sig === 'Sell' ? 'Bearish' : 'Neutral';
+    const assessmentColor = assessmentLabel === 'Bullish' ? 'text-success' : assessmentLabel === 'Bearish' ? 'text-destructive' : 'text-warning';
+
+    return { assessmentLabel, assessmentColor, signals, agreement, bullish, bearish, neutral, total, tfConsensus };
+  }, [tradeConfirmation, timeframes, sentiment]);
+
+  const investigateNext = useMemo(() => {
+    const items: Array<{ icon: any; title: string; description: string }> = [];
+    if (sentiment?.status === 'insufficient' || sentiment?.status === 'no_relevant_news') {
+      items.push({
+        icon: Newspaper,
+        title: 'Check news coverage',
+        description: 'Sentiment data is limited. Review recent news articles to understand the current narrative.',
+      });
+    }
+    if (risk?.risk_level === 'High') {
+      items.push({
+        icon: Shield,
+        title: 'Review risk factors',
+        description: 'This stock has elevated risk. Check volatility, drawdown, and factor breakdowns before deciding.',
+      });
+    }
+    if (overallAssessment?.agreement === 'diverging' || overallAssessment?.agreement === 'mixed') {
+      items.push({
+        icon: HelpCircle,
+        title: 'Investigate signal disagreement',
+        description: 'Technical, sentiment, and timeframe signals are not aligned. This often indicates a stock at a turning point or with conflicting catalysts.',
+      });
+    }
+    if (evidence && evidence.overall_accuracy < 0.55) {
+      items.push({
+        icon: History,
+        title: 'Low historical accuracy',
+        description: 'Past signals for this stock have been less reliable. Consider the broader context before acting on any single indicator.',
+      });
+    }
+    if (catalysts?.catalysts && catalysts.catalysts.length > 0) {
+      items.push({
+        icon: Target,
+        title: 'Review active catalysts',
+        description: `${catalysts.catalysts.length} catalyst${catalysts.catalysts.length > 1 ? 's' : ''} detected. Events like earnings or product launches can override technical signals.`,
+      });
+    }
+    if (items.length === 0) {
+      items.push({
+        icon: Compass,
+        title: 'Compare across timeframes',
+        description: 'Switch between short-term, swing, and position views to see how the outlook changes over different horizons.',
+      });
+    }
+    return items.slice(0, 4);
+  }, [sentiment, risk, overallAssessment, evidence, catalysts]);
+
   const showData = overview && !overviewLoading;
 
   return (
@@ -281,6 +368,60 @@ export default function StockBriefPage() {
           />
         )}
       </div>
+
+      {/* Overall Assessment */}
+      {showData && overallAssessment && (
+        <div className="rounded-xl border border-border/60 bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">Overall Assessment</span>
+          </div>
+          <div className="flex items-center gap-3 mb-3">
+            <span className={cn('text-2xl font-bold', overallAssessment.assessmentColor)}>
+              {overallAssessment.assessmentLabel}
+            </span>
+            {overallAssessment.tfConsensus && (
+              <span className="text-xs text-muted-foreground">
+                Timeframe consensus: <span className="font-medium">{overallAssessment.tfConsensus}</span>
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            {overallAssessment.signals.map((s) => (
+              <div key={s.name} className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1',
+                !s.available ? 'border-border/40 bg-muted/30 text-muted-foreground' :
+                s.direction === 'bullish' ? 'border-success/20 bg-success/5 text-success' :
+                s.direction === 'bearish' ? 'border-destructive/20 bg-destructive/5 text-destructive' :
+                'border-warning/20 bg-warning/5 text-warning'
+              )}>
+                <span className="font-medium">{s.name}:</span>
+                <span className="capitalize">{!s.available ? 'No data' : s.direction}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Signal Disagreement Explanation */}
+      {showData && overallAssessment && (overallAssessment.agreement === 'mixed' || overallAssessment.agreement === 'diverging') && (
+        <div className="rounded-xl border border-warning/20 bg-warning/5 p-4">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-warning mb-1">
+                Signals are {overallAssessment.agreement === 'diverging' ? 'diverging' : 'mixed'}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {overallAssessment.bullish > 0 && overallAssessment.bearish > 0
+                  ? `Some indicators lean bullish (${overallAssessment.bullish}) while others lean bearish (${overallAssessment.bearish}). This often means the stock is at a decision point — technical patterns may conflict with the news narrative or risk profile.`
+                  : `Signals are spread across bullish, bearish, and neutral readings. Each signal uses different data over different time horizons, so divergence is expected and informative.`}
+                {' '}Consider the timeframe that matches your research horizon.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Timeframe Selector */}
       {!overviewLoading && timeframes && (
@@ -522,6 +663,39 @@ export default function StockBriefPage() {
             )}
           </div>
         </ExpandableSection>
+      </div>
+
+      {/* What to Investigate Next */}
+      {showData && investigateNext.length > 0 && (
+        <div className="rounded-xl border border-border/60 bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Compass className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">What to Investigate Next</span>
+          </div>
+          <div className="space-y-3">
+            {investigateNext.map((item, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <item.icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Evidence Disclaimer */}
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <div className="flex items-start gap-2">
+          <Eye className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            This Research Brief is an evidence aggregation, not a recommendation. Each signal comes from a different data source and methodology. Data refreshes periodically — check timestamps on individual sections for freshness.
+          </p>
+        </div>
       </div>
 
       {/* Bottom spacer for mobile nav */}
