@@ -29,7 +29,6 @@ import { useStockStore } from '@/store/stockStore';
 import { parseTickerParam } from '@/lib/ticker-routing';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { TickerLogo } from '@/components/common/TickerLogo';
-import { trackEvent } from '@/lib/analytics';
 
 interface ForecastData {
   ticker: string;
@@ -43,15 +42,9 @@ interface ForecastData {
   };
 }
 
-/** Historical-range options. The model horizon is always 10 trading days —
- *  this only changes how much history is shown on the chart. */
-const HISTORICAL_RANGES: Array<{ value: string; label: string }> = [
-  { value: '6mo', label: '6M' },
-  { value: '1y', label: '1Y' },
-  { value: '2y', label: '2Y' },
-  { value: '5y', label: '5Y' },
-  { value: 'max', label: 'MAX' },
-];
+/** Fixed historical window for this page (the model horizon is always
+ *  10 trading days and does not change with this value). */
+const HISTORY_PERIOD = '1y';
 
 const DAY_MS = 86400000;
 
@@ -87,7 +80,6 @@ export default function PriceForecasting() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
   const [ticker, setTicker] = useState('AAPL');
   const [inputTicker, setInputTicker] = useState('AAPL');
-  const [timeRange, setTimeRange] = useState('1y');
   const [suggestions, setSuggestions] = useState<AssetInfo[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -212,8 +204,8 @@ export default function PriceForecasting() {
   );
 
   const { data: forecastData, isLoading, error, refetch } = useQuery({
-    queryKey: ['price-forecast', ticker, timeRange],
-    queryFn: () => fetchForecast(ticker, 10, timeRange),
+    queryKey: ['price-forecast', ticker, HISTORY_PERIOD],
+    queryFn: () => fetchForecast(ticker, 10, HISTORY_PERIOD),
     refetchInterval: 0, // Don't auto refetch often as it's heavy
     retry: 2,
     enabled: !!ticker,
@@ -525,31 +517,10 @@ export default function PriceForecasting() {
               <div>
                 <CardTitle className="text-base sm:text-lg">Price History &amp; Forecast</CardTitle>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {historicalLength} trading days shown · forecast horizon: {forecastLength} trading days
+                  Last 1 year of trading days · forecast horizon: {forecastLength} trading days
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-[10px] sm:text-xs">LSTM</Badge>
-                <span className="text-[10px] sm:text-xs text-muted-foreground">History</span>
-                <div className="flex gap-1 sm:gap-1.5 overflow-x-auto">
-                  {HISTORICAL_RANGES.map((range) => (
-                    <Button
-                      key={range.value}
-                      variant={timeRange === range.value ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        if (timeRange !== range.value) {
-                          setTimeRange(range.value);
-                          trackEvent('forecast_range_changed', { range: range.value, ticker });
-                        }
-                      }}
-                      className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3 shrink-0"
-                    >
-                      {range.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              <Badge variant="outline" className="text-[10px] sm:text-xs self-start sm:self-center">LSTM</Badge>
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">

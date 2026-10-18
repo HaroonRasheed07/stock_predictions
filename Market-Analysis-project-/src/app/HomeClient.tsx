@@ -257,7 +257,7 @@ export default function Home() {
             </h1>
 
             <p className="text-base sm:text-lg text-foreground/70 mb-8 max-w-2xl mx-auto leading-relaxed">
-              StockVantex connects technical analysis, news sentiment, a 10-trading-day model forecast, and risk assessment into one evidence-based research brief — so you can see the full picture behind every stock.
+              StockVantex connects technical analysis, news sentiment, a 10-trading-day model forecast, and risk assessment into one evidence-based research brief so you can see the full picture behind every stock.
             </p>
 
             <div className="max-w-xl mx-auto mb-5">
@@ -339,7 +339,7 @@ export default function Home() {
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground/70 text-center mt-1.5 px-4">
-            Snapshot prices from public market data (may be delayed or cached).
+            
           </p>
         </div>
       )}
@@ -353,7 +353,7 @@ export default function Home() {
             <div className="text-center mb-6">
               <h2 id="complete-picture-heading" className="text-2xl md:text-3xl font-bold mb-2">See the Complete Picture</h2>
               <p className="text-muted-foreground max-w-xl mx-auto text-sm">
-                Every stock gets a Research Brief that connects technical signals, sentiment, forecasting, and risk — with each evidence source clearly labeled.
+                Every stock gets a Research Brief that connects technical signals, sentiment, forecasting, and risk with each evidence source clearly labeled.
               </p>
             </div>
 
