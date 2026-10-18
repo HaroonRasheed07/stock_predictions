@@ -29,6 +29,7 @@ import { useStockStore } from '@/store/stockStore';
 import { parseTickerParam } from '@/lib/ticker-routing';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { TickerLogo } from '@/components/common/TickerLogo';
+import { trackEvent } from '@/lib/analytics';
 
 interface ForecastData {
   ticker: string;
@@ -38,7 +39,33 @@ interface ForecastData {
     predicted_historical_prices: number[];
     forecast_prices: number[];
     forecast_dates: string[];
+    actual_dates?: string[];
   };
+}
+
+/** Historical-range options. The model horizon is always 10 trading days —
+ *  this only changes how much history is shown on the chart. */
+const HISTORICAL_RANGES: Array<{ value: string; label: string }> = [
+  { value: '6mo', label: '6M' },
+  { value: '1y', label: '1Y' },
+  { value: '2y', label: '2Y' },
+  { value: '5y', label: '5Y' },
+  { value: 'max', label: 'MAX' },
+];
+
+const DAY_MS = 86400000;
+
+/** Weekend-safe fallback dates (used only if the backend response predates
+ *  the actual_dates field). Walks back from `end`, skipping Saturdays/Sundays. */
+function buildTradingDayDates(count: number, end: Date): string[] {
+  const dates: string[] = [];
+  const cursor = new Date(end.getTime() - DAY_MS);
+  while (dates.length < count) {
+    const dow = cursor.getDay();
+    if (dow !== 0 && dow !== 6) dates.push(new Date(cursor.getTime()).toISOString().slice(0, 10));
+    cursor.setTime(cursor.getTime() - DAY_MS);
+  }
+  return dates.reverse();
 }
 
 const TICKER_AUTOCORRECT: Record<string, string> = {
@@ -203,7 +230,7 @@ export default function PriceForecasting() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
-            <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
+            <p className="text-sm text-muted-foreground">Model projections for {ticker} · fixed 10-trading-day horizon</p>
           </div>
           {renderSearchForm()}
         </div>
@@ -228,7 +255,7 @@ export default function PriceForecasting() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
-              <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
+              <p className="text-sm text-muted-foreground">Model projections for {ticker} · fixed 10-trading-day horizon</p>
             </div>
             <div className="flex items-center space-x-2">
               <WatchlistButton ticker={ticker} />
@@ -255,7 +282,7 @@ export default function PriceForecasting() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
-            <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
+            <p className="text-sm text-muted-foreground">Model projections for {ticker} · fixed 10-trading-day horizon</p>
           </div>
           {renderSearchForm()}
         </div>
@@ -281,6 +308,9 @@ export default function PriceForecasting() {
   const predictedHistoricalPrices: number[] = Array.isArray(results?.predicted_historical_prices) ? results.predicted_historical_prices : [];
   const forecastPrices: number[] = Array.isArray(results?.forecast_prices) ? results.forecast_prices : [];
   const forecastDates: string[] = Array.isArray(results?.forecast_dates) ? results.forecast_dates : [];
+  const actualDates: string[] = Array.isArray(results?.actual_dates) && results.actual_dates.length === actualPrices.length
+    ? results.actual_dates
+    : buildTradingDayDates(actualPrices.length, new Date());
 
   const historicalLength = actualPrices.length;
   const forecastLength = forecastPrices.length;
@@ -293,25 +323,17 @@ export default function PriceForecasting() {
   }> = [];
 
   if (results) {
-    // Generate historical dates (assuming daily for simplicity, going back from yesterday)
-    const today = new Date();
-    // Historical
+    // Historical: real trading-calendar dates from the API (fallback:
+    // weekday-only generation above) — never naive calendar-day subtraction.
     for (let i = 0; i < historicalLength; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - (historicalLength - i));
       chartData.push({
-        date: d.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: timeRange === '1d' ? '2-digit' : undefined,
-          minute: timeRange === '1d' ? '2-digit' : undefined,
-        }),
+        date: new Date(actualDates[i]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         actual: actualPrices[i],
         predicted: i < predictedHistoricalPrices.length ? predictedHistoricalPrices[i] : null,
         type: 'historical'
       });
     }
-    // Forecast
+    // Forecast: business-day dates generated server-side.
     if (forecastDates.length > 0 && forecastPrices.length > 0) {
       forecastDates.forEach((dateStr: string, i: number) => {
         chartData.push({
@@ -353,7 +375,7 @@ export default function PriceForecasting() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
-              <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
+              <p className="text-sm text-muted-foreground">Model projections for {ticker} · fixed 10-trading-day horizon</p>
             </div>
             {renderSearchForm()}
           </div>
@@ -379,7 +401,7 @@ export default function PriceForecasting() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
-              <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
+              <p className="text-sm text-muted-foreground">Model projections for {ticker} · fixed 10-trading-day horizon</p>
             </div>
             {renderSearchForm()}
           </div>
@@ -407,7 +429,7 @@ export default function PriceForecasting() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
-            <p className="text-sm text-muted-foreground">AI-powered predictions for {ticker}</p>
+            <p className="text-sm text-muted-foreground">Model projections for {ticker} · fixed 10-trading-day horizon</p>
           </div>
           {renderSearchForm()}
         </div>
@@ -472,7 +494,7 @@ export default function PriceForecasting() {
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Expected Range</p>
                 <p className="text-2xl font-bold">${Math.min(...futurePrices).toFixed(2)} – ${Math.max(...futurePrices).toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground mt-2">{forecastLength}-day forecast horizon</p>
+                <p className="text-xs text-muted-foreground mt-2">{forecastLength}-trading-day forecast horizon</p>
               </div>
               <Target className="h-8 w-8 text-secondary" />
             </div>
@@ -500,19 +522,30 @@ export default function PriceForecasting() {
         <Card className="glass">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base sm:text-lg">Price Prediction (Next 10 Days)</CardTitle>
-              <div className="flex items-center gap-2">
+              <div>
+                <CardTitle className="text-base sm:text-lg">Price History &amp; Forecast</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {historicalLength} trading days shown · forecast horizon: {forecastLength} trading days
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="text-[10px] sm:text-xs">LSTM</Badge>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">History</span>
                 <div className="flex gap-1 sm:gap-1.5 overflow-x-auto">
-                  {['1y', '2y', '3y', '5y'].map((range) => (
+                  {HISTORICAL_RANGES.map((range) => (
                     <Button
-                      key={range}
-                      variant={timeRange === range ? 'default' : 'outline'}
+                      key={range.value}
+                      variant={timeRange === range.value ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setTimeRange(range)}
+                      onClick={() => {
+                        if (timeRange !== range.value) {
+                          setTimeRange(range.value);
+                          trackEvent('forecast_range_changed', { range: range.value, ticker });
+                        }
+                      }}
                       className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3 shrink-0"
                     >
-                      {range.toUpperCase()}
+                      {range.label}
                     </Button>
                   ))}
                 </div>
@@ -584,20 +617,26 @@ export default function PriceForecasting() {
                 <span className="font-semibold">LSTM + Attention</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Input Features</span>
-                <span className="font-semibold">OHLCV + Indicators</span>
+                <span className="text-muted-foreground">Model input</span>
+                <span className="font-semibold">Closing-price sequence</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Training Period</span>
-                <span className="font-semibold">2012 - 2024</span>
+                <span className="text-muted-foreground">Lookback window</span>
+                <span className="font-semibold">60 trading days</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Historical Fit</span>
+                <span className="text-muted-foreground">Forecast method</span>
+                <span className="font-semibold">Recursive, business-day calendar</span>
+              </div>
+              <div className="flex justify-between border-b border-border pb-3">
+                <span className="text-muted-foreground">Historical fit (MAPE-based)</span>
                 <span className="font-semibold text-success">{modelAccuracy.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant="outline" className="border-success text-success">Active</Badge>
+                <span className="text-muted-foreground">Learn more</span>
+                <Link href="/learn/how-lstm-forecasting-works" className="text-primary hover:underline text-sm font-semibold">
+                  How the model works
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -617,8 +656,8 @@ export default function PriceForecasting() {
                 <span className="font-semibold">{volatility.toFixed(2)}%</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Forecast Days</span>
-                <span className="font-semibold">{forecastLength} days</span>
+                <span className="text-muted-foreground">Forecast Horizon</span>
+                <span className="font-semibold">{forecastLength} trading days</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Historical Data Points</span>
@@ -638,7 +677,7 @@ export default function PriceForecasting() {
       </div>
 
       <p className="text-xs text-muted-foreground text-center py-2">
-        Forecasts are based on historical OHLCV data and technical indicators. Historical fit does not guarantee future prediction performance. This analysis is for informational purposes only and does not constitute investment advice.{' '}
+        Forecasts are projections from an LSTM model trained on historical closing prices — they are point estimates, not guarantees, and do not account for news, earnings, or macro events. Historical fit does not predict future accuracy. This analysis is for informational purposes only and does not constitute investment advice.{' '}
         <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
       </p>
     </div>

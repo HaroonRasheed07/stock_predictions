@@ -2,116 +2,36 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useCallback, useRef } from 'react';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  TrendingUp, TrendingDown, BarChart3, Brain, Shield,
-  Activity, ArrowUpRight, ArrowDownRight, Minus, Clock,
-  Search, ChevronRight, AlertTriangle, Sparkles,
+  TrendingUp, TrendingDown, Brain, Shield,
+  ArrowUpRight, ArrowDownRight, Minus,
+  ChevronRight, Sparkles,
   Eye, LineChart,
   ArrowRight, Star, Newspaper,
-  FileText, Compass, Layers,
+  Compass, Layers, BookOpen, Clock, Search,
 } from 'lucide-react';
 import { useStockStore } from '@/store/stockStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
-import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover, fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { fetchHomeTicker, fetchHomeBrief, fetchHomeDiscover } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { getSentimentColorClass, formatSentimentLabel } from '@/lib/sentiment';
+import { formatSentimentLabel } from '@/lib/sentiment';
+import { toUrlSymbol } from '@/lib/ticker-routing';
 import { TickerLogo } from '@/components/common/TickerLogo';
-import { Input } from '@/components/ui/input';
+import { StockSearch } from '@/components/common/StockSearch';
 import { Button } from '@/components/ui/button';
+import { trackEvent } from '@/lib/analytics';
 
 const POPULAR_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'TSLA', 'GOOGL'];
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   HERO SEARCH — Autocomplete stock search with debounce
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function HeroSearch({ onSelect, id }: { onSelect: (ticker: string) => void; id?: string }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<AssetInfo[]>([]);
-  const [showResults, setShowResults] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleSearch = useCallback((q: string) => {
-    setQuery(q);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (q.length < 1) { setResults([]); setShowResults(false); setIsSearching(false); return; }
-    setIsSearching(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const data = await fetchAssetSearch(q);
-        setResults(data.slice(0, 8));
-        setShowResults(true);
-      } catch { setResults([]); }
-      setIsSearching(false);
-    }, 300);
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = query.trim().toUpperCase();
-    if (trimmed.length > 0) {
-      onSelect(trimmed);
-      setQuery('');
-      setShowResults(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="relative w-full max-w-xl mx-auto" role="search">
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          id={id}
-          value={query}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search any stock ticker or company…"
-          className="pl-12 pr-28 h-14 text-base rounded-2xl bg-background/80 border-border/60 backdrop-blur-sm shadow-lg focus-visible:ring-primary/40"
-          onFocus={() => results.length > 0 && setShowResults(true)}
-          onBlur={() => setTimeout(() => setShowResults(false), 200)}
-          aria-label="Stock ticker search"
-          autoComplete="off"
-        />
-        <Button
-          type="submit"
-          size="sm"
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-gradient-primary text-white hover:opacity-90 transition-opacity rounded-xl px-4 h-10"
-          disabled={query.trim().length === 0}
-        >
-          Analyze
-          <ArrowRight className="h-3.5 w-3.5 ml-1" />
-        </Button>
-      </div>
-      {showResults && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/60 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
-          {results.map((r) => (
-            <button
-              key={r.ticker}
-              type="button"
-              onClick={() => { onSelect(r.ticker); setQuery(''); setShowResults(false); }}
-              className="flex items-center gap-3 w-full px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-            >
-              <TickerLogo ticker={r.ticker} size="sm" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{r.ticker}</p>
-                <p className="text-xs text-muted-foreground truncate">{r.name}</p>
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            </button>
-          ))}
-        </div>
-      )}
-      {isSearching && query.length > 0 && !showResults && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/60 rounded-xl shadow-xl z-50 px-4 py-6 text-center">
-          <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Searching…</p>
-        </div>
-      )}
-    </form>
-  );
-}
+const WHAT_YOU_GET = [
+  { icon: LineChart, label: 'Technical signals', href: '/markets/stock/technical' },
+  { icon: Newspaper, label: 'News sentiment', href: '/markets/stock/sentiment' },
+  { icon: Brain, label: '10-day model forecast', href: '/markets/stock/forecast' },
+  { icon: Shield, label: 'Risk & volatility', href: '/markets/brief' },
+  { icon: Compass, label: 'Discover screeners', href: '/markets/discover' },
+];
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SIGNAL BADGE — Visual indicator for Buy/Hold/Sell signals
@@ -185,7 +105,7 @@ export default function Home() {
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       const meta = (query.state.data as any)?._cache_meta;
-      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 8000;
+      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 30000;
       return false;
     },
   });
@@ -198,7 +118,7 @@ export default function Home() {
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       const meta = (query.state.data as any)?._cache_meta;
-      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 8000;
+      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 30000;
       return false;
     },
   });
@@ -211,17 +131,23 @@ export default function Home() {
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       const meta = (query.state.data as any)?._cache_meta;
-      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 8000;
+      if (!query.state.data || meta?.status === 'MISS' || meta?.is_stale) return 30000;
       return false;
     },
   });
 
-  const goToStock = (ticker: string) => {
+  useEffect(() => {
+    trackEvent('homepage_view');
+  }, []);
+
+  const goToStock = (ticker: string, source: string = 'direct') => {
+    trackEvent('stock_selected', { ticker, source });
     setSelectedTicker(ticker);
-    router.push('/markets/stock');
+    router.push(`/stocks/${toUrlSymbol(ticker)}`);
   };
 
   const goToBrief = (ticker: string) => {
+    trackEvent('brief_opened', { ticker });
     setSelectedTicker(ticker);
     router.push('/markets/brief');
   };
@@ -239,8 +165,8 @@ export default function Home() {
     {
       icon: LineChart,
       title: 'Technical Analysis',
-      description: 'RSI, MACD, Bollinger Bands, moving averages, and pattern analysis across multiple timeframes.',
-      indicators: ['RSI', 'MACD', 'Bollinger Bands', 'Moving Averages'],
+      description: 'RSI, MACD, Bollinger Bands, moving averages, and ATR — with Buy/Hold/Sell readings across timeframes.',
+      indicators: ['RSI', 'MACD', 'Bollinger Bands', 'Moving Averages', 'ATR'],
       link: '/markets/stock/technical',
       color: 'from-blue-500/20 to-blue-600/10 dark:from-blue-500/15 dark:to-blue-600/5',
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -248,8 +174,8 @@ export default function Home() {
     {
       icon: Newspaper,
       title: 'News Sentiment',
-      description: 'AI-scored news articles with positive, neutral, and negative sentiment tracking across sources.',
-      indicators: ['FinBERT Scoring', 'Source Quality', 'Trend Tracking', 'Catalyst Detection'],
+      description: 'News headlines scored by an NLP model as positive, neutral, or negative — tracked across sources and time.',
+      indicators: ['Headline Scoring', 'Source Tracking', 'Trend Tracking', 'Catalyst Detection'],
       link: '/markets/stock/sentiment',
       color: 'from-purple-500/20 to-purple-600/10 dark:from-purple-500/15 dark:to-purple-600/5',
       iconColor: 'text-purple-600 dark:text-purple-400',
@@ -257,8 +183,8 @@ export default function Home() {
     {
       icon: Brain,
       title: 'AI Forecasting',
-      description: 'LSTM-based price projections with confidence intervals over a 10-day forecast horizon.',
-      indicators: ['10-Day Horizon', 'Confidence Intervals', 'Historical Fit', 'Trend Projection'],
+      description: 'LSTM point projections over a fixed 10-trading-day horizon, with the historical fit shown next to every forecast.',
+      indicators: ['10-Trading-Day Horizon', 'Historical Fit', 'Recursive Projection', 'Business-Day Dates'],
       link: '/markets/stock/forecast',
       color: 'from-emerald-500/20 to-emerald-600/10 dark:from-emerald-500/15 dark:to-emerald-600/5',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
@@ -331,18 +257,39 @@ export default function Home() {
             </h1>
 
             <p className="text-base sm:text-lg text-foreground/70 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Stock Vantex connects technical analysis, news sentiment, price forecasting, and risk assessment into one evidence-based research brief — so you can see the full picture behind every stock.
+              StockVantex connects technical analysis, news sentiment, a 10-trading-day model forecast, and risk assessment into one evidence-based research brief — so you can see the full picture behind every stock.
             </p>
 
-            <HeroSearch onSelect={goToStock} id="hero-search" />
+            <div className="max-w-xl mx-auto mb-5">
+              <StockSearch
+                label="Search stocks"
+                placeholder="Search any stock ticker or company…"
+                className="[&_input]:h-14 [&_input]:rounded-2xl [&_input]:bg-background/80 [&_input]:border-border/60 [&_input]:shadow-lg"
+                onSelect={(t) => goToStock(t, 'search')}
+              />
+            </div>
+
+            {/* What you get — first-screen product hierarchy */}
+            <nav aria-label="Research tools" className="flex flex-wrap items-center justify-center gap-2 mb-5">
+              {WHAT_YOU_GET.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-background/60 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-primary transition-all"
+                >
+                  <item.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
 
             {/* Popular ticker shortcuts */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <span className="text-xs text-muted-foreground mr-1">Popular:</span>
               {POPULAR_TICKERS.map((t) => (
                 <button
                   key={t}
-                  onClick={() => goToStock(t)}
+                  onClick={() => goToStock(t, 'popular')}
                   className="rounded-lg border border-border/50 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-primary transition-all"
                   aria-label={`Analyze ${t}`}
                 >
@@ -354,14 +301,14 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
               <Link href="/markets/brief">
                 <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
-                  <FileText className="h-4 w-4" />
+                  <Sparkles className="h-4 w-4" />
                   View Research Brief
                 </Button>
               </Link>
-              <Link href="/markets/discover">
+              <Link href="/learn">
                 <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 gap-2 w-full sm:w-auto">
-                  <Compass className="h-4 w-4" />
-                  Explore Stocks
+                  <BookOpen className="h-4 w-4" />
+                  Learn the Concepts
                 </Button>
               </Link>
             </div>
@@ -378,7 +325,7 @@ export default function Home() {
             {[...topStocks.slice(0, 8), ...topStocks.slice(0, 8)].map((stock, idx) => (
               <button
                 key={`${stock.symbol}-${idx}`}
-                onClick={() => goToStock(stock.symbol)}
+                onClick={() => goToStock(stock.symbol, 'ticker_strip')}
                 className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
                 aria-label={`${stock.symbol} at $${stock.price.toFixed(2)}, ${stock.changePercent >= 0 ? 'up' : 'down'} ${Math.abs(stock.changePercent).toFixed(2)}%`}
               >
@@ -391,6 +338,9 @@ export default function Home() {
               </button>
             ))}
           </div>
+          <p className="text-[10px] text-muted-foreground/70 text-center mt-1.5 px-4">
+            Snapshot prices from public market data (may be delayed or cached).
+          </p>
         </div>
       )}
 
@@ -465,8 +415,8 @@ export default function Home() {
                   <PillarRow
                     icon={Brain}
                     label="Forecast"
-                    reading="10-day outlook available"
-                    detail="LSTM model with confidence intervals"
+                    reading="10-trading-day model outlook"
+                    detail="LSTM point estimates — not a guarantee"
                     color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   />
                   <PillarRow
@@ -586,7 +536,7 @@ export default function Home() {
               {discover.slice(0, 6).map((stock) => (
                 <button
                   key={stock.ticker}
-                  onClick={() => goToStock(stock.ticker)}
+                  onClick={() => goToStock(stock.ticker, 'discover')}
                   className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-border/80 active:scale-[0.99] group"
                   aria-label={`Analyze ${stock.ticker}`}
                 >
@@ -668,7 +618,7 @@ export default function Home() {
                   {watchlist.slice(0, 8).map((ticker) => (
                     <button
                       key={ticker}
-                      onClick={() => goToStock(ticker)}
+                      onClick={() => goToStock(ticker, 'watchlist')}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm hover:border-primary/20 hover:text-primary transition-all"
                     >
                       <TickerLogo ticker={ticker} size="sm" />
@@ -739,6 +689,51 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
+          SECTION G2 — TRUST & TRANSPARENCY STRIP
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="trust-heading">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-6">
+              <h2 id="trust-heading" className="text-xl md:text-2xl font-bold">Built for Research, Not Recommendations</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto text-sm mt-1">
+                Every page states its data source, timeframe, and limits — so you can weigh the evidence yourself.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-border/60 bg-card p-5 text-center">
+                <Clock className="h-5 w-5 text-primary mx-auto mb-2" aria-hidden="true" />
+                <h3 className="text-sm font-semibold mb-1">Transparent data</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Prices come from public market data via Yahoo Finance and may be delayed or cached. Each view labels its timeframe.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-card p-5 text-center">
+                <Eye className="h-5 w-5 text-primary mx-auto mb-2" aria-hidden="true" />
+                <h3 className="text-sm font-semibold mb-1">Honest methodology</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Forecasts are point estimates from an LSTM model. Historical fit percentages are MAPE-based and shown for transparency — not as promises.
+                </p>
+                <Link href="/learn/how-lstm-forecasting-works" className="text-xs text-primary hover:underline inline-block mt-2">
+                  How the forecast works
+                </Link>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-card p-5 text-center">
+                <Shield className="h-5 w-5 text-primary mx-auto mb-2" aria-hidden="true" />
+                <h3 className="text-sm font-semibold mb-1">No investment advice</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  StockVantex is an educational research tool. Nothing on this site is a recommendation to buy or sell.
+                </p>
+                <Link href="/disclaimer" className="text-xs text-primary hover:underline inline-block mt-2">
+                  Financial disclaimer
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
           SECTION H — FINAL CTA & CLOSING
           ═══════════════════════════════════════════════════════════════════ */}
       <section className="py-10 md:py-14 border-t border-border/60" aria-labelledby="final-cta-heading">
@@ -748,23 +743,21 @@ export default function Home() {
               Start Researching
             </h2>
             <p className="text-base text-muted-foreground mb-6 max-w-xl mx-auto">
-              Search a stock and see the full analysis — technical, sentiment, forecast, and risk in one view.
+              Search any ticker above, or open the stock directory to browse everything we cover.
             </p>
 
-            <div className="mb-6">
-              <HeroSearch onSelect={goToStock} id="footer-search" />
-            </div>
-
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/markets/brief">
+              <Link href="/stocks">
                 <Button size="lg" className="bg-gradient-primary text-white hover:opacity-90 transition-opacity text-base px-7 gap-2 w-full sm:w-auto">
-                  <Sparkles className="h-4 w-4" />
-                  View Research Brief
+                  <Layers className="h-4 w-4" />
+                  Browse Stock Directory
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/about">
-                <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 w-full sm:w-auto">
-                  How StockVantex Works
+              <Link href="/learn">
+                <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/10 text-base px-7 gap-2 w-full sm:w-auto">
+                  <BookOpen className="h-4 w-4" />
+                  Learn Investing Basics
                 </Button>
               </Link>
             </div>

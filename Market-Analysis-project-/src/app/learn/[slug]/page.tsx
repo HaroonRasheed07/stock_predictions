@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowRight, LineChart } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getArticle, getAllArticleSlugs } from '@/lib/learn-articles';
 
@@ -47,6 +48,8 @@ export default async function LearnArticlePage({ params }: PageProps) {
   const article = getArticle(slug);
   if (!article) notFound();
 
+  const wordCount = [article.content.intro, ...article.content.sections.map((s) => [s.content, ...(s.subsections?.map((sub) => sub.content) ?? [])].join(' ')).join(' '), ...article.content.keyTakeaways].join(' ').split(/\s+/).filter(Boolean).length;
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -55,9 +58,13 @@ export default async function LearnArticlePage({ params }: PageProps) {
     url: `${SITE_URL}/learn/${slug}`,
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
+    wordCount,
+    inLanguage: 'en',
+    image: `${SITE_URL}/icon-512.png`,
     author: {
       '@type': 'Person',
       name: article.author,
+      url: `${SITE_URL}/about`,
     },
     publisher: {
       '@type': 'Organization',
@@ -69,6 +76,19 @@ export default async function LearnArticlePage({ params }: PageProps) {
       '@id': `${SITE_URL}/learn/${slug}`,
     },
   };
+
+  const faqStructuredData =
+    article.content.faq && article.content.faq.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: article.content.faq.map((item) => ({
+            '@type': 'Question',
+            name: item.question,
+            acceptedAnswer: { '@type': 'Answer', text: item.answer },
+          })),
+        }
+      : null;
 
   const breadcrumbStructuredData = {
     '@context': 'https://schema.org',
@@ -86,6 +106,12 @@ export default async function LearnArticlePage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
+      {faqStructuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+        />
+      )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
@@ -104,7 +130,7 @@ export default async function LearnArticlePage({ params }: PageProps) {
             <h1 className="text-3xl md:text-4xl font-bold mb-4">{article.h1}</h1>
             <p className="text-lg text-muted-foreground">{article.description}</p>
             <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-              <span>By {article.author}</span>
+              <Link href="/about" className="hover:text-primary transition-colors">By {article.author}</Link>
               <span>·</span>
               <time dateTime={article.publishedAt}>Published {article.publishedAt}</time>
               {article.updatedAt !== article.publishedAt && (
@@ -120,6 +146,27 @@ export default async function LearnArticlePage({ params }: PageProps) {
 
           <div className="prose prose-neutral dark:prose-invert max-w-none">
             <p className="text-lg leading-relaxed">{article.content.intro}</p>
+
+            {article.toolLinks && article.toolLinks.length > 0 && (
+              <section className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4 not-prose">
+                <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <LineChart className="h-4 w-4 text-primary" aria-hidden="true" />
+                  Apply it in StockVantex
+                </h2>
+                <div className="flex flex-col gap-1.5">
+                  {article.toolLinks.map((tool) => (
+                    <Link
+                      key={tool.href}
+                      href={tool.href}
+                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      {tool.label}
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {article.content.sections.map((section, i) => (
               <section key={i} className="mt-8">

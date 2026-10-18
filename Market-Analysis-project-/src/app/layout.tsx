@@ -65,6 +65,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
+        {/* Pre-paint theme: apply the persisted theme before first paint so
+            dark-mode users never see a light flash (FOUC). Mirrors the
+            zustand persist shape stored under 'insightforge-theme'. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var raw=localStorage.getItem('insightforge-theme');var theme=raw?(JSON.parse(raw).state||{}).theme:null;var dark=theme!=='light';document.documentElement.classList.toggle('dark',dark);}catch(e){document.documentElement.classList.add('dark');}})();",
+          }}
+        />
         <OrganizationJsonLd />
         <WebsiteJsonLd />
       </head>

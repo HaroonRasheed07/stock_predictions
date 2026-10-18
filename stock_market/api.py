@@ -2120,7 +2120,11 @@ def get_stock_forecast(request: ForecastRequest):
                 "actual_prices": actual.tolist(),
                 "predicted_historical_prices": predicted.tolist(),
                 "forecast_prices": forecast.tolist(),
-                "forecast_dates": [str(d.date()) for d in dates]
+                "forecast_dates": [str(d.date()) for d in dates],
+                # Real trading-calendar dates for the historical window so
+                # clients never have to invent axis dates (calendar-day
+                # guesses misalign weekends/holidays).
+                "actual_dates": [str(pd.Timestamp(d).date()) for d in df.index[-len(actual):]],
             }
 
             if not forecast_data["actual_prices"] or not forecast_data["forecast_prices"]:

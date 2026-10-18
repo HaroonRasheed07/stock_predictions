@@ -26,6 +26,9 @@ export interface ForecastResponse {
     predicted_historical_prices: number[];
     forecast_prices: number[];
     forecast_dates: string[];
+    /** Trading-calendar dates matching actual_prices (added server-side so
+     *  clients never invent axis dates). Optional for older cached responses. */
+    actual_dates?: string[];
   };
 }
 
@@ -369,8 +372,9 @@ export async function fetchForecast(
   forecastDays: number = 7,
   period: string = "1y"
 ): Promise<ForecastResponse | null> {
+  let res: Response;
   try {
-    const res = await fetch(`${API_BASE}/api/forecast/onnx`, {
+    res = await fetch(`${API_BASE}/api/forecast/onnx`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -379,25 +383,30 @@ export async function fetchForecast(
         period,
       }),
     });
-
-    if (!res.ok) {
-      console.error(`Forecast API Request failed: ${res.status}`);
-      return null;
-    }
-
-    const data = await res.json();
-    console.log("Raw API Response:", data);
-
-    if (data.detail || data.status === "error" || !data.results) {
-      console.warn("Forecast API returned error or missing results:", data);
-      return null;
-    }
-
-    return data as ForecastResponse;
   } catch (error) {
-    console.error("Forecast fetch exception:", error);
-    return null;
+    throw new Error(
+      `Forecast request failed: ${error instanceof Error ? error.message : "network error"}`
+    );
   }
+
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    // Non-JSON body handled below.
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      (data && (data.message || data.detail)) || `Forecast request failed (${res.status})`
+    );
+  }
+
+  if (!data || data.detail || data.status === "error" || !data.results) {
+    throw new Error(data?.message || data?.detail || "Forecast service returned no results");
+  }
+
+  return data as ForecastResponse;
 }
 
 // Fetch sentiment

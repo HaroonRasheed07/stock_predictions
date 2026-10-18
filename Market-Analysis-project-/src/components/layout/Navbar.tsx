@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/markets/stock', label: 'Stock Analysis' },
   { href: '/markets/discover', label: 'Discover' },
+  { href: '/learn', label: 'Learn' },
   { href: '/markets/stock/watchlist', label: 'Watchlist' },
   { href: '/about', label: 'About' },
   { href: '/contact', label: 'Contact' },
@@ -39,7 +40,10 @@ export const Navbar = () => {
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
+    // Stock Analysis should highlight only on its overview page — not on
+    // watchlist/technical/sentiment/forecast, which have their own items.
+    if (href === '/markets/stock') return pathname === href;
+    return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   return (

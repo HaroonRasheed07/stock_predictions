@@ -101,8 +101,15 @@ const srcFiles = walk(path.join(root, 'src'));
 //    the app must NOT emit its own manual page_view event (it would
 //    duplicate every navigation, proven by ga-browser-test).
 {
+  const ANALYTICS_HELPER = path.join(root, 'src', 'lib', 'analytics.ts');
+  const isHelper = (f) => path.normalize(f) === path.normalize(ANALYTICS_HELPER);
   ok('No manual page_view event in the consent gate', !consentSrc.includes("'event', 'page_view'") && !consentSrc.includes('window.gtag('));
-  ok('No gtag() call anywhere in src', !srcFiles.some((f) => /gtag\(/.test(fs.readFileSync(f, 'utf8'))));
+  ok(
+    'gtag() exists only inside the guarded analytics helper',
+    srcFiles.every((f) => (isHelper(f) ? true : !/gtag\(/.test(fs.readFileSync(f, 'utf8')))) &&
+      fs.existsSync(ANALYTICS_HELPER) &&
+      !fs.readFileSync(ANALYTICS_HELPER, 'utf8').includes('page_view')
+  );
   ok('No routing-hook tracking state (no usePathname/useSearchParams)', !consentSrc.includes('usePathname') && !consentSrc.includes('useSearchParams'));
   ok('No leftover dedup refs from manual tracking', !consentSrc.includes('lastTrackedPath') && !consentSrc.includes('becameGranted'));
 }
@@ -111,7 +118,7 @@ const srcFiles = walk(path.join(root, 'src'));
 {
   const strays = srcFiles.filter((f) => {
     const text = fs.readFileSync(f, 'utf8');
-    if (f.endsWith('AnalyticsConsent.tsx')) return false;
+    if (f.endsWith('AnalyticsConsent.tsx') || f.endsWith(`lib${path.sep}analytics${path.sep}analytics.ts`) || f.endsWith(`lib${path.sep}analytics.ts`)) return false;
     return /googletagmanager|gtag\(|dataLayer|GTM-[A-Z]/.test(text);
   });
   ok('No gtag/GTM/dataLayer outside the consent gate', strays.length === 0, strays.map((f) => path.relative(root, f)).join(','));

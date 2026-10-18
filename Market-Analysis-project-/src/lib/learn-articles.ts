@@ -10,6 +10,8 @@ export interface LearnArticle {
   tags: string[];
   relatedTickers: string[];
   relatedArticles: string[];
+  /** In-product tools that let readers apply the concept (max 3). */
+  toolLinks?: Array<{ href: string; label: string }>;
   content: {
     intro: string;
     sections: Array<{
@@ -35,13 +37,20 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '8 min',
     tags: ['technical analysis', 'trading', 'indicators', 'stock market'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA', 'TSLA'],
-    relatedArticles: ['what-is-rsi', 'what-is-macd', 'what-are-bollinger-bands'],
+    relatedArticles: ['what-is-rsi', 'what-is-macd', 'what-are-bollinger-bands', 'technical-vs-fundamental-analysis', 'what-is-adx'],
+    toolLinks: [
+      { href: '/markets/stock/technical', label: 'Open the technical analysis workspace' },
+      { href: '/learn', label: 'Browse all learn guides' },
+    ],
     content: {
       intro: 'Technical analysis is a trading discipline that evaluates investments and identifies trading opportunities by analyzing statistical trends gathered from trading activity, such as price movement and volume. Unlike fundamental analysts, who attempt to evaluate a security\'s intrinsic value, technical analysts focus on patterns of price movements and trading signals.',
       sections: [
         {
           heading: 'How Technical Analysis Works',
           content: 'Technical analysis uses charts and other tools to identify patterns that can suggest future price direction. The core premise is that market price action reflects all available information, and that prices move in trends that can be identified and exploited. Traders use various timeframes, from minute charts for day trading to weekly charts for long-term investing.',
+          subsections: [
+            { heading: 'Worked example: reading a signal stack (illustrative)', content: 'A trader looking at a daily chart might see: price above a rising 50-day moving average (uptrend), RSI at 62 (strong but not overbought), MACD line above its signal line and above zero (bullish momentum confirmed), and Bollinger Bands narrowing (volatility compressing, often preceding a larger move). No single reading is a signal on its own — the stack describes a stock in a confirmed uptrend with room before traditional overbought levels. This example is hypothetical and for learning only.' },
+          ],
         },
         {
           heading: 'Key Technical Indicators',
@@ -83,12 +92,19 @@ const articles: Record<string, LearnArticle> = {
     tags: ['RSI', 'relative strength index', 'momentum', 'technical indicators'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
     relatedArticles: ['what-is-technical-analysis', 'rsi-vs-macd', 'what-is-macd'],
+    toolLinks: [
+      { href: '/markets/stock/technical', label: 'See live RSI values on technical analysis' },
+      { href: '/learn/rsi-vs-macd', label: 'Compare RSI vs MACD' },
+    ],
     content: {
       intro: 'The Relative Strength Index (RSI) is a momentum oscillator developed by J. Welles Wilder Jr. that measures the speed and magnitude of recent price changes. RSI oscillates between 0 and 100, providing signals about overbought and oversold conditions in a stock.',
       sections: [
         {
           heading: 'How RSI Is Calculated',
           content: 'RSI compares the average gains to average losses over a specified period (typically 14 days). The formula is: RSI = 100 - (100 / (1 + RS)), where RS is the average gain divided by the average loss over the period. Higher RSI values indicate stronger recent upward price movement.',
+          subsections: [
+            { heading: 'Worked example (illustrative)', content: 'If a stock averaged gains of $1.40 and losses of $0.70 over the last 14 days, RS = 1.40 / 0.70 = 2.0. RSI = 100 − (100 / (1 + 2.0)) = 100 − 33.3 = 66.7 — strong momentum, but not yet in the traditional overbought zone above 70. If losses later averaged $1.75 per day against $0.35 gains, RS = 0.2 and RSI = 100 − (100/1.2) ≈ 16.7 — deep in oversold territory. The numbers here are hypothetical and for learning only.' },
+          ],
         },
         {
           heading: 'How to Read RSI',
@@ -119,16 +135,20 @@ const articles: Record<string, LearnArticle> = {
   },
   'what-is-macd': {
     slug: 'what-is-macd',
-    title: 'What Is MACD? Moving Average Convergence Divergence Explained',
+    title: 'What Is MACD? Convergence, Divergence & Trading Signals',
     description: 'MACD is a trend-following momentum indicator that shows the relationship between two moving averages of a stock price. Learn how MACD works and how to interpret its signals.',
-    h1: 'What Is MACD? Moving Average Convergence Divergence Explained',
+    h1: 'What Is MACD? Convergence, Divergence & Trading Signals',
     publishedAt: '2026-01-25',
-    updatedAt: '2026-09-01',
+    updatedAt: '2026-10-18',
     author: 'Haroon Rasheed',
-    readingTime: '7 min',
+    readingTime: '6 min',
     tags: ['MACD', 'moving average', 'momentum', 'trend', 'technical indicators'],
     relatedTickers: ['AAPL', 'NVDA', 'TSLA'],
-    relatedArticles: ['what-is-rsi', 'rsi-vs-macd', 'sma-vs-ema'],
+    relatedArticles: ['what-is-rsi', 'rsi-vs-macd', 'sma-vs-ema', 'what-is-technical-analysis'],
+    toolLinks: [
+      { href: '/markets/stock/technical', label: 'Open technical analysis with MACD' },
+      { href: '/learn/rsi-vs-macd', label: 'Compare RSI vs MACD' },
+    ],
     content: {
       intro: 'MACD (Moving Average Convergence Divergence) is a trend-following momentum indicator developed by Gerald Appel in the late 1970s. It shows the relationship between two exponential moving averages (EMAs) of a stock\'s price, helping traders identify changes in trend direction, momentum, and potential entry/exit points.',
       sections: [
@@ -137,12 +157,20 @@ const articles: Record<string, LearnArticle> = {
           content: 'MACD is calculated by subtracting the 26-period EMA from the 12-period EMA. The result is the MACD line. A 9-period EMA of the MACD line (the "signal line") is then plotted on top of the MACD line. The difference between the MACD line and the signal line is plotted as a histogram.',
         },
         {
+          heading: 'Convergence and Divergence',
+          content: 'The indicator\'s name describes its two core behaviors. Convergence occurs when the MACD line moves toward the signal line — the two averages are agreeing and momentum is steady. Divergence occurs when they pull apart: the gap widens, and the histogram grows, signaling accelerating momentum in one direction.',
+          subsections: [
+            { heading: 'Price divergence', content: 'A separate, widely-watched signal is divergence between price and MACD itself. If price makes a new high but the MACD line does not, momentum is not confirming the move — a bearish divergence. If price makes a new low but MACD does not, that is a bullish divergence. Divergence is a warning to watch, not an automatic trade.' },
+          ],
+        },
+        {
           heading: 'MACD Signals',
           content: 'MACD generates several types of trading signals.',
           subsections: [
             { heading: 'Signal Line Crossover', content: 'When the MACD line crosses above the signal line, it may indicate bullish momentum. When it crosses below, it may indicate bearish momentum. These crossovers are most meaningful when they confirm the direction of the prevailing trend.' },
             { heading: 'Histogram', content: 'The histogram shows the distance between the MACD line and the signal line. Growing histogram bars suggest strengthening momentum, while shrinking bars suggest weakening momentum.' },
             { heading: 'Zero Line Crossover', content: 'When the MACD line crosses above zero, it indicates the shorter-term average has crossed above the longer-term average (bullish). Crossing below zero indicates the opposite (bearish).' },
+            { heading: 'Worked example (illustrative)', content: 'Suppose a stock\'s 12-period EMA is 151.20 and its 26-period EMA is 148.60. The MACD line is 151.20 − 148.60 = +2.60. If the 9-period EMA of the MACD line (the signal line) is +2.10, the histogram is +0.50 — a positive gap that is still widening, meaning bullish momentum is accelerating. If the MACD line later falls to +1.90 while the signal line holds at +2.10, a bearish crossover is forming. The numbers here are hypothetical and for learning only.' },
           ],
         },
         {
@@ -152,14 +180,15 @@ const articles: Record<string, LearnArticle> = {
       ],
       keyTakeaways: [
         'MACD shows the relationship between two moving averages of price.',
+        'Convergence means the lines are agreeing; divergence means momentum is accelerating.',
         'The signal line crossover is the most common MACD trading signal.',
-        'The histogram visualizes momentum strength and direction.',
         'MACD is a lagging indicator and works best in trending markets.',
       ],
       limitations: 'MACD is based on historical price data and cannot predict future movements with certainty. It works best in trending markets and can produce misleading signals in sideways markets. StockVantex presents MACD as one component of its technical analysis—not as a standalone trading recommendation.',
       faq: [
         { question: 'Is MACD better than RSI?', answer: 'MACD and RSI measure different things. MACD is a trend-following momentum indicator, while RSI is a momentum oscillator. They complement each other well—many traders use both together to get a more complete picture.' },
         { question: 'What are the best MACD settings?', answer: 'The standard settings are 12/26/9 (12-period EMA, 26-period EMA, 9-period signal). These work well for most timeframes. Some traders adjust these for shorter or longer-term analysis.' },
+        { question: 'What does MACD divergence mean?', answer: 'Price-MACD divergence means price and momentum disagree: price makes a new high while MACD does not (bearish), or price makes a new low while MACD does not (bullish). It is a warning that a trend may be weakening — not a guaranteed reversal.' },
       ],
     },
   },
@@ -218,13 +247,20 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '6 min',
     tags: ['ATR', 'volatility', 'range', 'technical indicators'],
     relatedTickers: ['TSLA', 'NVDA', 'AAPL'],
-    relatedArticles: ['what-are-bollinger-bands', 'what-is-stock-volatility', 'how-to-analyze-stock-risk'],
+    relatedArticles: ['what-are-bollinger-bands', 'what-is-stock-volatility', 'how-to-analyze-stock-risk', 'what-is-technical-analysis'],
+    toolLinks: [
+      { href: '/markets/stock/technical', label: 'See ATR in the expected range on technical analysis' },
+      { href: '/markets/brief', label: 'Open the research brief with risk scoring' },
+    ],
     content: {
       intro: 'The Average True Range (ATR) is a volatility indicator developed by J. Welles Wilder Jr. that measures the degree of price movement in a stock. Unlike momentum indicators that show direction, ATR shows how much a stock typically moves—helping traders understand the character of price action and set appropriate stop-loss levels.',
       sections: [
         {
           heading: 'How ATR Is Calculated',
-          content: 'ATR is calculated as the moving average (typically 14 periods) of the True Range. The True Range is the greatest of: the current high minus the current low, the absolute value of the current high minus the previous close, or the absolute value of the current low minus the previous close.',
+          content: 'ATR is calculated as a moving average of the True Range. The True Range is the greatest of: the current high minus the current low, the absolute value of the current high minus the previous close, or the absolute value of the current low minus the previous close. The classic setting — and the one StockVantex uses — is a 14-period simple average of True Range.',
+          subsections: [
+            { heading: 'Worked example (illustrative)', content: 'Suppose a stock has a previous close of $100, and today it trades between a low of $99 and a high of $102. The three candidates for True Range are: 102 − 99 = 3.00; |102 − 100| = 2.00; |99 − 100| = 1.00. The True Range is the greatest, 3.00. Repeat this for 14 trading days and average the results: if the 14 True Range values average 2.15, the 14-period ATR is $2.15, meaning the stock has recently moved about $2.15 per day on average. The numbers here are hypothetical and for learning only.' },
+          ],
         },
         {
           heading: 'How to Use ATR',
@@ -421,7 +457,11 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '6 min',
     tags: ['volatility', 'risk', 'standard deviation', 'ATR'],
     relatedTickers: ['TSLA', 'NVDA', 'COIN'],
-    relatedArticles: ['what-is-atr', 'what-are-bollinger-bands', 'how-to-analyze-stock-risk'],
+    relatedArticles: ['what-is-atr', 'what-are-bollinger-bands', 'how-to-analyze-stock-risk', 'what-is-technical-analysis'],
+    toolLinks: [
+      { href: '/markets/brief', label: 'See volatility and risk scoring in the brief' },
+      { href: '/learn/what-is-atr', label: 'Learn how ATR measures volatility' },
+    ],
     content: {
       intro: 'Volatility measures the degree to which a stock price fluctuates over time. A stock with high volatility experiences large price swings; a stock with low volatility has relatively stable prices. Volatility is one of the most important concepts in finance because it directly relates to risk and uncertainty.',
       sections: [
@@ -432,6 +472,9 @@ const articles: Record<string, LearnArticle> = {
         {
           heading: 'How Volatility Is Measured',
           content: 'The most common measure is standard deviation of returns—how much daily returns deviate from the average. ATR measures the average range of daily price movement. The VIX index measures expected volatility of the S&P 500.',
+          subsections: [
+            { heading: 'Standard deviation vs ATR', content: 'Standard deviation uses closing returns and captures how spread out returns are around their average — it is direction-blind and the basis of most "historical volatility" figures. ATR uses the full high-low-close range, so it reflects intraday movement as well as closes; an ATR of $2.15 on a $100 stock says something different from a 20% annualized standard deviation. StockVantex shows both perspectives: a volatility percentage in the research brief and an ATR-based expected daily range in technical analysis.' },
+          ],
         },
         {
           heading: 'Volatility and Risk',
@@ -582,12 +625,16 @@ const articles: Record<string, LearnArticle> = {
     description: 'LSTM (Long Short-Term Memory) networks are a type of recurrent neural network used for time series forecasting. Learn how LSTM models work for stock price prediction.',
     h1: 'How LSTM Models Forecast Stock Prices',
     publishedAt: '2026-03-20',
-    updatedAt: '2026-09-01',
+    updatedAt: '2026-10-18',
     author: 'Haroon Rasheed',
-    readingTime: '8 min',
+    readingTime: '7 min',
     tags: ['LSTM', 'neural network', 'time series', 'deep learning', 'forecasting'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
-    relatedArticles: ['how-ai-stock-forecasting-works', 'what-is-stock-volatility', 'how-to-analyze-a-stock'],
+    relatedArticles: ['how-ai-stock-forecasting-works', 'what-is-stock-volatility', 'how-to-analyze-a-stock', 'why-stock-forecasts-are-uncertain'],
+    toolLinks: [
+      { href: '/markets/stock/forecast', label: 'Open the live LSTM forecast page' },
+      { href: '/learn/why-stock-forecasts-are-uncertain', label: 'Why forecasts are uncertain' },
+    ],
     content: {
       intro: 'LSTM (Long Short-Term Memory) is a type of recurrent neural network (RNN) specifically designed to learn from sequential data. Unlike standard neural networks that process inputs independently, LSTM networks maintain a "memory" of previous inputs, making them particularly suited for time series data like stock prices.',
       sections: [
@@ -597,7 +644,20 @@ const articles: Record<string, LearnArticle> = {
         },
         {
           heading: 'How LSTM Processes Stock Data',
-          content: 'LSTM processes stock data as a sequence. It takes historical price windows (e.g., the last 60 days of prices, volume, and technical indicators) and learns to map these sequences to future price movements. The model learns to identify which patterns in the historical sequence are most predictive.',
+          content: 'LSTM processes stock data as a sequence. The model used on StockVantex\'s forecast page works like this:',
+          subsections: [
+            { heading: 'Training and preprocessing', content: 'Closing prices are scaled to a 0–1 range before training (neural networks learn far better on bounded inputs). A per-ticker scaler is fitted on roughly two years of daily history and reused at inference, so the model always sees prices on a familiar scale. The model is trained to predict the next close from a window of the previous ones.' },
+            { heading: 'The 60-day lookback window', content: 'At inference the model reads a sliding window of the last 60 trading days of closing prices. Sixty trading days is roughly one fiscal quarter of market activity — long enough to capture medium-term momentum, short enough to stay responsive to regime changes.' },
+            { heading: 'Recursive 10-day projection', content: 'The forecast page projects 10 trading days ahead, recursively: predict day +1, feed that prediction back as input, predict day +2, and so on. Recursive multi-step forecasting is standard but compounds error — each step builds on the previous prediction, so uncertainty grows with horizon length. Forecast dates follow the trading calendar (business days), so weekends never appear on the axis.' },
+          ],
+        },
+        {
+          heading: 'How the Forecast Is Evaluated',
+          content: 'Model quality is measured by comparing predicted historical prices against actual closes over the same window.',
+          subsections: [
+            { heading: 'MAE, RMSE, and MAPE', content: 'Mean Absolute Error is the average dollar-size miss. Root Mean Squared Error penalizes large misses more heavily. Mean Absolute Percentage Error expresses the miss as a percentage of price, which is what the "Historical fit" percentage on the forecast page is based on — an MAPE-derived score of how closely the model tracked history, not a promise about the future.' },
+            { heading: 'In-sample vs out-of-sample', content: 'A model can score well on data it has already seen (in-sample) while performing worse on new data (out-of-sample). Walk-forward evaluation — training on past data and testing on the following period, repeatedly — gives a more honest picture. Even good out-of-sample performance does not guarantee live accuracy, because markets change.' },
+          ],
         },
         {
           heading: 'LSTM Limitations for Stock Forecasting',
@@ -605,18 +665,23 @@ const articles: Record<string, LearnArticle> = {
           subsections: [
             { heading: 'Non-Stationarity', content: 'Stock prices are non-stationary—the statistical properties change over time. A model trained on one market regime may not work well in another.' },
             { heading: 'Overfitting Risk', content: 'LSTM models can overfit to historical noise rather than learning genuine patterns. Regularization and careful validation are essential.' },
-            { heading: 'Limited Feature Set', content: 'Price and volume alone do not capture the full complexity of market dynamics. Fundamental data, news, and macroeconomic factors influence prices but may not be in the training data.' },
-            { heading: 'Uncertainty Quantification', content: 'Point predictions from LSTM models should be treated as estimates with inherent uncertainty. Confidence intervals provide a more honest representation of forecast quality.' },
+            { heading: 'Point estimates only', content: 'StockVantex\'s forecast returns point estimates — a single projected path, with no confidence bands. The real outcome distribution around each point is wide, and the model does not know about upcoming earnings, macro releases, or news. Treat the line as one scenario, never as a bound on outcomes.' },
+            { heading: 'Price-only inputs', content: 'The model sees historical closing prices only. Volume, fundamentals, news, and macro conditions all move prices but are invisible to it.' },
           ],
         },
       ],
       keyTakeaways: [
         'LSTM is a neural network architecture designed for sequential data.',
-        'It maintains memory across time steps, making it suitable for price sequences.',
-        'LSTM models can learn complex patterns but have significant limitations.',
-        'Forecasts should be used as probabilistic estimates, not certainties.',
+        'StockVantex reads a 60-trading-day window and recursively projects 10 trading days ahead.',
+        'The "historical fit" percentage is MAPE-based — a measure of past tracking, not future accuracy.',
+        'Forecasts are point estimates on the trading calendar, not certainties.',
       ],
-      limitations: 'StockVantex uses LSTM/attention-based models as one analytical tool. Historical model evaluation metrics (such as backtesting accuracy) do not guarantee future prediction accuracy. Forecasts represent one possible scenario among many—not a guaranteed outcome. Always consider multiple sources of information.',
+      limitations: 'StockVantex uses an LSTM/attention-based model as one analytical tool. The historical-fit percentage shown with each forecast is computed from past data and does not guarantee future prediction accuracy. Forecasts represent one possible scenario among many—not a guaranteed outcome. Always consider multiple sources of information.',
+      faq: [
+        { question: 'How many days ahead does the forecast go?', answer: 'Ten trading days (business days). The model predicts recursively one day at a time, feeding each prediction back in, so error compounds with each step.' },
+        { question: 'Does a high historical fit mean the forecast will be accurate?', answer: 'No. Historical fit measures how closely the model tracked past prices — it says nothing reliable about future accuracy, because markets and regimes change.' },
+        { question: 'What data does the LSTM model use?', answer: 'Historical daily closing prices only — a 60-day lookback window, scaled per ticker. It does not ingest news, volume, fundamentals, or macro data.' },
+      ],
     },
   },
   'technical-vs-fundamental-analysis': {
