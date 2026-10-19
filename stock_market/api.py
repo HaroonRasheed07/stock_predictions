@@ -19,12 +19,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import get_top_performing_stocks, get_latest_price, load_data, STOCK_NAMES, get_cached_forecast, set_cached_forecast
 from indicators import calculate_indicators
 from sentiment import analyze_sentiment
-from forecast_onnx import load_forecast_model, forecast_stock
+from forecast_onnx import load_forecast_model, forecast_stock, forecast_quality_issues
 
 # Import new modules
 from multi_asset import get_asset_info, search_assets, get_default_watchlist, get_watchlist_by_category
 from opportunity import scan_watchlist, calculate_opportunity_score
-from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
+from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range, calculate_atr_value
 from risk import assess_risk, calculate_trend_strength, get_technical_label
 from watchlist_monitor import scan_watchlist_intelligent
 from market_status import get_market_status as _get_market_status, is_market_open as _is_market_open
@@ -2101,20 +2101,35 @@ def get_stock_forecast(request: ForecastRequest):
                     "forecast_dates": []
                 }
 
-            # Use the pre-fitted scaler for this ticker
-            ticker = request.ticker
-            if ticker in SCALERS:
-                scaler = SCALERS[ticker]
-            else:
-                # Fallback if ticker was not in training set
-                from sklearn.preprocessing import MinMaxScaler
-                scaler = MinMaxScaler(feature_range=(0, 1))
-                close_prices = df[["Close"]].values
-                scaler.fit(close_prices)
-
+            # Always scale on THIS request's window (scaler=None). Training-time
+            # per-ticker scalers (scalers_multi.pkl) go stale as prices drift —
+            # e.g. AAPL trading above its fitted max inverse-transformed into the
+            # old price band (~7% below the live close). The model expects [0, 1]
+            # sequences, so a window-fitted scaler keeps inference in-distribution.
             actual, predicted, forecast, dates = forecast_stock(
-                df, MODEL, scaler, forecast_days=request.forecast_days
+                df, MODEL, scaler=None, forecast_days=request.forecast_days
             )
+
+            # ATR14 (full OHLC) for the narrow-range quality guard.
+            try:
+                atr14 = calculate_atr_value(raw_df, period=14)
+            except Exception:
+                atr14 = None
+
+            quality_issues = forecast_quality_issues(
+                last_close=float(df["Close"].iloc[-1]),
+                forecast_prices=forecast,
+                atr14=atr14 if (atr14 and atr14 > 0) else None,
+                forecast_days=request.forecast_days,
+            )
+            if quality_issues:
+                return {
+                    "status": "error",
+                    "message": "Forecast unavailable for quality reasons",
+                    "quality_issues": quality_issues,
+                    "forecast_prices": [],
+                    "forecast_dates": []
+                }
 
             forecast_data = {
                 "actual_prices": actual.tolist(),

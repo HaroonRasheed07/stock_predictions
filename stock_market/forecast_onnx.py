@@ -4,6 +4,83 @@ import pickle
 import os
 import onnxruntime as ort
 import logging
+from sklearn.preprocessing import MinMaxScaler
+
+
+# ── Quality thresholds (documented, conservative) ────────────────────────────
+# Day-1 close-to-close gaps beyond this are never a legitimate next-session
+# prediction for a liquid equity — they indicate scaling/inverse bugs. Set to
+# 6% to catch the observed production defect (AAPL day-1 ~7.3% below close).
+MAX_DAY1_GAP = 0.06
+# Cumulative gap over the whole horizon beyond this is treated as model drift.
+MAX_HORIZON_GAP = 0.25
+# A point-forecast span narrower than this fraction of the typical cumulative
+# move (ATR14 * sqrt(horizon)) is implausibly narrow to display as a range.
+MIN_RANGE_VS_ATR = 0.15
+
+
+def fit_inference_scaler(closes: np.ndarray) -> MinMaxScaler:
+    """Fit a MinMaxScaler on the *inference* window.
+
+    Training-time per-ticker scalers go stale as prices drift (the pkl was
+    fitted in Sep 2026; AAPL has since traded well above its fitted max, which
+    pushed scaled inputs above 1.0 and inverse-transformed forecasts back into
+    the old price band). The model learned dynamics on [0, 1] sequences, so
+    renormalizing the current window keeps inference in-distribution and makes
+    inverse_transform land at current price levels.
+    """
+    closes = np.asarray(closes, dtype=np.float32).reshape(-1, 1)
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaler.fit(closes)
+    return scaler
+
+
+def forecast_quality_issues(
+    last_close: float,
+    forecast_prices,
+    atr14: float | None = None,
+    forecast_days: int = 10,
+) -> list:
+    """Sanity guards between last close and the point-forecast path.
+
+    Returns a list of human-readable issues; empty list means the forecast is
+    displayable. Pure function — unit-tested.
+    """
+    issues = []
+    fc = np.asarray(forecast_prices, dtype=np.float64).flatten()
+
+    if fc.size == 0:
+        issues.append("empty forecast")
+        return issues
+    if not np.all(np.isfinite(fc)):
+        issues.append("non-finite forecast values")
+        return issues
+    if not np.isfinite(last_close) or last_close <= 0:
+        issues.append("invalid last close")
+        return issues
+
+    day1_gap = abs(fc[0] - last_close) / last_close
+    if day1_gap > MAX_DAY1_GAP:
+        issues.append(
+            f"day-1 forecast deviates {day1_gap:.1%} from last close (limit {MAX_DAY1_GAP:.0%})"
+        )
+
+    horizon_gap = abs(fc[-1] - last_close) / last_close
+    if horizon_gap > MAX_HORIZON_GAP:
+        issues.append(
+            f"horizon endpoint deviates {horizon_gap:.1%} from last close (limit {MAX_HORIZON_GAP:.0%})"
+        )
+
+    if atr14 is not None and np.isfinite(atr14) and atr14 > 0:
+        width = float(fc.max() - fc.min())
+        expected_move = atr14 * np.sqrt(max(forecast_days, 1))
+        if width < MIN_RANGE_VS_ATR * expected_move:
+            issues.append(
+                f"forecast range ${width:.2f} is implausibly narrow vs typical "
+                f"${expected_move:.2f} move over {forecast_days} sessions"
+            )
+
+    return issues
 
 
 def validate_forecast_inputs(df, session, scaler, forecast_days=10, window_size=60):
@@ -55,11 +132,13 @@ def load_forecast_model(model_path="lstm_attention_final.onnx", scalers_path="sc
 
     return session, scalers
 
-def forecast_stock(df, session, scaler, forecast_days=10, window_size=60):
+def forecast_stock(df, session, scaler=None, forecast_days=10, window_size=60):
     """
     df: dataframe containing a 'Close' column and datetime index (used ONLY for fetching data and date handling)
     session: loaded ONNX inference session
-    scaler: fitted MinMaxScaler for this ticker
+    scaler: optional pre-fitted MinMaxScaler. When None (production default)
+            a scaler is fitted on this request's own price window so stale
+            training-time scalers can never mis-scale drifted prices.
     """
     if "Close" not in df.columns:
         raise ValueError("DataFrame must contain 'Close' column.")
@@ -69,6 +148,9 @@ def forecast_stock(df, session, scaler, forecast_days=10, window_size=60):
 
     if len(close_prices) < window_size + 1:
         raise ValueError(f"Not enough data. Need at least {window_size+1} rows.")
+
+    if scaler is None:
+        scaler = fit_inference_scaler(close_prices)
 
     scaled_data = scaler.transform(close_prices).astype(np.float32)
     input_name = session.get_inputs()[0].name

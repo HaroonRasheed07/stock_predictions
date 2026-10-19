@@ -309,11 +309,19 @@ function SentimentSection({ ticker }: { ticker: string }) {
 
 function ForecastSection({ ticker }: { ticker: string }) {
   const isMobile = useIsMobile();
-  const { data: forecastData, isLoading } = useQuery({
+  const { data: forecastData, isLoading, error } = useQuery({
     queryKey: ['price-forecast', ticker, '1y'],
     queryFn: () => fetchForecast(ticker, 10, '1y'),
     staleTime: 60000,
     gcTime: 600000,
+    refetchOnWindowFocus: false,
+  });
+  // Same key as OverviewSection — react-query dedupes, no extra request.
+  const { data: overview } = useQuery({
+    queryKey: ['market-overview', ticker, '1y'],
+    queryFn: () => fetchMarketOverview(ticker, '1y'),
+    staleTime: 60000,
+    gcTime: 300000,
     refetchOnWindowFocus: false,
   });
 
@@ -321,21 +329,39 @@ function ForecastSection({ ticker }: { ticker: string }) {
     return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-32 rounded-xl bg-muted/30 animate-pulse" />)}</div>;
   }
 
+  if (error) {
+    return (
+      <ErrorSection
+        title="Forecast unavailable"
+        message={error instanceof Error ? error.message : 'The forecast model may not support this ticker yet.'}
+      />
+    );
+  }
+
   if (!forecastData?.results) return <ErrorSection title="Forecast data unavailable" message="The forecast model may not support this ticker yet." />;
 
   const { actual_prices, predicted_historical_prices, forecast_prices, forecast_dates } = forecastData.results;
+  const actual_dates: string[] | undefined = forecastData.results.actual_dates;
   const currentPrice = actual_prices?.[actual_prices.length - 1] || 0;
   const avgPredicted = forecast_prices.length > 0 ? forecast_prices.reduce((a: number, b: number) => a + b, 0) / forecast_prices.length : 0;
   const priceChange = currentPrice ? ((avgPredicted - currentPrice) / currentPrice) * 100 : 0;
   const trend = forecast_prices[forecast_prices.length - 1] > currentPrice ? 'Bullish' : 'Bearish';
 
+  // Read-only use of the existing trend-model output to explain divergence.
+  const confirmSignal = overview?.tradeConfirmation?.signal || '';
+  const confirmScore = overview?.tradeConfirmation?.score ?? null;
+  const confirmBullish = confirmSignal === 'Buy' || confirmSignal === 'Strong Buy';
+  const confirmBearish = confirmSignal === 'Sell' || confirmSignal === 'Strong Sell';
+  const signalsDisagree = (confirmBullish && trend === 'Bearish') || (confirmBearish && trend === 'Bullish');
+
   const chartData: Array<{ date: string; actual: number | null; predicted: number | null }> = [];
-  const today = new Date();
-  for (let i = 0; i < (actual_prices?.length || 0); i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - ((actual_prices?.length || 0) - i));
+  const histLen = actual_prices?.length || 0;
+  for (let i = 0; i < histLen; i++) {
+    const label = actual_dates?.[i]
+      ? new Date(actual_dates[i]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : new Date(Date.now() - (histLen - i) * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     chartData.push({
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: label,
       actual: actual_prices[i],
       predicted: i < (predicted_historical_prices?.length || 0) ? predicted_historical_prices[i] : null,
     });
@@ -366,6 +392,25 @@ function ForecastSection({ ticker }: { ticker: string }) {
           </div>
         ))}
       </div>
+
+      {signalsDisagree && (
+        <div className="rounded-xl border border-warning/40 bg-warning/5 p-4" role="note" aria-label="Why signals disagree">
+          <p className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+            Why signals disagree
+          </p>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+            The trend model reads current indicators as <strong>{confirmSignal}</strong>
+            {confirmScore !== null && <> (score {confirmScore}/100)</>} — it describes momentum in the data seen so far.
+            {' '}The LSTM forecast points <strong>{trend.toLowerCase()}</strong> over the next {forecast_prices.length} trading days —
+            it extrapolates a price-only sequence and can mean-revert even while indicators stay strong.
+            Different methods over different horizons commonly diverge; treat the disagreement itself as information, not as a signal.
+            {' '}<Link href="/learn/how-lstm-forecasting-works" className="text-primary hover:underline">How the forecast works</Link>
+            {' '}·{' '}
+            <Link href="/methodology" className="text-primary hover:underline">Methodology</Link>
+          </p>
+        </div>
+      )}
 
       <Card className="glass">
         <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">Price Forecast — Next {forecast_prices.length} Days</CardTitle></CardHeader>
