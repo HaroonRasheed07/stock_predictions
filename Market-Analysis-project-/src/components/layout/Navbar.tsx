@@ -9,6 +9,7 @@ import { useThemeStore } from '@/store/themeStore';
 import { rehydrateStockStore } from '@/store/stockStore';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { StockSearch } from '@/components/common/StockSearch';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
@@ -96,6 +97,15 @@ export const Navbar = () => {
               ))}
             </div>
 
+            {/* Desktop compact search */}
+            <div className="hidden md:block w-52 lg:w-60 ml-4">
+              <StockSearch
+                label="Search stocks from the navigation"
+                placeholder="Search stocks…"
+                className="[&_input]:h-9 [&_input]:text-sm"
+              />
+            </div>
+
             {/* Right Section */}
             <div className="flex items-center gap-1">
               <Button
@@ -143,6 +153,13 @@ export const Navbar = () => {
           />
           {/* Menu panel */}
           <div className="relative bg-card border-b border-border/60 shadow-lg px-4 py-4 space-y-1">
+            <div className="pb-2">
+              <StockSearch
+                label="Search stocks from the navigation"
+                placeholder="Search stocks…"
+                className="[&_input]:h-10"
+              />
+            </div>
             {NAV_LINKS.map((link) => (
               <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)}>
                 <div
