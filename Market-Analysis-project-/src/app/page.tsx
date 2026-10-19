@@ -59,7 +59,7 @@ export default async function Home() {
   const home = await getHomeData();
 
   return (
-    <main>
+    <>
       {/* 1b. Market strip — indices, status, freshness */}
       <MarketStrip
         indexes={home.indexes}
@@ -156,6 +156,6 @@ export default async function Home() {
       {/* 10/11. Learn teasers + trust framing (footer follows from the layout) */}
       <LearnTeasers />
       <TrustStrip />
-    </main>
+    </>
   );
 }

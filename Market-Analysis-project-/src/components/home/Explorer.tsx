@@ -279,7 +279,7 @@ export function Explorer({ bundle }: { bundle: HeroBundle }) {
                           <span className="text-muted-foreground">{col.replace('SMA', 'SMA ').replace('EMA', 'EMA ')}</span>
                           <span className="tabular-nums">
                             ${formatPrice(v)}{' '}
-                            <span className={above ? 'text-green-800 dark:text-success' : 'text-red-700 dark:text-red-400'}>
+                            <span className={above ? 'text-success' : 'text-destructive'}>
                               {above ? 'price above' : 'price below'}
                             </span>
                           </span>
@@ -357,7 +357,7 @@ export function Explorer({ bundle }: { bundle: HeroBundle }) {
                         {sentiment.drivers.slice(0, 3).map((d) => (
                           <li key={d.category} className="flex items-center justify-between gap-2 text-xs">
                             <span className="truncate text-muted-foreground">{d.category}</span>
-                            <span className={cn('shrink-0 font-semibold', d.direction === 'positive' ? 'text-green-800 dark:text-success' : d.direction === 'negative' ? 'text-red-700 dark:text-red-400' : 'text-muted-foreground')}>
+                            <span className={cn('shrink-0 font-semibold', d.direction === 'positive' ? 'text-success' : d.direction === 'negative' ? 'text-destructive' : 'text-muted-foreground')}>
                               {d.direction} · {d.article_count} articles
                             </span>
                           </li>

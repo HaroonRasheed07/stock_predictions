@@ -40,8 +40,8 @@ function Rail({
   tone: 'positive' | 'negative' | 'neutral' | 'muted';
 }) {
   const tones = {
-    positive: 'border-success/30 bg-success/10 text-green-800 dark:text-success',
-    negative: 'border-destructive/30 bg-destructive/10 text-red-700 dark:text-red-400',
+    positive: 'border-success/30 bg-success/10 text-success',
+    negative: 'border-destructive/30 bg-destructive/10 text-destructive',
     neutral: 'border-border/60 bg-muted/50 text-foreground/80',
     muted: 'border-border/60 bg-muted/40 text-muted-foreground',
   };
@@ -49,7 +49,7 @@ function Rail({
     <div className={cn('flex items-center gap-2 rounded-lg border px-3 py-2', tones[tone])}>
       <span aria-hidden="true">{icon}</span>
       <span className="min-w-0">
-        <span className="block text-[10px] font-medium uppercase tracking-wide">{label}</span>
+        <span className="block text-[10px] font-medium uppercase tracking-wide opacity-80">{label}</span>
         <span className="block truncate text-xs font-bold">{value}</span>
       </span>
     </div>
@@ -168,7 +168,7 @@ export function HeroBriefCard({
               </p>
               <h2 className="truncate text-base font-bold">{bundle.name}</h2>
             </div>
-            <span className="ml-auto rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary dark:text-blue-400">
+            <span className="ml-auto rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
               Today’s pick
             </span>
           </div>
@@ -208,7 +208,7 @@ export function HeroBriefCard({
 
           {/* CTAs */}
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button size="sm" onClick={focusSearch} className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700">
+            <Button size="sm" onClick={focusSearch} className="gap-1.5">
               <Search className="h-3.5 w-3.5" aria-hidden="true" />
               Analyze a stock
             </Button>

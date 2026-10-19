@@ -196,7 +196,7 @@ export default function PriceChartInner({
           <span>O {legend.open.toFixed(2)}</span>
           <span>H {legend.high.toFixed(2)}</span>
           <span>L {legend.low.toFixed(2)}</span>
-          <span className={legend.changePct >= 0 ? 'text-green-800 dark:text-success' : 'text-red-700 dark:text-red-400'}>
+          <span className={legend.changePct >= 0 ? 'text-success' : 'text-destructive'}>
             C {legend.close.toFixed(2)} ({legend.changePct >= 0 ? '+' : '−'}
             {Math.abs(legend.changePct).toFixed(2)}%)
           </span>

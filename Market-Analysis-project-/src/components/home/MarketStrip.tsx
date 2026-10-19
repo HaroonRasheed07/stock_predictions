@@ -42,13 +42,7 @@ export function MarketStrip({
   return (
     <div className="border-b border-border/50 bg-background/60">
       <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8">
-        <div
-          className="flex items-center gap-4 overflow-x-auto py-1.5 text-xs md:gap-6"
-          style={{ scrollbarWidth: 'none' }}
-          role="region"
-          aria-label="Market index quotes"
-          tabIndex={0}
-        >
+        <div className="flex items-center gap-4 overflow-x-auto py-1.5 text-xs md:gap-6" style={{ scrollbarWidth: 'none' }}>
           {/* Market status */}
           <div className="flex shrink-0 items-center gap-2">
             <span className={`h-1.5 w-1.5 rounded-full ${statusDot(status.status)}`} aria-hidden="true" />

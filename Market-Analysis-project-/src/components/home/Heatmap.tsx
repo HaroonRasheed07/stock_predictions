@@ -91,13 +91,14 @@ export function Heatmap({ stocks, available }: { stocks: DiscoverStock[]; availa
       <div
         className="grid gap-1.5"
         style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))' }}
-        role="group"
+        role="list"
         aria-label="Tracked stocks by daily change"
       >
         {sorted.map((s) => (
           <button
             key={s.ticker}
             type="button"
+            role="listitem"
             aria-pressed={selected === s.ticker}
             aria-label={`${s.ticker}, ${formatPct(s.changePercent)}`}
             onClick={() => setSelected(s.ticker)}
@@ -107,10 +108,10 @@ export function Heatmap({ stocks, available }: { stocks: DiscoverStock[]; availa
             )}
             style={tileStyle(s.changePercent)}
           >
-            <span className="text-[11px] font-bold leading-tight text-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] dark:text-white">
+            <span className="text-[11px] font-bold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
               {s.ticker}
             </span>
-            <span className="text-[9px] font-semibold leading-tight text-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] dark:text-white/90">
+            <span className="text-[9px] font-semibold leading-tight text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
               {formatPct(s.changePercent)}
             </span>
           </button>

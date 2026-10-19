@@ -12,7 +12,7 @@ export function formatPct(v: number | null | undefined, withSign = true): string
 
 export function changeTone(v: number | null | undefined): string {
   if (typeof v !== 'number' || !isFinite(v) || Math.abs(v) < 0.0001) return 'text-muted-foreground';
-  return v > 0 ? 'text-green-800 dark:text-success' : 'text-red-700 dark:text-red-400';
+  return v > 0 ? 'text-success' : 'text-destructive';
 }
 
 /** Compact display of a quoted index value (12,345.67 → "12,345.7"). */

@@ -102,7 +102,7 @@ function HighRiskCard({ stocks }: { stocks: DiscoverStock[] }) {
                 <span className={cn('text-sm font-semibold tabular-nums', changeTone(s.changePercent))}>
                   {formatPct(s.changePercent)}
                 </span>
-                <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 dark:text-red-400">
+                <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
                   High risk
                 </span>
                 <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden="true" />

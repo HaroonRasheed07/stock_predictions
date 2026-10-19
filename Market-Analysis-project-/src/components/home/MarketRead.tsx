@@ -31,8 +31,8 @@ export function MarketRead({
           <>
             <p className="mt-3 max-w-3xl text-sm text-muted-foreground md:text-base">
               Across {breadth.total} tracked stocks, technical readings split{' '}
-              <span className="font-semibold text-green-800 dark:text-success">{breadth.bullish} Bullish</span>,{' '}
-              <span className="font-semibold text-red-700 dark:text-red-400">{breadth.bearish} Bearish</span> and{' '}
+              <span className="font-semibold text-success">{breadth.bullish} Bullish</span>,{' '}
+              <span className="font-semibold text-destructive">{breadth.bearish} Bearish</span> and{' '}
               <span className="font-semibold text-foreground">{breadth.neutral} Neutral</span>.{' '}
               {breadth.advancers} advanced while {breadth.decliners} declined
               {breadth.unchanged > 0 ? ` (${breadth.unchanged} unchanged)` : ''}, for an average move of{' '}

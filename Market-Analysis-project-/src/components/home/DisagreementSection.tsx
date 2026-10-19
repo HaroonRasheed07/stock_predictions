@@ -6,14 +6,14 @@ import type { DisagreeCardData } from '@/lib/home-data';
 function modelPill(direction: 'up' | 'down' | 'flat' | null) {
   if (direction === 'up') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-green-800 dark:text-success">
+      <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
         <ArrowUpRight className="h-3 w-3" aria-hidden="true" /> Model up
       </span>
     );
   }
   if (direction === 'down') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-400">
+      <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
         <ArrowDownRight className="h-3 w-3" aria-hidden="true" /> Model down
       </span>
     );
@@ -43,8 +43,8 @@ function directionWord(label: string): string {
 
 function tone(label: string): string {
   const w = directionWord(label);
-  return w === 'Bullish' ? 'text-green-800 dark:text-success border-success/30 bg-success/10'
-    : w === 'Bearish' ? 'text-red-700 dark:text-red-400 border-destructive/30 bg-destructive/10'
+  return w === 'Bullish' ? 'text-success border-success/30 bg-success/10'
+    : w === 'Bearish' ? 'text-destructive border-destructive/30 bg-destructive/10'
     : 'text-muted-foreground border-border/60 bg-muted/50';
 }
 
