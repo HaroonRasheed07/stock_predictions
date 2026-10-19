@@ -10,7 +10,9 @@ import {
   fetchMarketOverview,
   fetchIndicators,
   fetchForecast,
+  ForecastQualityError,
 } from '@/lib/api';
+import { ForecastQualityNotice } from '@/components/common/ForecastQualityNotice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -330,6 +332,11 @@ function ForecastSection({ ticker }: { ticker: string }) {
   }
 
   if (error) {
+    // Expected state: the server-side quality guard withheld this forecast.
+    // Render the calm informational card — not a failure, not a retry loop.
+    if (error instanceof ForecastQualityError) {
+      return <ForecastQualityNotice ticker={ticker} />;
+    }
     return (
       <ErrorSection
         title="Forecast unavailable"
@@ -413,7 +420,10 @@ function ForecastSection({ ticker }: { ticker: string }) {
       )}
 
       <Card className="glass">
-        <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">Price Forecast — Next {forecast_prices.length} Days</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm sm:text-base">Price Forecast — Next {forecast_prices.length} Days</CardTitle>
+          <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">Experimental model projection</p>
+        </CardHeader>
         <CardContent className="px-2 sm:px-6 pb-4">
           <ResponsiveContainer width="100%" height={isMobile ? CHART_HEIGHTS.forecast.mobile : CHART_HEIGHTS.forecast.desktop}>
             <ComposedChart data={chartData} margin={chartMargins(isMobile)}>

@@ -6,7 +6,10 @@ Covers:
 - forecast_stock continuity on 10 synthetic tickers with a stub ONNX session
 - API-level proof that stale training-time scalers are bypassed
 - API-level quality refusal path
+- server-side refusal audit log (never surfaced through the API)
 """
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -166,8 +169,10 @@ def test_forecast_day1_continuous_with_refit_scaler(ticker):
 # ── API level: stale scaler bypass + quality refusal ─────────────────────────
 
 @pytest.fixture
-def api_env(monkeypatch):
+def api_env(monkeypatch, tmp_path):
     session = StubSession()
+    # Refusals are logged server-side — keep test writes out of the repo.
+    monkeypatch.setenv("FORECAST_REFUSAL_LOG", str(tmp_path / "forecast_refusals.log"))
     monkeypatch.setattr(api_module, "MODEL", session)
     # Poison SCALERS with absurd stale ranges — production must ignore these.
     stale = {}
@@ -209,3 +214,31 @@ def test_api_quality_refusal_returns_dedicated_message(monkeypatch, api_env):
     assert body["message"] == "Forecast unavailable for quality reasons"
     assert body["forecast_prices"] == []
     assert body.get("quality_issues")
+
+
+def test_api_quality_refusal_logged_server_side_only(monkeypatch, api_env, tmp_path):
+    """Each refusal appends one JSONL record (date/ticker/issues) to a local
+    file so daily refusal rates can be counted — and the record/log path is
+    never echoed back through the API response."""
+    log_path = tmp_path / "forecast_refusals.log"
+    monkeypatch.setenv("FORECAST_REFUSAL_LOG", str(log_path))
+    monkeypatch.setattr(api_module, "MODEL", GarbageSession())
+
+    resp = client.post(
+        "/api/forecast/onnx", json={"ticker": "AAPL", "forecast_days": 10, "period": "1y"}
+    )
+    body = resp.json()
+    assert body["status"] == "error"
+
+    assert log_path.exists(), "refusal must be logged server-side"
+    lines = [line for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) == 1
+    rec = json.loads(lines[0])
+    assert rec["ticker"] == "AAPL"
+    assert len(rec["date"]) == 10 and rec["date"][4] == "-" and rec["date"][7] == "-"
+    assert rec["issues"] == body["quality_issues"]
+    assert "T" in rec["ts"]
+
+    # Server-side only: nothing about the log leaks into the API surface.
+    assert str(log_path) not in resp.text
+    assert "log" not in body and "log_path" not in body

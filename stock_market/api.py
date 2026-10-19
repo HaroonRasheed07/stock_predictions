@@ -2067,6 +2067,35 @@ def trade_confirmation(req: SingleAssetRequest):
 
 # ─── Forecast Endpoint ────────────────────────────────────────────────────────
 
+# Server-side-only audit log of quality-guard refusals (JSONL: one object per
+# line, each with a UTC `date` field so daily refusal rates can be counted).
+# Deliberately never exposed through any API endpoint or UI surface.
+FORECAST_REFUSAL_LOG_DEFAULT = os.path.join(os.path.dirname(__file__), "forecast_refusals.log")
+
+
+def _forecast_refusal_log_path() -> str:
+    return os.environ.get("FORECAST_REFUSAL_LOG") or FORECAST_REFUSAL_LOG_DEFAULT
+
+
+def log_forecast_refusal(ticker: str, issues: list) -> None:
+    """Append one quality-refusal record. Must never break the request path."""
+    try:
+        import json
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        record = {
+            "date": now.strftime("%Y-%m-%d"),
+            "ts": now.isoformat(timespec="seconds"),
+            "ticker": str(ticker),
+            "issues": [str(i) for i in (issues or [])],
+        }
+        with open(_forecast_refusal_log_path(), "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record) + "\n")
+    except Exception:
+        logger.debug("forecast refusal log write failed", exc_info=True)
+
+
 @app.post("/api/forecast/onnx")
 def get_stock_forecast(request: ForecastRequest):
     """Return stock forecast using ONNX Runtime. Results cached for 15 minutes."""
@@ -2123,6 +2152,8 @@ def get_stock_forecast(request: ForecastRequest):
                 forecast_days=request.forecast_days,
             )
             if quality_issues:
+                # Server-side-only daily refusal accounting (never shown on the site).
+                log_forecast_refusal(request.ticker, quality_issues)
                 return {
                     "status": "error",
                     "message": "Forecast unavailable for quality reasons",

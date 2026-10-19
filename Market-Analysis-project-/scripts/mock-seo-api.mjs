@@ -109,6 +109,21 @@ function overviewFor(ticker) {
 }
 
 function forecastFor(ticker) {
+  // Mirror the production quality guard: AAPL is refused (HTTP 200 +
+  // status:error + quality_issues), exactly as the live backend answers when
+  // a forecast fails its server-side checks. Frontend UX tests rely on this.
+  if (ticker === 'AAPL') {
+    return {
+      status: 'error',
+      message: 'Forecast unavailable for quality reasons',
+      quality_issues: [
+        'day-1 jump 7.3% exceeds 6% limit',
+        'forecast range $2.65 is implausibly narrow vs typical $21.16 move over 10 sessions',
+      ],
+      forecast_prices: [],
+      forecast_dates: [],
+    };
+  }
   const actual = [];
   const predicted = [];
   const prices = [];
@@ -161,8 +176,18 @@ const server = http.createServer((req, res) => {
   req.on('end', () => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'content-type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
     log(`${req.method} ${req.url}`);
+
+    // Browser tests call the API cross-origin (localhost:3217 → :8787):
+    // answer CORS preflight instead of letting the browser block the POST.
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/multi-asset/search') {
       res.end(JSON.stringify(searchFor(url.searchParams.get('q'))));

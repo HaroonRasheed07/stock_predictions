@@ -431,6 +431,7 @@ export default async function StockPage({ params }: PageProps) {
               {fAvg !== null && fMin !== null && fMax !== null && fChangePct !== null && (
                 <section aria-labelledby="forecast-heading" className="rounded-xl border border-border/60 bg-card p-4">
                   <h2 id="forecast-heading" className="text-lg font-semibold mb-2">Model forecast — next {fPrices.length} trading sessions</h2>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-3">Experimental model projection</p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                     <div>
                       <p className="text-xs uppercase text-muted-foreground">Projected average</p>
