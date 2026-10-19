@@ -1180,6 +1180,88 @@ def get_market_status_endpoint():
         return {"market": "US", "status": "unknown", "label": "Unknown", "timezone": "America/New_York"}
 
 
+# ─── Homepage market indices (S&P 500 / Nasdaq / Dow / VIX) ─────────────────
+
+_INDEX_SERIES = [
+    ("^GSPC", "S&P 500"),
+    ("^IXIC", "Nasdaq"),
+    ("^DJI", "Dow Jones"),
+    ("^VIX", "VIX"),
+]
+
+
+def _compute_indices_raw() -> Dict[str, Any]:
+    """Latest daily closes for headline indices plus sparkline points.
+
+    Returns {"indexes": [...]} with real Yahoo data via the existing
+    yahooquery adapter; on any failure returns an empty list so callers can
+    serve a labeled "data delayed" state instead of inventing numbers.
+    """
+    rows: List[Dict[str, Any]] = []
+    try:
+        from yahooquery_adapter import get_fast_batch_history
+
+        batch = get_fast_batch_history(
+            [symbol for symbol, _ in _INDEX_SERIES], period="1mo", interval="1d"
+        )
+        for symbol, label in _INDEX_SERIES:
+            try:
+                df = batch.get(symbol)
+                if df is None or getattr(df, "empty", True) or len(df) < 2:
+                    continue
+                closes = df["Close"]
+                if isinstance(closes, pd.DataFrame):
+                    closes = closes.iloc[:, 0]
+                values = [float(v) for v in closes.tolist() if v is not None and not pd.isna(v)]
+                if len(values) < 2:
+                    continue
+                price = values[-1]
+                prev = values[-2]
+                if prev == 0:
+                    continue
+                rows.append({
+                    "symbol": symbol,
+                    "label": label,
+                    "value": round(price, 2),
+                    "changePercent": round(((price - prev) / prev) * 100.0, 2),
+                    "points": [round(v, 2) for v in values[-10:]],
+                })
+            except Exception:
+                continue
+    except Exception:
+        rows = []
+    return {"indexes": rows}
+
+
+@app.get("/api/market/indices")
+def get_market_indices_endpoint():
+    """Headline index quotes for the homepage strip (SWR-cached)."""
+    cache_key = "market:indices"
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_indices_raw,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="indices",
+    )
+    if payload is not None:
+        res = dict(payload)
+        res["_cache_meta"] = meta
+        return res
+    result = _compute_indices_raw()
+    cache_manager.set(
+        key=cache_key,
+        payload=result,
+        fresh_ttl_seconds=300.0,
+        stale_ttl_seconds=86400.0,
+        category="indices",
+    )
+    meta["status"] = "MISS"
+    res = dict(result)
+    res["_cache_meta"] = meta
+    return res
+
+
 @app.get("/api/home/brief")
 def get_home_brief():
     """Lightweight: just selectedStock preview. Uses overview SWR cache."""

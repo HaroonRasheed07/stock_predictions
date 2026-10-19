@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Loader2, SearchX, ArrowRight } from 'lucide-react';
 import { fetchAssetSearch, type AssetInfo } from '@/lib/api';
@@ -17,6 +17,8 @@ interface StockSearchProps {
   label?: string;
   className?: string;
   autoFocus?: boolean;
+  /** Stable input id (unique when multiple searches render on one page). */
+  inputId?: string;
 }
 
 /**
@@ -30,8 +32,11 @@ export function StockSearch({
   label = 'Search stocks',
   className,
   autoFocus,
+  inputId,
 }: StockSearchProps) {
   const router = useRouter();
+  const reactId = useId();
+  const searchId = inputId || `stock-search-${reactId}`;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AssetInfo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +44,7 @@ export function StockSearch({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const listId = 'stock-search-results';
+  const listId = `${searchId}-results`;
 
   const directSymbol = isValidSymbolPath(query.trim()) ? query.trim().toUpperCase() : null;
   // Offer a direct research link only when the provider returned nothing —
@@ -129,13 +134,13 @@ export function StockSearch({
 
   return (
     <div className={cn('relative w-full', className)}>
-      <label htmlFor="stock-search-input" className="sr-only">
+      <label htmlFor={searchId} className="sr-only">
         {label}
       </label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          id="stock-search-input"
+          id={searchId}
           value={query}
           onChange={(e) => handleInput(e.target.value)}
           onKeyDown={handleKeyDown}

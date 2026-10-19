@@ -137,7 +137,7 @@ export function AnalyticsConsent() {
             <button
               type="button"
               onClick={() => decide('granted')}
-              className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors"
             >
               Allow analytics
             </button>
