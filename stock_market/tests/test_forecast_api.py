@@ -29,7 +29,7 @@ def forecast_env(monkeypatch, business_index):
     forecast = np.array([actual[-1] + i for i in range(1, 11)])
     forecast_dates = pd.bdate_range(start=business_index[-1] + pd.Timedelta(days=1), periods=10)
 
-    def fake_forecast_stock(_df, _model, scaler=None, forecast_days=10):
+    def fake_forecast_stock(_df, _model, _scaler, forecast_days=10):
         assert forecast_days == 10
         return actual, predicted, forecast, forecast_dates
 

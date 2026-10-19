@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
-import { fetchForecast, fetchAssetSearch, AssetInfo, ForecastQualityError } from '@/lib/api';
+import { fetchForecast, fetchAssetSearch, AssetInfo } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -29,7 +29,6 @@ import { useStockStore } from '@/store/stockStore';
 import { parseTickerParam } from '@/lib/ticker-routing';
 import { WatchlistButton } from '@/components/common/WatchlistButton';
 import { TickerLogo } from '@/components/common/TickerLogo';
-import { ForecastQualityNotice } from '@/components/common/ForecastQualityNotice';
 
 interface ForecastData {
   ticker: string;
@@ -242,29 +241,6 @@ export default function PriceForecasting() {
   );
   
   if (error) {
-    // Quality refusal is an expected state — a calm informational card, no
-    // red styling, no retry loop. Genuine failures keep the error alert.
-    if (error instanceof ForecastQualityError) {
-      return (
-        <div className="space-y-6">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Price Forecasting</h1>
-                <p className="text-sm text-muted-foreground">Model projections for {ticker} · fixed 10-trading-day horizon</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <WatchlistButton ticker={ticker} />
-                {renderSearchForm()}
-              </div>
-            </div>
-          </div>
-
-          <ForecastQualityNotice ticker={ticker} />
-        </div>
-      );
-    }
-
     return (
       <div className="space-y-6">
         <div>
@@ -498,7 +474,6 @@ export default function PriceForecasting() {
                     {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
                   </span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1.5">Experimental model projection</p>
               </div>
               <Brain className="h-8 w-8 text-secondary" />
             </div>
@@ -545,10 +520,7 @@ export default function PriceForecasting() {
                   Last 1 year of trading days · forecast horizon: {forecastLength} trading days
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-1.5">
-                <Badge variant="outline" className="text-[10px] sm:text-xs">Experimental model projection</Badge>
-                <Badge variant="outline" className="text-[10px] sm:text-xs">LSTM</Badge>
-              </div>
+              <Badge variant="outline" className="text-[10px] sm:text-xs self-start sm:self-center">LSTM</Badge>
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:px-6 pb-4 sm:pb-6">

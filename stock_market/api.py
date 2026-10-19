@@ -19,12 +19,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import get_top_performing_stocks, get_latest_price, load_data, STOCK_NAMES, get_cached_forecast, set_cached_forecast
 from indicators import calculate_indicators
 from sentiment import analyze_sentiment
-from forecast_onnx import load_forecast_model, forecast_stock, forecast_quality_issues
+from forecast_onnx import load_forecast_model, forecast_stock
 
 # Import new modules
 from multi_asset import get_asset_info, search_assets, get_default_watchlist, get_watchlist_by_category
 from opportunity import scan_watchlist, calculate_opportunity_score
-from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range, calculate_atr_value
+from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
 from risk import assess_risk, calculate_trend_strength, get_technical_label
 from watchlist_monitor import scan_watchlist_intelligent
 from market_status import get_market_status as _get_market_status, is_market_open as _is_market_open
@@ -2067,35 +2067,6 @@ def trade_confirmation(req: SingleAssetRequest):
 
 # ─── Forecast Endpoint ────────────────────────────────────────────────────────
 
-# Server-side-only audit log of quality-guard refusals (JSONL: one object per
-# line, each with a UTC `date` field so daily refusal rates can be counted).
-# Deliberately never exposed through any API endpoint or UI surface.
-FORECAST_REFUSAL_LOG_DEFAULT = os.path.join(os.path.dirname(__file__), "forecast_refusals.log")
-
-
-def _forecast_refusal_log_path() -> str:
-    return os.environ.get("FORECAST_REFUSAL_LOG") or FORECAST_REFUSAL_LOG_DEFAULT
-
-
-def log_forecast_refusal(ticker: str, issues: list) -> None:
-    """Append one quality-refusal record. Must never break the request path."""
-    try:
-        import json
-        from datetime import datetime, timezone
-
-        now = datetime.now(timezone.utc)
-        record = {
-            "date": now.strftime("%Y-%m-%d"),
-            "ts": now.isoformat(timespec="seconds"),
-            "ticker": str(ticker),
-            "issues": [str(i) for i in (issues or [])],
-        }
-        with open(_forecast_refusal_log_path(), "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record) + "\n")
-    except Exception:
-        logger.debug("forecast refusal log write failed", exc_info=True)
-
-
 @app.post("/api/forecast/onnx")
 def get_stock_forecast(request: ForecastRequest):
     """Return stock forecast using ONNX Runtime. Results cached for 15 minutes."""
@@ -2130,37 +2101,20 @@ def get_stock_forecast(request: ForecastRequest):
                     "forecast_dates": []
                 }
 
-            # Always scale on THIS request's window (scaler=None). Training-time
-            # per-ticker scalers (scalers_multi.pkl) go stale as prices drift —
-            # e.g. AAPL trading above its fitted max inverse-transformed into the
-            # old price band (~7% below the live close). The model expects [0, 1]
-            # sequences, so a window-fitted scaler keeps inference in-distribution.
+            # Use the pre-fitted scaler for this ticker
+            ticker = request.ticker
+            if ticker in SCALERS:
+                scaler = SCALERS[ticker]
+            else:
+                # Fallback if ticker was not in training set
+                from sklearn.preprocessing import MinMaxScaler
+                scaler = MinMaxScaler(feature_range=(0, 1))
+                close_prices = df[["Close"]].values
+                scaler.fit(close_prices)
+
             actual, predicted, forecast, dates = forecast_stock(
-                df, MODEL, scaler=None, forecast_days=request.forecast_days
+                df, MODEL, scaler, forecast_days=request.forecast_days
             )
-
-            # ATR14 (full OHLC) for the narrow-range quality guard.
-            try:
-                atr14 = calculate_atr_value(raw_df, period=14)
-            except Exception:
-                atr14 = None
-
-            quality_issues = forecast_quality_issues(
-                last_close=float(df["Close"].iloc[-1]),
-                forecast_prices=forecast,
-                atr14=atr14 if (atr14 and atr14 > 0) else None,
-                forecast_days=request.forecast_days,
-            )
-            if quality_issues:
-                # Server-side-only daily refusal accounting (never shown on the site).
-                log_forecast_refusal(request.ticker, quality_issues)
-                return {
-                    "status": "error",
-                    "message": "Forecast unavailable for quality reasons",
-                    "quality_issues": quality_issues,
-                    "forecast_prices": [],
-                    "forecast_dates": []
-                }
 
             forecast_data = {
                 "actual_prices": actual.tolist(),

@@ -367,31 +367,6 @@ export async function fetchMarketOverview(
   return res.json();
 }
 
-/** Backend message used whenever the server-side quality guard withholds a forecast. */
-export const FORECAST_QUALITY_MESSAGE = "Forecast unavailable for quality reasons";
-
-/**
- * Thrown when the backend deliberately withheld a forecast because it failed
- * the server-side quality checks (status:error + quality_issues). This is an
- * EXPECTED state, not a failure — UI should render an informational card and
- * must not show it as a load error. Genuine network/server problems throw a
- * plain Error instead.
- */
-export class ForecastQualityError extends Error {
-  readonly qualityIssues: string[];
-  constructor(qualityIssues: string[] = []) {
-    super(FORECAST_QUALITY_MESSAGE);
-    this.name = "ForecastQualityError";
-    this.qualityIssues = qualityIssues;
-  }
-}
-
-function isQualityRefusal(data: any): boolean {
-  if (!data || typeof data !== "object" || data.status !== "error") return false;
-  if (Array.isArray(data.quality_issues) && data.quality_issues.length > 0) return true;
-  return data.message === FORECAST_QUALITY_MESSAGE;
-}
-
 export async function fetchForecast(
   ticker: string,
   forecastDays: number = 7,
@@ -419,14 +394,6 @@ export async function fetchForecast(
     data = await res.json();
   } catch {
     // Non-JSON body handled below.
-  }
-
-  // Quality refusal travels as a normal 200 with status:error — classify it
-  // before any generic error handling so callers can render it calmly.
-  if (isQualityRefusal(data)) {
-    throw new ForecastQualityError(
-      Array.isArray(data.quality_issues) ? data.quality_issues.map((v: unknown) => String(v)) : []
-    );
   }
 
   if (!res.ok) {
