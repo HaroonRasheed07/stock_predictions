@@ -830,19 +830,3 @@ export async function fetchHomeDiscover(): Promise<HomeDiscover> {
   return res.json();
 }
 
-export interface MarketStatusResponse {
-  market: string;
-  status: string;
-  label: string;
-  timezone: string;
-  next_open?: string | null;
-  next_close?: string | null;
-  is_early_close?: boolean;
-}
-
-export async function fetchMarketStatus(): Promise<MarketStatusResponse> {
-  const res = await fetch(`${API_BASE}/api/market/status`);
-  if (!res.ok) throw new Error("Failed to fetch market status");
-  return res.json();
-}
-

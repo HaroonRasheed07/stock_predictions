@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Loader2, SearchX, ArrowRight } from 'lucide-react';
 import { fetchAssetSearch, type AssetInfo } from '@/lib/api';
@@ -39,10 +39,7 @@ export function StockSearch({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Unique per instance so multiple searches (hero + navbar) can coexist.
-  const uid = useId();
-  const inputId = `stock-search-input${uid}`;
-  const listId = `stock-search-results${uid}`;
+  const listId = 'stock-search-results';
 
   const directSymbol = isValidSymbolPath(query.trim()) ? query.trim().toUpperCase() : null;
   // Offer a direct research link only when the provider returned nothing —
@@ -132,13 +129,13 @@ export function StockSearch({
 
   return (
     <div className={cn('relative w-full', className)}>
-      <label htmlFor={inputId} className="sr-only">
+      <label htmlFor="stock-search-input" className="sr-only">
         {label}
       </label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          id={inputId}
+          id="stock-search-input"
           value={query}
           onChange={(e) => handleInput(e.target.value)}
           onKeyDown={handleKeyDown}

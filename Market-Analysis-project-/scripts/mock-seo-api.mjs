@@ -1,4 +1,4 @@
-﻿// Local mock of the StockVantex backend for SEO/routing build validation.
+// Local mock of the StockVantex backend for SEO/routing build validation.
 // Serves POST /api/market/overview and /api/forecast/onnx with deterministic
 // canned data so `next build` never hits the live backend or news providers,
 // plus GET /api/multi-asset/search for autocomplete tests.
@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.MOCK_PORT || 8787);
-const nowTs = () => Math.floor(Date.now() / 1000); // live timestamps so "Updated X min ago" renders
+const UPDATED_AT = 1791444000; // fixed unix ts → deterministic "computed" timestamps
 const LOG_FILE = path.join(os.tmpdir(), 'mock-seo-requests.log');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -22,10 +22,6 @@ const EXTRA_KNOWN = [
   { symbol: 'F', name: 'Ford Motor Company' },
   { symbol: 'GM', name: 'General Motors Company' },
   { symbol: 'MRNA', name: 'Moderna, Inc.' },
-  { symbol: '^GSPC', name: 'S&P 500' },
-  { symbol: '^IXIC', name: 'NASDAQ Composite' },
-  { symbol: '^DJI', name: 'Dow Jones Industrial' },
-  { symbol: '^VIX', name: 'CBOE Volatility Index' },
 ];
 
 function loadAllowlist() {
@@ -108,7 +104,7 @@ function overviewFor(ticker) {
     },
     watchlist: [],
     marketStatus: 'Open',
-    _cache_meta: (() => { const n = nowTs(); return { created_at: n, updated_at: n, fresh_until: n + 120, is_stale: false, status: 'HIT' }; })(),
+    _cache_meta: { created_at: UPDATED_AT, updated_at: UPDATED_AT, fresh_until: UPDATED_AT + 120, is_stale: false, status: 'HIT' },
   };
 }
 
@@ -159,113 +155,6 @@ function searchFor(query) {
     }));
 }
 
-// â”€â”€ Home dashboard routes (Phase 1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Shapes mirror the real backend responses consumed by src/app/page.tsx.
-
-const HOME_TOP = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'TSLA', 'GOOGL', 'META', 'AMD'];
-
-function cannedQuote(ticker, i) {
-  const info = KNOWN.find((k) => k.symbol === ticker) || { name: ticker };
-  const price = 100 + ((ticker.charCodeAt(0) * 7 + i * 13) % 380);
-  const changePercent = +((((ticker.charCodeAt(1) || 65) % 7) - 3) * 0.61 + i * 0.17).toFixed(2);
-  return {
-    symbol: ticker,
-    name: info.name,
-    price,
-    change: +(price * (changePercent / 100)).toFixed(2),
-    changePercent,
-  };
-}
-
-const cacheMeta = () => ({
-  created_at: nowTs(),
-  updated_at: nowTs(),
-  fresh_until: nowTs() + 120,
-  is_stale: false,
-  status: 'HIT',
-});
-
-function homeTicker() {
-  return {
-    marketStatus: 'Open',
-    topStocks: HOME_TOP.map((t, i) => cannedQuote(t, i)),
-    _cache_meta: cacheMeta(),
-  };
-}
-
-function homeBrief() {
-  const q = cannedQuote('AAPL', 0);
-  return {
-    selectedStock: {
-      ticker: q.symbol,
-      price: q.price,
-      change: q.change,
-      changePercent: q.changePercent,
-      signal: 'Hold',
-      score: 58,
-      risk: 'Moderate',
-      sentiment: 'Neutral',
-      sentiment_status: 'insufficient',
-      market_mood: 'Unknown',
-      volatility: 24.5,
-    },
-    _cache_meta: cacheMeta(),
-  };
-}
-
-function discoverStock(ticker, i) {
-  const q = cannedQuote(ticker, i);
-  const modes = ['Bullish', 'Bearish', 'Neutral'];
-  const risks = ['Low', 'Moderate', 'High'];
-  const signals = ['Buy', 'Hold', 'Sell'];
-  const n = (ticker.charCodeAt(0) + ticker.charCodeAt(ticker.length - 1)) % 3;
-  return {
-    ...q,
-    ticker: q.symbol,
-    signal: signals[n],
-    risk: risks[(n + 1) % 3],
-    technical: modes[n],
-    sentiment: 'Neutral',
-    sentiment_status: 'insufficient',
-    score: 40 + n * 15,
-  };
-}
-
-const DISCOVER_LIST = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA'];
-
-function homeDiscover() {
-  return { discover: DISCOVER_LIST.map((t, i) => discoverStock(t, i)), _cache_meta: cacheMeta() };
-}
-
-function homeIntelligence() {
-  return {
-    ...homeTicker(),
-    selectedStock: homeBrief().selectedStock,
-    discover: homeDiscover().discover,
-    alerts: [],
-    alertSummary: null,
-  };
-}
-
-function discoverScan(tickers) {
-  const list = (Array.isArray(tickers) ? tickers : []).map((t) => String(t).toUpperCase()).slice(0, 10);
-  const stocks = {};
-  list.forEach((t, i) => {
-    if (KNOWN_SET.has(t)) stocks[t] = discoverStock(t, i);
-  });
-  return { stocks, count: Object.keys(stocks).length, _cache_meta: cacheMeta() };
-}
-
-const MARKET_STATUS = {
-  market: 'US',
-  status: 'open',
-  label: 'Market Open',
-  timezone: 'America/New_York',
-  next_open: null,
-  next_close: null,
-  is_early_close: false,
-};
-
 const server = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => (body += c));
@@ -280,56 +169,18 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Home dashboard GET routes (Phase 1)
-    if (req.method === 'GET') {
-      switch (url.pathname) {
-        case '/api/market/status':
-          res.end(JSON.stringify(MARKET_STATUS));
-          return;
-        case '/api/home/ticker':
-          res.end(JSON.stringify(homeTicker()));
-          return;
-        case '/api/home/brief':
-          res.end(JSON.stringify(homeBrief()));
-          return;
-        case '/api/home/discover':
-          res.end(JSON.stringify(homeDiscover()));
-          return;
-        case '/api/home/intelligence':
-          res.end(JSON.stringify(homeIntelligence()));
-          return;
-        default:
-          res.end(JSON.stringify({ status: 'mock', known_symbols: KNOWN.length }));
-          return;
-      }
-    }
-
     let ticker = 'AAPL';
-    let parsed = {};
     try {
-      parsed = JSON.parse(body || '{}');
-      ticker = (parsed.ticker || 'AAPL').toUpperCase();
+      ticker = (JSON.parse(body || '{}').ticker || 'AAPL').toUpperCase();
     } catch {}
 
-    if (
-      req.url === '/api/market/overview' ||
-      req.url === '/api/forecast/onnx' ||
-      req.url === '/api/data/indicators'
-    ) {
+    if (req.url === '/api/market/overview' || req.url === '/api/forecast/onnx') {
       if (!KNOWN_SET.has(ticker)) {
         res.statusCode = 404;
         res.end(JSON.stringify({ detail: `unknown symbol ${ticker}` }));
         return;
       }
-      if (req.url === '/api/market/overview') {
-        res.end(JSON.stringify(overviewFor(ticker)));
-      } else if (req.url === '/api/data/indicators') {
-        res.end(JSON.stringify(overviewFor(ticker)));
-      } else {
-        res.end(JSON.stringify(forecastFor(ticker)));
-      }
-    } else if (req.url === '/api/discover/scan') {
-      res.end(JSON.stringify(discoverScan(parsed.tickers)));
+      res.end(JSON.stringify(req.url === '/api/market/overview' ? overviewFor(ticker) : forecastFor(ticker)));
     } else if (req.method === 'GET') {
       res.end(JSON.stringify({ status: 'mock', known_symbols: KNOWN.length }));
     } else {
