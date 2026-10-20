@@ -11,7 +11,7 @@ export default function RSIIndicator({ rsi }: RSIIndicatorProps) {
   let rsiColor = 'text-yellow-400';
   let bgColor = 'bg-yellow-500/10';
   let borderColor = 'border-yellow-600';
-  let rsiValue = rsi ?? 0;
+  const rsiValue = rsi ?? 0;
 
   if (rsi !== null) {
     if (rsi < 30) {

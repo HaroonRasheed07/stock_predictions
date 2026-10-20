@@ -21,6 +21,8 @@ async function loadQuotes(tickers: string[]): Promise<Record<string, DiscoverSto
   return out;
 }
 
+const SUGGESTED = ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'AMZN'];
+
 /** Section 9 — persistent watchlist (shared store with the rest of the app). */
 export function WatchlistSection() {
   const watchlist = useWatchlistStore((s) => s.watchlist);
@@ -107,9 +109,27 @@ export function WatchlistSection() {
             ))}
           </ul>
         ) : watchlist.length === 0 ? (
-          <p className="mt-5 text-sm text-muted-foreground">
-            No symbols tracked yet — add one above and its daily move will stay with you across visits.
-          </p>
+          <div className="mt-5">
+            <p className="text-sm text-muted-foreground">
+              No symbols tracked yet — add one above and its daily move will stay with you across visits.
+            </p>
+            <span className="mt-4 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Try a starter
+            </span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SUGGESTED.filter((t) => !watchlist.includes(t)).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-label={`Add ${t} to watchlist`}
+                  onClick={() => handleAdd(t)}
+                  className="rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  + {t}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : (
           <ul className="mt-5 space-y-2">
             {watchlist.map((t) => {
@@ -150,7 +170,7 @@ export function WatchlistSection() {
           <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" aria-hidden="true" />
             Quotes are refreshing for your watchlist.
-            <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 font-semibold text-warning">
+            <span className="pill pill-amber">
               data delayed
             </span>
           </p>

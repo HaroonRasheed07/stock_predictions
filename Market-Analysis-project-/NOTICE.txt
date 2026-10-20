@@ -7,7 +7,7 @@ lightweight-charts (https://github.com/tradingview/lightweight-charts)
   Copyright 2019-2025 TradingView, Inc.
   Licensed under the Apache License, Version 2.0 (the "License");
   https://www.apache.org/licenses/LICENSE-2.0
-  Interactive price charts on the homepage are rendered with this library.
+  Bundled charting library retained in the dependency set.
 
 All other bundled libraries remain under their respective licenses as
 declared in package.json / node_modules/<pkg>/LICENSE.

@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import type { MarketOverviewResponse, ForecastResponse } from './api';
+import { normalizeSentimentNewsDates } from './news-dates';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://stock-predictions-b6yx.onrender.com";
 
@@ -90,6 +91,7 @@ export const getStockSnapshot = cache(async (symbol: string): Promise<StockSnaps
     // Server answered successfully but produced no series for this symbol.
     return EMPTY('invalid-symbol');
   }
+  normalizeSentimentNewsDates(overview);
 
   const meta = overview._cache_meta;
   const updatedAt = typeof meta?.updated_at === 'number' && meta.updated_at > 0 ? meta.updated_at : null;

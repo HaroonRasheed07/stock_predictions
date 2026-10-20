@@ -35,8 +35,6 @@ export function StockSearch({
   inputId,
 }: StockSearchProps) {
   const router = useRouter();
-  const reactId = useId();
-  const searchId = inputId || `stock-search-${reactId}`;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AssetInfo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +42,8 @@ export function StockSearch({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactId = useId();
+  const searchId = inputId ?? `stock-search-input-${reactId}`;
   const listId = `${searchId}-results`;
 
   const directSymbol = isValidSymbolPath(query.trim()) ? query.trim().toUpperCase() : null;

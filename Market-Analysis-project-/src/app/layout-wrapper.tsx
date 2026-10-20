@@ -4,7 +4,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { usePathname } from 'next/navigation';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useThemeStore } from '@/store/themeStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -38,10 +38,26 @@ export function LayoutWrapper({ children }: { children: ReactNode }) {
   const { theme } = useThemeStore();
   const [pageKey, setPageKey] = useState(pathname);
   const queryClient = useMemo(() => getQueryClient(), []);
+  const themeInitialized = useRef(false);
 
   useEffect(() => {
+    if (!themeInitialized.current) {
+      themeInitialized.current = true;
+      return;
+    }
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('insightforge-theme')) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        useThemeStore.getState().setTheme(prefersDark ? 'dark' : 'light');
+      }
+    } catch {
+      // Storage blocked — the pre-paint script already applied a theme.
+    }
+  }, []);
 
   useEffect(() => {
     setPageKey(pathname);

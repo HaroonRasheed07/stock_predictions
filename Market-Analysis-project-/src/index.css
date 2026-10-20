@@ -388,6 +388,144 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   HOMEPAGE SCOPED DESIGN SYSTEM — reference palette (light + dark)
+   Scoped to .sv-scope (homepage wrapper) so every other page, the header
+   chrome outside the wrapper and the footer keep their exact current look.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sv-scope {
+  --background: 220 37% 96.9%;
+  --foreground: 215 51% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 215 51% 11.2%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 51% 11.2%;
+  --primary: 224 80% 52.2%;
+  --primary-foreground: 0 0% 100%;
+  --muted-foreground: 215 14% 41.4%;
+  --border: 217 28% 90.8%;
+  --input: 217 28% 90.8%;
+  --ring: 224 80% 52.2%;
+  --success: 159 74% 28.8%;
+  --success-bg: 152 44% 92.4%;
+  --destructive: 4 60% 47.6%;
+  --destructive-bg: 6 71% 94.5%;
+  --warning: 39 79% 33.7%;
+  --warning-bg: 41 79% 92.4%;
+  --chart-1: 224 80% 52.2%;
+  --chart-2: 159 74% 28.8%;
+  --chart-3: 4 60% 47.6%;
+  --chart-4: 39 79% 33.7%;
+  --chart-5: 215 14% 41.4%;
+  --radius: 0.875rem;
+  --spark-up: #13805a;
+  --spark-down: #c23b31;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-figtree), system-ui, -apple-system, sans-serif;
+}
+
+.dark .sv-scope {
+  --background: 220 49% 8.4%;
+  --foreground: 217 53% 94.1%;
+  --card: 220 42% 12.7%;
+  --card-foreground: 217 53% 94.1%;
+  --popover: 220 42% 12.7%;
+  --popover-foreground: 217 53% 94.1%;
+  --primary: 225 100% 71.6%;
+  --primary-foreground: 220 49% 8.4%;
+  --muted-foreground: 217 21% 64.9%;
+  --border: 218 35% 21.6%;
+  --input: 218 35% 21.6%;
+  --ring: 225 100% 71.6%;
+  --success: 156 57% 52.2%;
+  --success-bg: 168 48% 12.7%;
+  --destructive: 5 100% 72%;
+  --destructive-bg: 358 35% 16.9%;
+  --warning: 39 75% 62.9%;
+  --warning-bg: 41 56% 13.3%;
+  --chart-1: 225 100% 71.6%;
+  --chart-2: 156 57% 52.2%;
+  --chart-3: 5 100% 72%;
+  --chart-4: 39 75% 62.9%;
+  --chart-5: 217 21% 64.9%;
+  --spark-up: #3fcb92;
+  --spark-down: #ff7b70;
+}
+
+.sv-scope :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-bricolage), var(--font-figtree), system-ui, sans-serif;
+}
+
+.sv-wrap {
+  width: 100%;
+  max-width: 1160px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.sv-scope .container {
+  max-width: 1160px;
+}
+
+.sv-scope :focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.pill {
+  @apply inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold leading-none;
+}
+
+.pill-bull {
+  background: hsl(var(--success-bg));
+  border-color: hsl(var(--success) / 0.3);
+  color: #15803d;
+}
+
+.dark .pill-bull {
+  color: hsl(var(--success));
+}
+
+.pill-bear {
+  background: hsl(var(--destructive-bg));
+  border-color: hsl(var(--destructive) / 0.3);
+  color: #b91c1c;
+}
+
+.dark .pill-bear {
+  color: hsl(var(--destructive));
+}
+
+.pill-amber {
+  background: hsl(var(--warning-bg));
+  border-color: hsl(var(--warning) / 0.3);
+  color: #b45309;
+}
+
+.dark .pill-amber {
+  color: hsl(var(--warning));
+}
+
+.pill-mute {
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+/* Consent banner is SSR'd for first-paint (LCP); decided visitors get it
+   hidden by the pre-paint script before anything paints. */
+html[data-sv-hide-consent] [data-sv-consent-banner] {
+  display: none;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    ANIMATIONS
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -476,6 +614,10 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto !important;
   }
 
   .stagger-item {

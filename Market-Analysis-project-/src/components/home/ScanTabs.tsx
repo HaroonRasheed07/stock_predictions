@@ -1,20 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Radar, ChevronDown, TrendingUp, Activity, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPct, formatPrice, changeTone } from '@/components/home/format';
 import { trackEvent } from '@/lib/analytics';
-import type { DiscoverStock } from '@/lib/api';
+import { fetchMarketOverview, type DiscoverStock } from '@/lib/api';
 import type { ScanBuckets, RsiRow } from '@/lib/home-data';
+import { Sparkline } from '@/components/home/Sparkline';
 
 type TabKey = 'movers' | 'oversold' | 'overbought' | 'highRisk';
 
 const TABS: Array<{ key: TabKey; label: string; icon: typeof TrendingUp }> = [
-  { key: 'movers', label: 'Top movers', icon: TrendingUp },
-  { key: 'oversold', label: 'Oversold (RSI < 40)', icon: Activity },
-  { key: 'overbought', label: 'Overbought (RSI > 60)', icon: Activity },
+  { key: 'movers', label: 'Biggest moves', icon: TrendingUp },
+  { key: 'oversold', label: 'Oversold', icon: Activity },
+  { key: 'overbought', label: 'Overbought', icon: Activity },
   { key: 'highRisk', label: 'High risk', icon: ShieldAlert },
 ];
 
@@ -33,18 +34,22 @@ function RsiBar({ value }: { value: number }) {
   );
 }
 
-function StockRow({ s }: { s: DiscoverStock }) {
+function StockRow({ s, rank, spark }: { s: DiscoverStock; rank: number; spark?: number[] }) {
   return (
     <li>
       <Link
         href={`/stocks/${s.ticker.toLowerCase()}`}
         className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/50"
       >
-        <div className="min-w-0">
-          <span className="text-sm font-semibold">{s.ticker}</span>
-          <span className="ml-2 truncate text-xs text-muted-foreground">{s.name}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">{rank}</span>
+          <div className="min-w-0">
+            <span className="text-sm font-semibold">{s.ticker}</span>
+            <span className="ml-2 truncate text-xs text-muted-foreground">{s.name}</span>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
+          <Sparkline points={spark} width={72} height={22} className="hidden sm:block" ariaLabel={`${s.ticker} recent price trend`} />
           <span className="text-sm tabular-nums text-foreground/80">${formatPrice(s.price)}</span>
           <span className={cn('w-16 text-right text-sm font-semibold tabular-nums', changeTone(s.changePercent))}>
             {formatPct(s.changePercent)}
@@ -55,18 +60,22 @@ function StockRow({ s }: { s: DiscoverStock }) {
   );
 }
 
-function RsiRowEntry({ r, side }: { r: RsiRow; side: 'low' | 'high' }) {
+function RsiRowEntry({ r, rank, side, spark }: { r: RsiRow; rank: number; side: 'low' | 'high'; spark?: number[] }) {
   return (
     <li>
       <Link
         href={`/stocks/${r.ticker.toLowerCase()}`}
         className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/50"
       >
-        <div className="min-w-0">
-          <span className="text-sm font-semibold">{r.ticker}</span>
-          <span className="ml-2 truncate text-xs text-muted-foreground">{r.name}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">{rank}</span>
+          <div className="min-w-0">
+            <span className="text-sm font-semibold">{r.ticker}</span>
+            <span className="ml-2 truncate text-xs text-muted-foreground">{r.name}</span>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
+          <Sparkline points={spark} width={72} height={22} className="hidden md:block" ariaLabel={`${r.ticker} recent price trend`} />
           <span className={cn('w-16 text-right text-sm font-semibold tabular-nums', changeTone(r.changePercent))}>
             {formatPct(r.changePercent)}
           </span>
@@ -80,7 +89,7 @@ function RsiRowEntry({ r, side }: { r: RsiRow; side: 'low' | 'high' }) {
   );
 }
 
-function HighRiskCard({ stocks }: { stocks: DiscoverStock[] }) {
+function HighRiskCard({ stocks, sparks, ranks }: { stocks: DiscoverStock[]; sparks: Record<string, number[]>; ranks: Record<string, number> }) {
   const [openTicker, setOpenTicker] = useState<string | null>(stocks[0]?.ticker ?? null);
   return (
     <div className="space-y-2">
@@ -95,10 +104,14 @@ function HighRiskCard({ stocks }: { stocks: DiscoverStock[] }) {
               className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
             >
               <span className="flex min-w-0 items-baseline gap-2">
+                <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">
+                  {ranks[s.ticker] ?? ''}
+                </span>
                 <span className="text-sm font-semibold">{s.ticker}</span>
                 <span className="truncate text-xs text-muted-foreground">{s.name}</span>
               </span>
               <span className="flex shrink-0 items-center gap-3">
+                <Sparkline points={sparks[s.ticker]} width={64} height={20} className="hidden lg:block" ariaLabel={`${s.ticker} recent price trend`} />
                 <span className={cn('text-sm font-semibold tabular-nums', changeTone(s.changePercent))}>
                   {formatPct(s.changePercent)}
                 </span>
@@ -145,6 +158,44 @@ function HighRiskCard({ stocks }: { stocks: DiscoverStock[] }) {
 /** Section 6 — scan tabs built from the real discover + opportunity scans. */
 export function ScanTabs({ scan, discoverAvailable }: { scan: ScanBuckets | null; discoverAvailable: boolean }) {
   const [tab, setTab] = useState<TabKey>('movers');
+  const [sparks, setSparks] = useState<Record<string, number[]>>({});
+  const fetchedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!scan) return;
+    let cancelled = false;
+    const tickers =
+      tab === 'movers'
+        ? scan.movers.map((s) => s.ticker)
+        : tab === 'oversold'
+          ? scan.oversold.map((r) => r.ticker)
+          : tab === 'overbought'
+            ? scan.overbought.map((r) => r.ticker)
+            : scan.highRisk.map((s) => s.ticker);
+
+    for (const ticker of tickers) {
+      if (fetchedRef.current.has(ticker)) continue;
+      fetchedRef.current.add(ticker);
+      (async () => {
+        try {
+          const ov = await fetchMarketOverview(ticker, '1mo');
+          const rows = Array.isArray(ov?.data) ? ov.data : [];
+          const closes = rows
+            .map((r) => Number((r as Record<string, unknown>)?.Close))
+            .filter((c) => isFinite(c))
+            .slice(-20);
+          if (!cancelled && closes.length >= 2) {
+            setSparks((prev) => ({ ...prev, [ticker]: closes }));
+          }
+        } catch {
+          // Keep the dashed placeholder — sparkline is a progressive enhancement.
+        }
+      })();
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, scan]);
 
   if (!scan) {
     return (
@@ -194,6 +245,11 @@ export function ScanTabs({ scan, discoverAvailable }: { scan: ScanBuckets | null
         </Link>
       </div>
 
+      <p className="mt-3 text-xs text-muted-foreground">
+        One snapshot, four views: {scan.movers.length} biggest movers · {scan.oversold.length} oversold (RSI below
+        40) · {scan.overbought.length} overbought (RSI above 60) · {scan.highRisk.length} high-risk.
+      </p>
+
       <div
         role="tablist"
         aria-label="Scan categories"
@@ -227,16 +283,34 @@ export function ScanTabs({ scan, discoverAvailable }: { scan: ScanBuckets | null
           {active.label}
         </div>
         {tab === 'movers' && scan.movers.length > 0 && (
-          <ul className="divide-y divide-border/40">{scan.movers.map((s) => <StockRow key={s.ticker} s={s} />)}</ul>
+          <ul className="divide-y divide-border/40">
+            {scan.movers.map((s, i) => (
+              <StockRow key={s.ticker} s={s} rank={i + 1} spark={sparks[s.ticker]} />
+            ))}
+          </ul>
         )}
         {tab === 'oversold' && scan.oversold.length > 0 && (
-          <ul className="divide-y divide-border/40">{scan.oversold.map((r) => <RsiRowEntry key={r.ticker} r={r} side="low" />)}</ul>
+          <ul className="divide-y divide-border/40">
+            {scan.oversold.map((r, i) => (
+              <RsiRowEntry key={r.ticker} r={r} rank={i + 1} side="low" spark={sparks[r.ticker]} />
+            ))}
+          </ul>
         )}
         {tab === 'overbought' && scan.overbought.length > 0 && (
-          <ul className="divide-y divide-border/40">{scan.overbought.map((r) => <RsiRowEntry key={r.ticker} r={r} side="high" />)}</ul>
+          <ul className="divide-y divide-border/40">
+            {scan.overbought.map((r, i) => (
+              <RsiRowEntry key={r.ticker} r={r} rank={i + 1} side="high" spark={sparks[r.ticker]} />
+            ))}
+          </ul>
         )}
         {tab === 'highRisk' && scan.highRisk.length > 0 && (
-          <div className="p-3"><HighRiskCard stocks={scan.highRisk} /></div>
+          <div className="p-3">
+            <HighRiskCard
+              stocks={scan.highRisk}
+              sparks={sparks}
+              ranks={Object.fromEntries(scan.highRisk.map((s, i) => [s.ticker, i + 1]))}
+            />
+          </div>
         )}
         {((tab === 'movers' && scan.movers.length === 0) ||
           (tab === 'oversold' && scan.oversold.length === 0) ||

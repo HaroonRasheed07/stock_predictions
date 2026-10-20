@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { TickerLogo } from '@/components/common/TickerLogo';
 import { Button } from '@/components/ui/button';
 import { formatPct, formatPrice, formatUpdated, changeTone } from '@/components/home/format';
-import { HeroPriceChart } from '@/components/home/HeroPriceChart';
+import { HeroAreaChart } from '@/components/home/HeroAreaChart';
 import { trackEvent } from '@/lib/analytics';
 import { deriveOutlook, type ModelOutlook } from '@/lib/model-outlook';
 import { getStockInfo } from '@/lib/stock-allowlist';
@@ -49,8 +49,8 @@ function Rail({
     <div className={cn('flex items-center gap-2 rounded-lg border px-3 py-2', tones[tone])}>
       <span aria-hidden="true">{icon}</span>
       <span className="min-w-0">
-        <span className="block text-[10px] font-medium uppercase tracking-wide opacity-80">{label}</span>
-        <span className="block truncate text-xs font-bold">{value}</span>
+        <span className="block text-[10px] font-medium uppercase tracking-wide !text-foreground/70">{label}</span>
+        <span className="block truncate text-xs font-bold !text-foreground">{value}</span>
       </span>
     </div>
   );
@@ -85,6 +85,39 @@ function riskTone(level: string): 'positive' | 'negative' | 'neutral' | 'muted' 
   if (l === 'high') return 'negative';
   if (l === 'medium' || l === 'moderate') return 'neutral';
   return 'muted';
+}
+
+/** Computed from the four rails shown above: do they lean the same way? */
+function signalNote(
+  trend: string,
+  sentiment: string,
+  outlook: ModelOutlook | null,
+  risk: string
+): string {
+  const dirs: number[] = [];
+  const t = (trend || '').toLowerCase();
+  if (t.includes('bull') || t.includes('up')) dirs.push(1);
+  else if (t.includes('bear') || t.includes('down')) dirs.push(-1);
+  const s = (sentiment || '').toLowerCase();
+  if (s.includes('positive') || s.includes('bull')) dirs.push(1);
+  else if (s.includes('negative') || s.includes('bear')) dirs.push(-1);
+  if (outlook?.direction === 'up') dirs.push(1);
+  else if (outlook?.direction === 'down') dirs.push(-1);
+  const r = (risk || '').toLowerCase();
+  if (r === 'low') dirs.push(1);
+  else if (r === 'high') dirs.push(-1);
+
+  const up = dirs.filter((d) => d === 1).length;
+  const down = dirs.filter((d) => d === -1).length;
+  const suffix = 'Evidence, not advice — compare the pipelines before you decide.';
+  if (dirs.length < 2) {
+    return `Evidence, not advice: trend, sentiment, risk and the model outlook come from separate pipelines — ${suffix}`;
+  }
+  if (up > 0 && down > 0) {
+    return `Signals disagree: ${up} point up, ${down} point down. ${suffix}`;
+  }
+  const lean = up > 0 ? 'up' : 'down';
+  return `Signals agree: ${Math.max(up, down)} of ${dirs.length} point ${lean}. ${suffix}`;
 }
 
 async function loadBundle(ticker: string, chips: ChipData[]): Promise<HeroBundle> {
@@ -133,6 +166,7 @@ export function HeroBriefCard({
   const riskLevel = overview?.risk?.risk_level || '—';
   const updated = formatUpdated(updatedMinutesAgo);
   const rows = Array.isArray(overview?.data) ? overview!.data : [];
+  const note = signalNote(trendLabel, sentimentLabel, bundle.outlook, riskLevel);
 
   const selectTicker = async (ticker: string) => {
     if (ticker === bundle.ticker || switching) return;
@@ -150,7 +184,8 @@ export function HeroBriefCard({
     trackEvent('search_usage', { source: 'hero_cta' });
     const el = document.getElementById('hero-search');
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
       (el as HTMLInputElement).focus({ preventScroll: true });
     }
   };
@@ -218,8 +253,7 @@ export function HeroBriefCard({
           </div>
 
           <p className="mt-4 border-t border-border/50 pt-3 text-[11px] leading-relaxed text-muted-foreground">
-            Evidence, not advice: trend, sentiment, risk and the model outlook come from separate pipelines —
-            compare them before you decide.
+            {note}
           </p>
         </div>
 
@@ -228,7 +262,7 @@ export function HeroBriefCard({
           <div className="flex items-center justify-between px-4 pt-4">
             <div>
               <h2 className="text-sm font-semibold">Price chart</h2>
-              <p className="text-[11px] text-muted-foreground">{bundle.ticker} · daily candles</p>
+              <p className="text-[11px] text-muted-foreground">{bundle.ticker} · daily close, last 6 months</p>
             </div>
             <Link
               href={`/stocks/${bundle.ticker.toLowerCase()}`}
@@ -237,7 +271,7 @@ export function HeroBriefCard({
               Full analysis →
             </Link>
           </div>
-          <HeroPriceChart rows={rows} ticker={bundle.ticker} />
+          <HeroAreaChart rows={rows} ticker={bundle.ticker} />
         </div>
       </div>
 

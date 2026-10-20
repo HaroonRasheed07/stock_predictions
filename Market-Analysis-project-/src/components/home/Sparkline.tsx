@@ -10,7 +10,7 @@ export function Sparkline({
   className,
   ariaLabel,
 }: {
-  points: number[];
+  points?: number[];
   width?: number;
   height?: number;
   strokeWidth?: number;

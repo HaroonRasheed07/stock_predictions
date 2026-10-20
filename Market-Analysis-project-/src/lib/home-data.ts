@@ -32,8 +32,20 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://stock-predictions-b
 /** ISR window for the homepage. */
 export const HOME_REVALIDATE = 600;
 
-/** Ticker chips under the hero brief card. */
-export const HERO_CHIPS = ['AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMZN', 'META'];
+/** Ticker chip pool under the hero brief card; four chips rotate once per day. */
+const CHIP_POOL = [
+  'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMZN', 'META',
+  'GOOGL', 'AMD', 'NFLX', 'JPM', 'V', 'INTC',
+];
+
+/** Four chips for today — deterministic rotation by UTC calendar day. */
+export function getDailyChips(): string[] {
+  const valid = CHIP_POOL.filter((t) => getStockInfo(t));
+  if (valid.length === 0) return [];
+  const dayIndex = Math.floor(Date.now() / 86_400_000);
+  const offset = dayIndex % valid.length;
+  return [...valid.slice(offset), ...valid.slice(0, offset)].slice(0, 4);
+}
 
 export interface IndexQuote {
   symbol: string;
@@ -113,6 +125,7 @@ export interface HomeData {
   chips: Array<{ ticker: string; name: string; price: number; changePercent: number }>;
   disagreements: DisagreeCardData[];
   modelAvailable: boolean;
+  highRiskCount: number;
   updatedMinutesAgo: number | null;
   indicesDelayed: boolean;
 }
@@ -500,9 +513,10 @@ export async function getHomeData(): Promise<HomeData> {
 
   const idx = indexes ?? [];
   const stocks = universe.stocks;
+  const dailyChips = getDailyChips();
   const heroTicker =
     brief?.selectedStock?.ticker?.toUpperCase() ||
-    HERO_CHIPS[0] ||
+    dailyChips[0] ||
     symbols[0] ||
     'AAPL';
 
@@ -513,7 +527,7 @@ export async function getHomeData(): Promise<HomeData> {
   hero.discover = stocks[heroTicker] ?? null;
   hero.name = hero.discover?.name || getStockInfo(heroTicker)?.name || hero.name;
 
-  const chips = HERO_CHIPS.filter((t) => getStockInfo(t)).map((ticker) => {
+  const chips = dailyChips.map((ticker) => {
     const s = stocks[ticker];
     return {
       ticker,
@@ -536,6 +550,7 @@ export async function getHomeData(): Promise<HomeData> {
     chips,
     disagreements: disagreement.cards,
     modelAvailable: disagreement.modelAvailable,
+    highRiskCount: Object.values(stocks).filter((s) => (s.risk || '').toLowerCase() === 'high').length,
     updatedMinutesAgo: updated,
     indicesDelayed: idx.length === 0,
   };

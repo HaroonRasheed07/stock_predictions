@@ -1,3 +1,5 @@
+import { normalizeSentimentNewsDates } from './news-dates';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://stock-predictions-b6yx.onrender.com";
 
 export interface IndicatorsResponse {
@@ -364,7 +366,9 @@ export async function fetchMarketOverview(
     throw new Error(message);
   }
 
-  return res.json();
+  const overviewData: MarketOverviewResponse = await res.json();
+  normalizeSentimentNewsDates(overviewData);
+  return overviewData;
 }
 
 export async function fetchForecast(

@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     'market intelligence',
   ],
   openGraph: {
-    images: ['/icon-512.png'],
+    images: [{ url: '/og-cover.png', width: 1200, height: 630, alt: SITE_NAME }],
     title: `${SITE_NAME} – Evidence-Based Stock Research & Market Intelligence`,
     description:
       'Technical signals, news sentiment, a 10-day model outlook, and risk — connected in one Research Brief.',
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     type: 'website',
   },
   twitter: {
-    images: ['/icon-512.png'],
+    images: ['/og-cover.png'],
     card: 'summary_large_image',
     title: `${SITE_NAME} – Evidence-Based Stock Research`,
     description:
@@ -59,7 +59,7 @@ export default async function Home() {
   const home = await getHomeData();
 
   return (
-    <>
+    <main className="sv-scope">
       {/* 1b. Market strip — indices, status, freshness */}
       <MarketStrip
         indexes={home.indexes}
@@ -71,8 +71,8 @@ export default async function Home() {
       {/* 2. Hero — heading, primary search, brief card + price chart */}
       <section id="analyze" aria-labelledby="hero-heading" className="container mx-auto px-4 pt-8 md:pt-12">
         <div className="max-w-3xl">
-          <h1 id="hero-heading" className="text-2xl font-bold leading-tight sm:text-3xl md:text-4xl">
-            StockVantex: evidence-based stock research
+          <h1 id="hero-heading" className="text-4xl font-bold leading-tight md:text-5xl">
+            See what the signals say, and why they disagree.
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">
             Technical signals, news sentiment, a 10-day model outlook, and risk — connected in one Research
@@ -105,14 +105,13 @@ export default async function Home() {
         breadth={home.breadth}
         discoverAvailable={home.discoverAvailable}
         updatedMinutesAgo={home.updatedMinutesAgo}
+        disagreeCount={home.disagreements.length}
+        highRiskCount={home.highRiskCount}
+        modelAvailable={home.modelAvailable}
       />
 
       {/* 5. Disagreement cards */}
-      <DisagreementSection
-        cards={home.disagreements}
-        modelAvailable={home.modelAvailable}
-        discoverAvailable={home.discoverAvailable}
-      />
+      <DisagreementSection cards={home.disagreements} />
 
       {/* 6. Scan tabs */}
       <ScanTabs scan={home.scan} discoverAvailable={home.discoverAvailable} />
@@ -156,6 +155,6 @@ export default async function Home() {
       {/* 10/11. Learn teasers + trust framing (footer follows from the layout) */}
       <LearnTeasers />
       <TrustStrip />
-    </>
+    </main>
   );
 }

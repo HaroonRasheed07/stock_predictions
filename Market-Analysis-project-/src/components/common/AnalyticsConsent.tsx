@@ -54,8 +54,10 @@ export function AnalyticsConsent() {
     setGpc(globalPrivacyControl());
 
     let cancelled = false;
-    resolveConsentTier().then(({ tier: resolved }) => {
-      if (!cancelled) setTier(resolved);
+    resolveConsentTier().then(({ tier: resolvedTier }) => {
+      if (!cancelled) {
+        setTier(resolvedTier);
+      }
     });
 
     const onChanged = () => setChoice(readConsent());
@@ -105,6 +107,8 @@ export function AnalyticsConsent() {
     else toast('Analytics disabled — you can re-enable it any time in Privacy Settings');
   };
 
+  // The banner appears only after the region tier resolves: strict-tier
+  // visitors with no stored decision see it; standard-tier never does.
   const bannerVisible = mounted && effective === 'ask';
 
   return (
@@ -115,6 +119,7 @@ export function AnalyticsConsent() {
         <div
           role="region"
           aria-label="Analytics consent"
+          data-sv-consent-banner=""
           className="fixed bottom-4 left-4 right-4 sm:left-auto sm:w-[24rem] z-[60] rounded-lg border border-border/60 bg-card p-3 shadow-lg"
         >
           <p className="text-xs leading-relaxed text-muted-foreground mb-2.5">

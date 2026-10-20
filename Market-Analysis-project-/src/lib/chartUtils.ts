@@ -96,7 +96,7 @@ export function formatPriceTick(value: number): string {
 // ─── Canvas Theme Resolution ───────────────────────────────────────
 // Single-element batch: resolve all CSS custom properties in ONE forced reflow
 // instead of N separate append/remove cycles.
-let _themeCache: Record<string, CanvasTheme> = {};
+const _themeCache: Record<string, CanvasTheme> = {};
 
 function resolveCssColorsBatch(cssValues: string[]): string[] {
   try {

@@ -21,7 +21,19 @@ interface CandlestickChartProps {
   height?: number;
 }
 
-export default function ProfessionalCandlestickChart({
+export default function ProfessionalCandlestickChart(props: CandlestickChartProps) {
+  if (!props.data || props.data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-60 sm:h-80 text-muted-foreground">
+        No data available
+      </div>
+    );
+  }
+
+  return <CandlestickChartBody {...props} />;
+}
+
+function CandlestickChartBody({
   data,
   ticker,
   height: heightProp,
@@ -36,14 +48,6 @@ export default function ProfessionalCandlestickChart({
   const height = heightProp || CHART_HEIGHTS.candlestick.desktop;
   const isMobile = height <= CHART_HEIGHTS.candlestick.mobile;
   const theme = getCanvasTheme(!isMobile);
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-60 sm:h-80 text-muted-foreground">
-        No data available
-      </div>
-    );
-  }
 
   const filteredData = data;
   const prices = filteredData.flatMap((d) => [d.high, d.low, d.open, d.close]);

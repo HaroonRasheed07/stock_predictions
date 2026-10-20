@@ -49,15 +49,9 @@ function tone(label: string): string {
 }
 
 /** Section 5 — where trend, sentiment and the model point different ways. */
-export function DisagreementSection({
-  cards,
-  modelAvailable,
-  discoverAvailable,
-}: {
-  cards: DisagreeCardData[];
-  modelAvailable: boolean;
-  discoverAvailable: boolean;
-}) {
+export function DisagreementSection({ cards }: { cards: DisagreeCardData[] }) {
+  if (cards.length === 0) return null;
+
   return (
     <section id="disagree" aria-labelledby="disagree-heading" className="container mx-auto px-4 py-10 md:py-14">
       <div className="mb-5 flex items-center gap-3">
@@ -73,9 +67,8 @@ export function DisagreementSection({
         </div>
       </div>
 
-      {cards.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {cards.map((c) => (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((c) => (
             <Link
               key={c.ticker}
               href={`/stocks/${c.ticker.toLowerCase()}`}
@@ -90,14 +83,18 @@ export function DisagreementSection({
               <p className="truncate text-xs text-muted-foreground">{c.name}</p>
               <p className="mt-1 text-sm font-semibold tabular-nums">${formatPrice(c.price)}</p>
 
+              {/* Exactly the two readings that conflict */}
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tone(c.technical)}`}>
                   Trend {directionWord(c.technical)}
                 </span>
-                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tone(c.sentiment)}`}>
-                  Sentiment {directionWord(c.sentiment)}
-                </span>
-                {modelPill(c.modelDirection)}
+                {c.mismatch === 'technical-vs-model' ? (
+                  modelPill(c.modelDirection)
+                ) : (
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tone(c.sentiment)}`}>
+                    Sentiment {directionWord(c.sentiment)}
+                  </span>
+                )}
               </div>
 
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
@@ -109,32 +106,8 @@ export function DisagreementSection({
                 Open research brief →
               </span>
             </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-border/60 bg-card p-6">
-          {discoverAvailable && modelAvailable ? (
-            <p className="text-sm text-muted-foreground">
-              No trend, sentiment or model disagreements in the current snapshot — the three readings line up.
-              Divergences reappear as soon as the next scan or forecast run updates.
-            </p>
-          ) : discoverAvailable ? (
-            <p className="text-sm text-muted-foreground">
-              Trend-versus-sentiment comparisons are clear in this snapshot; the model comparison is refreshing.
-              <span className="ml-2 inline-block rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
-                data delayed
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              The disagreement scan is refreshing for this snapshot.
-              <span className="ml-2 inline-block rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
-                data delayed
-              </span>
-            </p>
-          )}
-        </div>
-      )}
+        ))}
+      </div>
     </section>
   );
 }

@@ -37,8 +37,50 @@ export const Navbar = () => {
     setMobileOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const focusSearch = () => {
+      const inputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>('input[aria-label="Search stocks"]')
+      );
+      const visible = inputs.find((el) => el.getBoundingClientRect().width > 0);
+      if (visible) {
+        visible.focus();
+        return;
+      }
+      setMobileOpen(true);
+      setTimeout(() => {
+        const next = Array.from(
+          document.querySelectorAll<HTMLInputElement>('input[aria-label="Search stocks"]')
+        ).find((el) => el.getBoundingClientRect().width > 0);
+        next?.focus();
+      }, 60);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileOpen) {
+        setMobileOpen(false);
+        return;
+      }
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      focusSearch();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
+
   const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
     if (href === '/learn') return pathname === '/learn' || pathname.startsWith('/learn/');
     return pathname === href;
   };
@@ -50,7 +92,7 @@ export const Navbar = () => {
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8">
-          <div className="flex h-14 items-center justify-between gap-3 md:h-16">
+          <div className="flex h-14 items-center justify-between md:h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center group flex-shrink-0" aria-label="StockVantex Home">
               <div className="relative w-auto" style={{ height: 'clamp(27px, 4.5vw, 37px)' }}>
@@ -79,19 +121,18 @@ export const Navbar = () => {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-1">
               {NAV_LINKS.map((link) => (
-                <Link key={link.href} href={link.href}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      'text-sm font-medium transition-colors duration-150',
-                      isActive(link.href)
-                        ? 'text-primary bg-primary/5'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                  >
-                    {link.label}
-                  </Button>
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                  className={cn(
+                    'rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150',
+                    isActive(link.href)
+                      ? 'text-primary bg-primary/5'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  )}
+                >
+                  {link.label}
                 </Link>
               ))}
             </div>
@@ -99,10 +140,9 @@ export const Navbar = () => {
             {/* Right Section */}
             <div className="flex items-center gap-1">
               {/* Instant search (large screens) */}
-              <div className="hidden lg:block w-56 xl:w-64">
-                <StockSearch inputId="header-search" label="Search stocks" placeholder="Search ticker or company…" />
+              <div className="hidden lg:block w-56 xl:w-64 mr-1">
+                <StockSearch />
               </div>
-
               <Button
                 variant="ghost"
                 size="icon"
@@ -117,7 +157,7 @@ export const Navbar = () => {
                 )}
               </Button>
 
-              {/* Mobile hamburger (visible below lg so md screens keep search in the menu) */}
+              {/* Mobile hamburger */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -147,28 +187,29 @@ export const Navbar = () => {
             onClick={() => setMobileOpen(false)}
           />
           {/* Menu panel */}
-          <div className="relative bg-card border-b border-border/60 shadow-lg px-4 py-4 space-y-3">
-            <StockSearch
-              inputId="header-search-mobile"
-              label="Search stocks"
-              placeholder="Search ticker or company…"
-            />
-            <div className="space-y-1">
-              {NAV_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)}>
-                  <div
-                    className={cn(
-                      'flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                      isActive(link.href)
-                        ? 'text-primary bg-primary/5'
-                        : 'text-foreground hover:bg-muted/50'
-                    )}
-                  >
-                    {link.label}
-                  </div>
-                </Link>
-              ))}
+          <div className="relative bg-card border-b border-border/60 shadow-lg px-4 py-4 space-y-1">
+            <div className="pb-2">
+              <StockSearch />
             </div>
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileOpen(false)}
+                aria-current={isActive(link.href) ? 'page' : undefined}
+              >
+                <div
+                  className={cn(
+                    'flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive(link.href)
+                      ? 'text-primary bg-primary/5'
+                      : 'text-foreground hover:bg-muted/50'
+                  )}
+                >
+                  {link.label}
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       )}
