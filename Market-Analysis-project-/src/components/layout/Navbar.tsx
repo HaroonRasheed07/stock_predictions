@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { StockSearch } from '@/components/common/StockSearch';
 
 const NAV_LINKS = [
+  { href: '/', label: 'Home' },
   { href: '/markets/brief', label: 'Stock Brief' },
   { href: '/markets/stock/technical', label: 'Technical' },
   { href: '/markets/stock/sentiment', label: 'News Sentiment' },

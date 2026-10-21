@@ -426,17 +426,17 @@
 }
 
 .dark .sv-scope {
-  --background: 220 49% 8.4%;
-  --foreground: 217 53% 94.1%;
-  --card: 220 42% 12.7%;
-  --card-foreground: 217 53% 94.1%;
-  --popover: 220 42% 12.7%;
-  --popover-foreground: 217 53% 94.1%;
+  --background: 224 25% 8%;
+  --foreground: 210 20% 94%;
+  --card: 224 22% 11%;
+  --card-foreground: 210 20% 94%;
+  --popover: 224 22% 11%;
+  --popover-foreground: 210 20% 94%;
   --primary: 225 100% 71.6%;
-  --primary-foreground: 220 49% 8.4%;
-  --muted-foreground: 217 21% 64.9%;
-  --border: 218 35% 21.6%;
-  --input: 218 35% 21.6%;
+  --primary-foreground: 224 25% 8%;
+  --muted-foreground: 215 16% 60%;
+  --border: 224 16% 17%;
+  --input: 224 16% 17%;
   --ring: 225 100% 71.6%;
   --success: 156 57% 52.2%;
   --success-bg: 168 48% 12.7%;
