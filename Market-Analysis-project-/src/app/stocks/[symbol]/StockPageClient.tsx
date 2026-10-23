@@ -10,6 +10,8 @@ import {
   fetchMarketOverview,
   fetchIndicators,
   fetchForecast,
+  fetchTradeConfirmation,
+  type TradeConfirmation,
 } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +58,14 @@ function OverviewSection({ ticker }: { ticker: string }) {
     queryFn: () => fetchMarketOverview(ticker, '1y'),
     staleTime: 30000,
     gcTime: 300000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: tradeConfirmation, isLoading: tcLoading } = useQuery<TradeConfirmation>({
+    queryKey: ['trade-confirmation', ticker, '1y'],
+    queryFn: () => fetchTradeConfirmation(ticker, '1y'),
+    staleTime: 120000,
+    gcTime: 600000,
     refetchOnWindowFocus: false,
   });
 
@@ -117,15 +127,27 @@ function OverviewSection({ ticker }: { ticker: string }) {
         <Card className="glass">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Trade Confirmation</CardTitle></CardHeader>
           <CardContent>
-            <div className="flex items-center gap-3 mb-2">
-              <div className={cn('text-2xl font-bold', overview.tradeConfirmation?.signal === 'Buy' ? 'text-green-500' : overview.tradeConfirmation?.signal === 'Sell' ? 'text-red-500' : 'text-yellow-500')}>
-                {overview.tradeConfirmation?.signal || 'N/A'}
+            {tcLoading ? (
+              <div className="space-y-2">
+                <div className="h-7 w-40 rounded-md bg-muted/40 animate-pulse" />
+                <div className="h-4 w-full rounded bg-muted/30 animate-pulse" />
               </div>
-              <Badge variant={overview.tradeConfirmation?.signal === 'Buy' ? 'default' : 'secondary'}>
-                Score: {overview.tradeConfirmation?.score || 0}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">{overview.tradeConfirmation?.rationale || 'Insufficient data for confirmation.'}</p>
+            ) : tradeConfirmation ? (
+              <>
+                <div className="mb-2 flex flex-wrap items-center gap-3">
+                  <div className={cn('text-2xl font-bold', tradeConfirmation.signal === 'Buy' ? 'text-green-500' : tradeConfirmation.signal === 'Sell' ? 'text-red-500' : 'text-yellow-500')}>
+                    {tradeConfirmation.signal}
+                  </div>
+                  <Badge variant="secondary">Setup: {Math.round(tradeConfirmation.opportunity_score)}/100</Badge>
+                  {isFinite(tradeConfirmation.confidence) && (
+                    <Badge variant="outline">Confidence {Math.round(tradeConfirmation.confidence * 100)}%</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{tradeConfirmation.rationale}</p>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Trade confirmation is unavailable for this snapshot.</p>
+            )}
           </CardContent>
         </Card>
 

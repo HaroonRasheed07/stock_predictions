@@ -25,6 +25,7 @@ import {
   type EnhancedSentiment,
 } from '@/lib/api';
 import type { HeroBundle } from '@/lib/home-data';
+import { normalizeOverviewSentiment } from '@/lib/overview-sentiment';
 
 type ChipData = { ticker: string; name: string; price: number; changePercent: number };
 
@@ -137,7 +138,7 @@ async function loadBundle(ticker: string, chips: ChipData[]): Promise<HeroBundle
     overview: ov,
     indicators: ind,
     forecast: fc,
-    sentiment: se,
+    sentiment: se ?? normalizeOverviewSentiment(ov?.sentiment),
     outlook: deriveOutlook(fc, ov?.currentPrice ?? null),
     discover: null,
     delayed: !ov,

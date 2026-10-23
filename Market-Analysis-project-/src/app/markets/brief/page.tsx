@@ -12,6 +12,7 @@ import {
   fetchSignalEvidence,
   fetchForecast,
   fetchAssetSearch,
+  fetchTradeConfirmation,
   DEFAULT_FORECAST_DAYS,
   type AssetInfo,
   type MarketOverviewResponse,
@@ -19,6 +20,7 @@ import {
   type TimeframeResponse,
   type SignalEvidenceResponse,
   type ForecastResponse,
+  type TradeConfirmation,
 } from '@/lib/api';
 import { assessBriefEvidence } from '@/lib/brief-assessment';
 import { deriveOutlook } from '@/lib/model-outlook';
@@ -245,7 +247,14 @@ export default function StockBriefPage() {
     retry: 1,
   });
 
-  const tradeConfirmation = overview?.tradeConfirmation;
+  const { data: tradeConfirmation } = useQuery<TradeConfirmation>({
+    queryKey: ['trade-confirmation', ticker, '1y'],
+    queryFn: () => fetchTradeConfirmation(ticker, '1y'),
+    refetchInterval: 30000,
+    staleTime: 15000,
+    retry: 1,
+  });
+
   const sentiment = overview?.sentiment;
   const risk = overview?.risk;
   const tf = timeframes?.timeframes?.[timeframe];

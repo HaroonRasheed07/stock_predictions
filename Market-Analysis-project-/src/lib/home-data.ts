@@ -26,6 +26,7 @@ import {
 } from '@/lib/api';
 import { getAllAllowlistedSymbols, getStockInfo } from '@/lib/stock-allowlist';
 import { deriveOutlook, type ModelOutlook } from '@/lib/model-outlook';
+import { normalizeOverviewSentiment } from '@/lib/overview-sentiment';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://stock-predictions-b6yx.onrender.com';
 
@@ -428,10 +429,10 @@ export function buildScanBuckets(
 export async function fetchHeroBundle(ticker: string): Promise<HeroBundle> {
   const name = getStockInfo(ticker)?.name || ticker;
   const [overview, indicators, forecast, sentiment] = await Promise.all([
-    safe(withTimeout(fetchMarketOverview(ticker, '6mo'), 10000), 12000),
+    safe(withTimeout(fetchMarketOverview(ticker, '6mo'), 15000), 17000),
     safe(withTimeout(fetchIndicators(ticker, '1y'), 10000), 12000),
     safe(withTimeout(fetchForecast(ticker, 10, '1y'), 12000), 14000),
-    safe(withTimeout(fetchSentiment(ticker), 9000), 11000),
+    safe(withTimeout(fetchSentiment(ticker), 20000), 22000),
   ]);
   return {
     ticker,
@@ -439,7 +440,7 @@ export async function fetchHeroBundle(ticker: string): Promise<HeroBundle> {
     overview,
     indicators,
     forecast,
-    sentiment,
+    sentiment: sentiment ?? normalizeOverviewSentiment(overview?.sentiment),
     outlook: deriveOutlook(forecast, overview?.currentPrice ?? null),
     discover: null,
     delayed: !overview,

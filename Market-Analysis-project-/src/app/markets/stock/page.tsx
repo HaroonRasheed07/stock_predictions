@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Activity, Users, BarChart3, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchMarketOverview, fetchAssetSearch, AssetInfo } from '@/lib/api';
+import { fetchMarketOverview, fetchAssetSearch, fetchTradeConfirmation, AssetInfo } from '@/lib/api';
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { OpportunityDashboard } from '@/components/dashboard/OpportunityDashboard';
 import { VolatilityMonitor } from '@/components/dashboard/VolatilityMonitor';
@@ -120,6 +120,14 @@ export default function StockOverview() {
     refetchInterval: 30000,
     staleTime: 15000,
     gcTime: 300000, // 5 minutes — keep in memory for fast back/forward
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: tradeConfirmation, isLoading: isLoadingTradeConfirmation } = useQuery({
+    queryKey: ['trade-confirmation', ticker, '1y'],
+    queryFn: () => fetchTradeConfirmation(ticker, '1y'),
+    staleTime: 120000,
+    gcTime: 600000,
     refetchOnWindowFocus: false,
   });
 
@@ -391,8 +399,8 @@ export default function StockOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <TradeConfirmation
-            data={overview?.tradeConfirmation || null}
-            isLoading={isLoading}
+            data={tradeConfirmation ?? null}
+            isLoading={isLoadingTradeConfirmation}
           />
         </div>
 
