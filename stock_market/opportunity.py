@@ -1,7 +1,23 @@
-# opportunity.py — Opportunity Score engine for the Discovery Dashboard
 """
-Scans and ranks assets based on an Opportunity Score built from:
-Trend strength, technical momentum, sentiment, volatility, and volume.
+opportunity.py — Opportunity Score engine for StockVantex Discovery & Screening.
+
+Opportunity Score Methodology
+-----------------------------
+The Opportunity Score (0–100, higher = stronger opportunity) is a composite
+signal designed to highlight assets with favorable trade setups by combining
+five distinct analytical dimensions:
+
+  Factor                Max Impact   Directional Logic
+  --------------------  ----------   -------------------------------------------
+  Trend Strength        ±25.0 pts    Bullish trend (>50) adds up to +25; Bearish subtracts
+  Technical RSI         ±20.0 pts    Oversold (<30) adds +20 (reversal); Overbought (>70) subtracts -20
+  Volatility Regime     ±20.0 pts    Optimal moderate vol (15–35%) adds +20; extreme vol (>50%) subtracts -15
+  News Sentiment        ±20.0 pts    Positive sentiment adds up to +20; negative subtracts up to -20
+  Relative Volume       ±15.0 pts    Volume confirmation (>=1.5x) magnifies trend direction
+
+Base score begins at 50.0 (neutral baseline). Total score is clamped to [0.0, 100.0].
+For assets without volume data (e.g. forex pairs), the non-volume factors are
+rescaled proportionally by (100 / 85).
 """
 
 import pandas as pd
@@ -14,11 +30,23 @@ from volatility import get_volatility_summary
 from risk import calculate_trend_strength
 from multi_asset import get_asset_info
 
+# Explicit Factor Weight Limits
+WEIGHT_TREND = 25.0
+WEIGHT_RSI = 20.0
+WEIGHT_VOLATILITY = 20.0
+WEIGHT_SENTIMENT = 20.0
+WEIGHT_VOLUME = 15.0
 
-def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool = True, skip_sentiment: bool = False) -> Optional[Dict[str, Any]]:
+
+def calculate_opportunity_score(
+    ticker: str,
+    period: str = "1y",
+    use_cache: bool = True,
+    skip_sentiment: bool = False
+) -> Optional[Dict[str, Any]]:
     """
     Calculate an opportunity score (0-100) for a given ticker.
-    Combines multiple signals into a single score.
+    Combines trend, momentum, volatility, sentiment, and volume into a single score.
     """
     try:
         # Check scan cache first
@@ -27,6 +55,7 @@ def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool
             cached = _get_cached_scan(cache_key)
             if cached is not None:
                 return cached
+
         # 1. Load data and indicators
         df = load_data(ticker, period)
         if df is None or len(df) < 50:
@@ -34,10 +63,10 @@ def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool
 
         df_ind_records = calculate_indicators(df)
         df_ind = pd.DataFrame(df_ind_records)
-        
+
         asset_info = get_asset_info(ticker)
-        has_volume = asset_info["has_volume"]
-        asset_class = asset_info["asset_class"]
+        has_volume = asset_info.get("has_volume", True)
+        asset_class = asset_info.get("asset_class", "Stock")
 
         score = 50.0  # Base neutral score
         factors = []
@@ -45,36 +74,38 @@ def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool
         # 2. Trend Strength (Weight: 25%)
         # 0-100 score where >50 is bullish, <50 is bearish
         trend_score = calculate_trend_strength(df_ind)
-        trend_impact = (trend_score - 50) * 0.50  # -25 to +25 points
+        trend_impact = (trend_score - 50.0) * 0.50  # -25.0 to +25.0 points
         score += trend_impact
         factors.append({
             "name": "Trend Strength",
+            "weight": WEIGHT_TREND,
             "impact": round(trend_impact, 1),
             "value": "Bullish" if trend_score > 60 else "Bearish" if trend_score < 40 else "Neutral",
             "detail": f"Score: {trend_score:.1f}/100"
         })
 
         # 3. Technical Momentum (RSI) (Weight: 20%)
-        latest_rsi = df_ind["RSI"].iloc[-1]
+        latest_rsi = float(df_ind["RSI"].iloc[-1])
         rsi_impact = 0.0
         rsi_val = "Neutral"
-        
-        if latest_rsi < 30:
-            rsi_impact = 20.0  # Oversold = high opportunity for reversal
+
+        if latest_rsi < 30.0:
+            rsi_impact = WEIGHT_RSI  # Oversold = high opportunity for bounce
             rsi_val = "Oversold (Bullish)"
-        elif latest_rsi < 40:
-            rsi_impact = 10.0
+        elif latest_rsi < 40.0:
+            rsi_impact = WEIGHT_RSI * 0.5
             rsi_val = "Weak (Slight Bullish)"
-        elif latest_rsi > 70:
-            rsi_impact = -20.0 # Overbought = high risk, low opportunity
+        elif latest_rsi > 70.0:
+            rsi_impact = -WEIGHT_RSI  # Overbought = elevated risk
             rsi_val = "Overbought (Bearish)"
-        elif latest_rsi > 60:
-            rsi_impact = -10.0
+        elif latest_rsi > 60.0:
+            rsi_impact = -WEIGHT_RSI * 0.5
             rsi_val = "Strong (Slight Bearish)"
 
         score += rsi_impact
         factors.append({
             "name": "Momentum (RSI)",
+            "weight": WEIGHT_RSI,
             "impact": round(rsi_impact, 1),
             "value": rsi_val,
             "detail": f"RSI: {latest_rsi:.1f}"
@@ -82,51 +113,51 @@ def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool
 
         # 4. Volatility (Weight: 20%)
         vol_summary = get_volatility_summary(df, has_volume)
-        daily_vol = vol_summary["daily_volatility"]
-        
-        # We prefer moderate volatility (opportunity). Too low = boring, Too high = gambling.
+        daily_vol = float(vol_summary.get("daily_volatility", 20.0))
+
+        # Moderate volatility provides optimal opportunity
         vol_impact = 0.0
         vol_val = "Moderate"
-        if 15 <= daily_vol <= 35:
-            vol_impact = 20.0
+        if 15.0 <= daily_vol <= 35.0:
+            vol_impact = WEIGHT_VOLATILITY
             vol_val = "Optimal (Moderate)"
-        elif 35 < daily_vol <= 50:
+        elif 35.0 < daily_vol <= 50.0:
             vol_impact = 5.0
             vol_val = "High Risk/Reward"
-        elif daily_vol > 50:
+        elif daily_vol > 50.0:
             vol_impact = -15.0
             vol_val = "Extreme Risk"
         else:
             vol_impact = -5.0
             vol_val = "Low Movement"
-            
+
         score += vol_impact
         factors.append({
             "name": "Volatility",
+            "weight": WEIGHT_VOLATILITY,
             "impact": round(vol_impact, 1),
             "value": vol_val,
             "detail": f"{daily_vol:.1f}% Daily Vol"
         })
 
         # 5. Sentiment (Weight: 20%)
-        # For bulk scans (skip_sentiment=True), skip the slow newsdata.io API call.
-        # Per-ticker overview calls still get real sentiment.
         sentiment_impact = 0.0
         sentiment_val = "Neutral"
         sentiment_score = 0.0
-        
+
         if not skip_sentiment:
             try:
                 sent_res = analyze_sentiment(ticker)
-                sentiment_score = sent_res["score"]
-                sentiment_impact = sentiment_score * 20.0  # -20 to +20
-                sentiment_val = sent_res["label"]
+                sentiment_score = float(sent_res.get("score", 0.0))
+                sentiment_impact = sentiment_score * WEIGHT_SENTIMENT  # -20 to +20
+                sentiment_val = sent_res.get("label", "Neutral")
             except Exception:
                 pass
 
         score += sentiment_impact
         factors.append({
             "name": "Sentiment",
+            "weight": WEIGHT_SENTIMENT,
             "impact": round(sentiment_impact, 1),
             "value": sentiment_val,
             "detail": f"Score: {sentiment_score:.2f}" if not skip_sentiment else "Skipped (bulk scan)"
@@ -135,55 +166,68 @@ def calculate_opportunity_score(ticker: str, period: str = "1y", use_cache: bool
         # 6. Relative Volume (Weight: 15%) - If available
         vol_impact_score = 0.0
         if has_volume:
-            rel_vol = vol_summary["relative_volume"]["relative_volume"]
-            vol_class = vol_summary["relative_volume"]["classification"]
-            
-            # High volume supports the current trend
+            rel_vol_data = vol_summary.get("relative_volume", {})
+            rel_vol = float(rel_vol_data.get("relative_volume", 1.0))
+            vol_class = rel_vol_data.get("classification", "Normal")
+
+            # High volume reinforces the current trend direction
             if rel_vol >= 1.5:
-                vol_impact_score = 15.0 if trend_score > 50 else -15.0
+                vol_impact_score = WEIGHT_VOLUME if trend_score > 50 else -WEIGHT_VOLUME
             elif rel_vol >= 1.2:
                 vol_impact_score = 5.0 if trend_score > 50 else -5.0
-                
+
             score += vol_impact_score
             factors.append({
                 "name": "Relative Volume",
+                "weight": WEIGHT_VOLUME,
                 "impact": round(vol_impact_score, 1),
                 "value": vol_class,
                 "detail": f"{rel_vol:.1f}x Avg"
             })
         else:
-            # Redistribute weight if no volume
-            score *= (100 / 85)
+            # Rescale non-volume factors so total potential remains 100
+            score = 50.0 + (score - 50.0) * (100.0 / 85.0)
 
         # Final bounds check
         final_score = max(0.0, min(100.0, score))
-        
+
         # Price and change for display
         close_prices = df["Close"]
         if isinstance(close_prices, pd.DataFrame):
             close_prices = close_prices.iloc[:, 0]
-        
+
         current_price = float(close_prices.iloc[-1])
         prev_price = float(close_prices.iloc[-2]) if len(close_prices) > 1 else current_price
         change_val = current_price - prev_price
-        change_pct = (change_val / prev_price * 100) if prev_price != 0 else 0
+        change_pct = (change_val / prev_price * 100) if prev_price != 0 else 0.0
 
         result = {
             "ticker": ticker,
-            "name": asset_info["name"],
+            "name": asset_info.get("name", ticker),
             "asset_class": asset_class,
             "score": round(final_score, 1),
             "price": current_price,
-            "change": change_val,
-            "change_percent": change_pct,
-            "factors": factors
+            "change": round(change_val, 2),
+            "change_percent": round(change_pct, 2),
+            "factors": factors,
+            "methodology": {
+                "base_score": 50.0,
+                "weights": {
+                    "trend_strength": WEIGHT_TREND,
+                    "momentum_rsi": WEIGHT_RSI,
+                    "volatility": WEIGHT_VOLATILITY,
+                    "sentiment": WEIGHT_SENTIMENT,
+                    "relative_volume": WEIGHT_VOLUME if has_volume else 0.0,
+                },
+                "range": [0.0, 100.0]
+            }
         }
-        
+
         # Cache the result
         if use_cache:
             cache_key = f"opportunity_{ticker}_{period}"
             _set_cached_scan(cache_key, result)
-        
+
         return result
     except Exception as e:
         print(f"Error scoring {ticker}: {e}")

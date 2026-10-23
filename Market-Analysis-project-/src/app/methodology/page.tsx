@@ -83,14 +83,14 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Price Forecasting</h2>
               <p className="text-muted-foreground mb-4">
-                StockVantex uses LSTM (Long Short-Term Memory) neural networks with attention mechanisms to generate probabilistic price forecasts. The model learns from historical price sequences and projects potential future price paths.
+                StockVantex uses an LSTM (Long Short-Term Memory) neural network with an attention mechanism to generate model-based price outlooks. The model is trained on historical daily closing prices and projects a sequence of price estimates over the next trading sessions.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><strong>Model Architecture</strong> — LSTM networks with attention, designed for sequential financial data.</li>
-                <li><strong>Input Features</strong> — Historical prices, volume, and derived technical indicators over a lookback window.</li>
-                <li><strong>Forecast Horizon</strong> — Projects prices over a configurable future period (typically 7–30 days).</li>
-                <li><strong>Confidence Intervals</strong> — Forecasts include probability ranges, not just point estimates.</li>
-                <li><strong>Historical Backtesting</strong> — Models are evaluated against historical data, but past performance does not guarantee future accuracy.</li>
+                <li><strong>Model Architecture</strong> — LSTM network with attention layer, serialised as an ONNX model for CPU-efficient inference.</li>
+                <li><strong>Input Feature</strong> — Closing price only, normalised via MinMaxScaler over a 60-day lookback window.</li>
+                <li><strong>Forecast Horizon</strong> — 10 business days ahead (approximately two calendar weeks). Each step is produced recursively using the previous step&apos;s prediction as the next input.</li>
+                <li><strong>No Confidence Intervals</strong> — The model produces point estimates only. No uncertainty bounds are generated or displayed. The projected range shown (min–max of the 10-step sequence) reflects the spread of estimates across the horizon, not a statistical confidence interval.</li>
+                <li><strong>Validation Approach</strong> — The model is evaluated against held-out historical data on a walk-forward basis. See the training report for MAE and RMSE metrics. Past model accuracy does not guarantee future accuracy.</li>
               </ul>
               <div className="rounded-lg bg-muted/50 p-3 mt-4">
                 <p className="text-xs text-muted-foreground">
@@ -106,15 +106,18 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Risk Assessment</h2>
               <p className="text-muted-foreground mb-4">
-                StockVantex evaluates risk through multiple dimensions, combining volatility analysis, trend stability, and market conditions into a comprehensive risk profile.
+                The risk score (0–100, higher = riskier) is a weighted composite of three independently measured historical dimensions:
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><strong>Volatility Analysis</strong> — Daily and weekly volatility calculations based on historical price movement.</li>
-                <li><strong>ATR-Based Expected Range</strong> — Uses ATR to estimate the expected daily trading range.</li>
-                <li><strong>Risk Score</strong> — A composite score (0–100) reflecting overall risk level.</li>
-                <li><strong>Risk Factors</strong> — Individual risk dimensions including volatility, trend stability, and drawdown exposure.</li>
-                <li><strong>Risk Level</strong> — Categorical assessment (Low, Medium, High) based on the composite risk score.</li>
+                <li><strong>Daily Volatility (40%)</strong> — Annualised standard deviation of daily log-returns. Scores linearly from &lt;10% (low risk) to &gt;40% (high risk).</li>
+                <li><strong>Trend Stability (30%)</strong> — Inverted trend-strength score. A consistent trend is treated as lower risk; a chaotic or reversing trend as higher risk.</li>
+                <li><strong>ATR / Price Ratio (30%)</strong> — 14-day Average True Range as a percentage of current price. Scores linearly from &lt;1% (low) to &gt;5% (high).</li>
+                <li><strong>Risk Level Thresholds</strong> — Score &lt;35 → Low; 35–65 → Medium; ≥65 → High.</li>
+                <li><strong>Max Drawdown (Informational)</strong> — Peak-to-trough decline over the available history is reported separately and is not included in the composite score.</li>
               </ul>
+              <p className="text-xs text-muted-foreground mt-3">
+                All dimensions are calculated from historical price data. Historical risk does not fully capture future risk, including tail events, liquidity gaps, or regime changes.
+              </p>
               <p className="text-xs text-muted-foreground mt-4">
                 <Link href="/learn/how-to-analyze-stock-risk" className="text-primary hover:underline">Learn more about risk analysis →</Link>
               </p>
@@ -122,17 +125,19 @@ export default function MethodologyPage() {
 
             {/* Opportunity Scoring */}
             <section className="rounded-xl border border-border/60 bg-card p-6">
-              <h2 className="text-xl font-bold mb-3">Opportunity Scoring</h2>
+              <h2 className="text-xl font-bold mb-3">Opportunity Score</h2>
               <p className="text-muted-foreground mb-4">
-                The opportunity score combines technical signals, sentiment, risk, and momentum into a single composite score (0–100) that represents the overall attractiveness of a stock as a research candidate.
+                The Opportunity Score (0–100) ranks a stock&apos;s research interest based on five quantitative factors. A higher score indicates more favourable momentum and sentiment conditions in the data; it is not a prediction of future returns.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><strong>Multi-Factor Composition</strong> — The score weighs technical momentum, sentiment alignment, risk-adjusted potential, and trend quality.</li>
-                <li><strong>Signal Integration</strong> — Buy/Sell/Hold signals from technical analysis, sentiment, and risk assessment are combined.</li>
-                <li><strong>Comparative Ranking</strong> — Scores allow comparison across different stocks within the same universe.</li>
+                <li><strong>Trend Strength (25% effective weight)</strong> — Derived from price vs. SMA20, price vs. SMA50, SMA crossover, and MACD direction.</li>
+                <li><strong>RSI Momentum (20%)</strong> — Oversold readings (&lt;30) score positively as mean-reversion candidates; overbought (&gt;70) score negatively.</li>
+                <li><strong>Volatility (20%)</strong> — Moderate annualised volatility (15–35%) is scored positively; extreme volatility (&gt;50%) scores negatively.</li>
+                <li><strong>News Sentiment (20%)</strong> — Composite sentiment score from recent news articles, scaled from −20 to +20 points.</li>
+                <li><strong>Relative Volume (15%)</strong> — Volume above 1.5× average amplifies the current trend signal; unavailable for assets without reliable volume data.</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-3">
-                The opportunity score is an analytical tool, not a recommendation. A high score does not guarantee positive returns.
+                Scores are recalculated from live data and are not calibrated against future returns. A high score does not indicate that a stock will rise. No backtest has been run linking score thresholds to profitable outcomes.
               </p>
             </section>
 

@@ -11,13 +11,18 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { StockSearch } from '@/components/common/StockSearch';
 
+/**
+ * Global navigation links — discovery and platform-level only.
+ * Stock-specific research views (Technical, Sentiment, Forecast, Risk) are
+ * accessible from the stock research sub-navigation inside /stocks/[symbol].
+ */
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/markets/brief', label: 'Stock Brief' },
-  { href: '/markets/stock/technical', label: 'Technical' },
-  { href: '/markets/stock/sentiment', label: 'News Sentiment' },
-  { href: '/markets/stock/forecast', label: 'Forecast' },
+  { href: '/stocks', label: 'Stocks' },
+  { href: '/markets/discover', label: 'Discover' },
   { href: '/learn', label: 'Learn' },
+  { href: '/methodology', label: 'Methodology' },
 ];
 
 export const Navbar = () => {
@@ -83,8 +88,12 @@ export const Navbar = () => {
 
   const isActive = (href: string) => {
     if (href === '/learn') return pathname === '/learn' || pathname.startsWith('/learn/');
+    if (href === '/stocks') return pathname === '/stocks' || pathname.startsWith('/stocks/');
+    if (href === '/markets/discover') return pathname === '/markets/discover' || pathname.startsWith('/markets/discover');
+    if (href === '/methodology') return pathname === '/methodology';
     return pathname === href;
   };
+
 
   return (
     <>
