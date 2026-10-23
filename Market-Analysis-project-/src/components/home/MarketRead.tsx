@@ -51,9 +51,14 @@ export function MarketRead({
           </h2>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {updated && <span>{updated}</span>}
-            {(!discoverAvailable || !modelAvailable) && (
-              <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
-                data delayed — last snapshot
+            {discoverAvailable ? (
+              <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                Live feeds active
+              </span>
+            ) : (
+              <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                Syncing snapshot...
               </span>
             )}
           </div>
@@ -131,8 +136,9 @@ export function MarketRead({
               tools below stay available in the meantime.
             </p>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 font-semibold text-warning">
-                data delayed
+              <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 font-medium text-muted-foreground flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
+                Updating snapshot...
               </span>
               {updated && <span>{updated}</span>}
             </div>

@@ -26,10 +26,11 @@ export function Heatmap({ stocks, available }: { stocks: DiscoverStock[]; availa
         <h2 id="heatmap-heading" className="text-xl font-semibold md:text-2xl">
           Daily move heatmap
         </h2>
-        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">
-          The heatmap refreshes with each scan.
-          <span className="pill pill-amber">
-            data delayed
+        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground flex items-center gap-2">
+          <span>The heatmap updates with each scan.</span>
+          <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
+            Updating
           </span>
         </div>
       </section>

@@ -169,9 +169,10 @@ export function WatchlistSection() {
         {mounted && fetchFailed && watchlist.length > 0 && (
           <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" aria-hidden="true" />
-            Quotes are refreshing for your watchlist.
-            <span className="pill pill-amber">
-              data delayed
+            Quotes are syncing for your watchlist.
+            <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
+              Syncing
             </span>
           </p>
         )}

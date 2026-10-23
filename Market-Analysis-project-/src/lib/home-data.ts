@@ -188,7 +188,7 @@ function yahoo(): InstanceType<typeof YahooFinance> {
 /** Primary source: backend /api/market/indices (real daily closes, SWR-cached). */
 async function fetchBackendIndices(): Promise<IndexQuote[] | null> {
   try {
-    const res = await withTimeout(fetch(`${API_BASE}/api/market/indices`), 8000);
+    const res = await withTimeout(fetch(`${API_BASE}/api/market/indices`), 12000);
     if (!res.ok) return null;
     const data = (await res.json()) as { indexes?: Array<Partial<IndexQuote>> };
     const arr = Array.isArray(data?.indexes) ? data.indexes : [];

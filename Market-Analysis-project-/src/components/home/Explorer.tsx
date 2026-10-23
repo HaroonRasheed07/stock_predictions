@@ -30,9 +30,10 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 function Delayed({ what }: { what: string }) {
   return (
     <p className="flex items-center gap-2 text-sm text-muted-foreground">
-      {what} is refreshing for this snapshot.
-      <span className="pill pill-amber">
-        data delayed
+      {what} is syncing for this snapshot.
+      <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
+        Syncing
       </span>
     </p>
   );

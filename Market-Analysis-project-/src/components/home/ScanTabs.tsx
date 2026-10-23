@@ -203,10 +203,11 @@ export function ScanTabs({ scan, discoverAvailable }: { scan: ScanBuckets | null
         <h2 id="scan-heading" className="text-xl font-semibold md:text-2xl">
           Scan the universe
         </h2>
-        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">
-          The market scan is refreshing for this snapshot.
-          <span className="ml-2 inline-block rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
-            data delayed
+        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground flex items-center gap-2">
+          <span>The market scan is syncing for this snapshot.</span>
+          <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
+            Syncing
           </span>
         </div>
       </section>

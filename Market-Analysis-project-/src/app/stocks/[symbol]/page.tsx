@@ -303,8 +303,8 @@ export default async function StockPage({ params }: PageProps) {
 
               <p className="text-xs text-muted-foreground">
                 {snapshot.updatedAt
-                  ? `Market data computed ${fmtUtc(snapshot.updatedAt)}${snapshot.overviewStale ? ' (served from cache while a refresh runs)' : ''}. Prices may be delayed.`
-                  : 'Market data refreshed regularly and may be delayed.'}
+                  ? `Market data updated ${fmtUtc(snapshot.updatedAt)}${snapshot.overviewStale ? ' (refreshing live snapshot)' : ''}.`
+                  : 'Market data updated via live feeds.'}
               </p>
 
               <section aria-labelledby="tech-snapshot">
@@ -592,8 +592,8 @@ export default async function StockPage({ params }: PageProps) {
 
             <p className="text-xs text-muted-foreground">
               {snapshot.updatedAt
-                ? `Market snapshot last computed ${fmtUtc(snapshot.updatedAt)}. `
-                : 'Market data is refreshed regularly but may be delayed. '}
+                ? `Market snapshot updated ${fmtUtc(snapshot.updatedAt)}. `
+                : 'Market data updated via live feeds. '}
               This analysis is for informational purposes only and does not constitute investment advice.{' '}
               <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
             </p>

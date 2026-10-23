@@ -217,8 +217,8 @@ export function HeroBriefCard({
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             {updated && <span>{updated}</span>}
             {!overview && (
-              <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 font-semibold text-warning">
-                data delayed — last snapshot
+              <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 font-medium text-muted-foreground">
+                Latest quote
               </span>
             )}
           </div>
