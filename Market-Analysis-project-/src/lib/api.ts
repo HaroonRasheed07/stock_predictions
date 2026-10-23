@@ -111,6 +111,14 @@ export interface TradeConfirmation {
   ticker: string;
   name: string;
   signal: string;
+  evidence_state?: string;
+  conflict_details?: {
+    has_conflict: boolean;
+    bullish_count: number;
+    bearish_count: number;
+    explanation: string;
+    risk_warning: boolean;
+  };
   score: number;
   confidence: number;
   components: Array<{

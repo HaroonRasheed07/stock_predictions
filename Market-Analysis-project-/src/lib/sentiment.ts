@@ -1,4 +1,8 @@
 import { cn } from '@/lib/utils';
+import { sentimentTone } from '@/lib/signal-bands';
+
+export { sentimentTone };
+export type { SentimentTone } from '@/lib/signal-bands';
 
 export type SentimentStatus = 'sufficient' | 'insufficient' | 'error' | 'no_relevant_news' | 'news_unavailable';
 
@@ -33,11 +37,13 @@ export function getSentimentColorClass(
 
 /**
  * Returns the sentiment color class based on a numeric score.
- * Used when we only have the score (no label/status available).
+ * Uses the same ±0.15 neutral band as the backend label derivation so a
+ * "Neutral" score never renders with a directional colour.
  */
 export function getSentimentScoreColorClass(score: number): string {
-  if (score > 0.1) return 'text-success';
-  if (score < -0.1) return 'text-destructive';
+  const tone = sentimentTone(score);
+  if (tone === 'bullish') return 'text-success';
+  if (tone === 'bearish') return 'text-destructive';
   return 'text-muted-foreground';
 }
 

@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { TREND_SCORE_BANDS } from '@/lib/signal-bands';
+import { sentimentTone } from '@/lib/sentiment';
 
 interface TradeConfirmationProps {
   data: TradeConfirmationData | null;
@@ -47,10 +49,10 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
     sentiment,
   } = data;
 
-  // Determine overall verdict presentation based on backend signal
-  const normalizedSignal = signal?.toUpperCase() || (
-    opportunity_score > 65 ? 'BUY' : opportunity_score < 40 ? 'SELL' : 'HOLD'
-  );
+  // Determine overall verdict presentation based on backend signal. When the
+  // backend provides no signal we show Mixed Evidence rather than inventing a
+  // direction from the opportunity score (that score is a rank, not a vote).
+  const normalizedSignal = signal?.toUpperCase() || 'MIXED';
 
   let verdict = 'Neutral (Hold)';
   let verdictColor = 'text-warning';
@@ -67,6 +69,11 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
     verdictColor = 'text-destructive';
     verdictBg = 'bg-destructive/10';
     VerdictIcon = XCircle;
+  } else if (normalizedSignal.includes('MIXED') || normalizedSignal.includes('CONFLICT')) {
+    verdict = signal || 'Mixed Evidence';
+    verdictColor = 'text-warning';
+    verdictBg = 'bg-warning/10';
+    VerdictIcon = AlertTriangle;
   } else {
     verdict = signal || 'Hold / Neutral';
     verdictColor = 'text-warning';
@@ -74,7 +81,10 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
     VerdictIcon = MinusCircle;
   }
 
-  const confidencePct = Math.round((confidence !== undefined && confidence !== null ? confidence : (opportunity_score / 100)) * 100);
+  // Confidence comes only from the backend's own confidence field. The setup
+  // score is a different quantity and is never presented as a confidence %.
+  const confidenceAvailable = confidence !== undefined && confidence !== null && isFinite(confidence);
+  const confidencePct = confidenceAvailable ? Math.round(confidence * 100) : null;
 
   return (
     <Card className="glass h-full relative overflow-hidden flex flex-col">
@@ -91,7 +101,7 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
           </div>
           <div className="text-right">
             <span className="text-2xl font-bold">{opportunity_score.toFixed(0)}</span>
-            <span className="text-xs text-muted-foreground">/100 Opp Score</span>
+            <span className="text-xs text-muted-foreground" title="Setup ranking score (not a probability of profit)">/100 Setup Score</span>
           </div>
         </div>
       </CardHeader>
@@ -104,7 +114,7 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h3 className={`text-lg font-bold ${verdictColor}`}>{verdict}</h3>
               <Badge variant="outline" className="text-xs font-medium">
-                {confidencePct}% Confidence
+                {confidencePct !== null ? `${confidencePct}% Confidence` : 'Confidence n/a'}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -112,6 +122,17 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
             </p>
           </div>
         </div>
+
+        {/* Conflict Callout if present */}
+        {data.conflict_details?.has_conflict && (
+          <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-warning">Divergent Indicators Detected</p>
+              <p className="text-muted-foreground mt-0.5 leading-relaxed">{data.conflict_details.explanation}</p>
+            </div>
+          </div>
+        )}
 
         {/* Factors Breakdown */}
         <div className="space-y-3 flex-1">
@@ -161,8 +182,14 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Trend */}
               <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card/60">
-                <div className={`p-2 rounded-md ${trend?.score > 50 ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}`}>
-                  {trend?.score > 50 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                <div className={`p-2 rounded-md ${
+                  trend?.score >= TREND_SCORE_BANDS.BULLISH_MIN ? 'bg-success/20 text-success' :
+                  trend?.score <= TREND_SCORE_BANDS.BEARISH_MAX ? 'bg-destructive/20 text-destructive' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  {trend?.score >= TREND_SCORE_BANDS.BULLISH_MIN ? <TrendingUp className="h-4 w-4" /> :
+                   trend?.score <= TREND_SCORE_BANDS.BEARISH_MAX ? <TrendingDown className="h-4 w-4" /> :
+                   <Minus className="h-4 w-4" />}
                 </div>
                 <div>
                   <p className="text-[11px] text-muted-foreground">Trend Strength</p>
@@ -195,8 +222,14 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
               {/* Sentiment */}
               {sentiment && (
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card/60">
-                  <div className={`p-2 rounded-md ${sentiment.score > 0 ? 'bg-success/20 text-success' : sentiment.score < 0 ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground'}`}>
-                    {sentiment.score > 0 ? <TrendingUp className="h-4 w-4" /> : sentiment.score < 0 ? <TrendingDown className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                  <div className={`p-2 rounded-md ${
+                    sentimentTone(sentiment.score) === 'bullish' ? 'bg-success/20 text-success' :
+                    sentimentTone(sentiment.score) === 'bearish' ? 'bg-destructive/20 text-destructive' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {sentimentTone(sentiment.score) === 'bullish' ? <TrendingUp className="h-4 w-4" /> :
+                     sentimentTone(sentiment.score) === 'bearish' ? <TrendingDown className="h-4 w-4" /> :
+                     <Minus className="h-4 w-4" />}
                   </div>
                   <div>
                     <p className="text-[11px] text-muted-foreground">Sentiment</p>
@@ -208,17 +241,19 @@ export function TradeConfirmation({ data, isLoading }: TradeConfirmationProps) {
           )}
         </div>
 
-        {/* Confidence Progress Meter */}
-        <div className="pt-2 border-t border-border/50">
-          <div className="flex items-center justify-between mb-1.5 text-xs">
-            <span className="text-muted-foreground flex items-center gap-1">
-              <Scale className="h-3.5 w-3.5 text-primary" />
-              Signal Confidence
-            </span>
-            <span className="font-semibold">{confidencePct}%</span>
+        {/* Confidence Progress Meter (only when the backend provides confidence) */}
+        {confidencePct !== null && (
+          <div className="pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between mb-1.5 text-xs">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Scale className="h-3.5 w-3.5 text-primary" />
+                Signal Confidence
+              </span>
+              <span className="font-semibold">{confidencePct}%</span>
+            </div>
+            <Progress value={confidencePct} className="h-2" />
           </div>
-          <Progress value={confidencePct} className="h-2" />
-        </div>
+        )}
       </CardContent>
     </Card>
   );

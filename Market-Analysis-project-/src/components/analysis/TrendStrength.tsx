@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendStrength as TrendStrengthData } from '@/lib/api';
 import { Activity, ArrowRight, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { TREND_SCORE_BANDS } from '@/lib/signal-bands';
 
 interface TrendStrengthProps {
   data: TrendStrengthData;
@@ -21,27 +22,28 @@ export function TrendStrength({ data, isLoading }: TrendStrengthProps) {
 
   const { trend_score, trend_label } = data;
 
-  // Determine colors based on score
+  // Colors follow the same 60/40 bands the backend uses for the Bullish /
+  // Neutral / Bearish label so the colour never contradicts the badge text.
   let colorClass = 'text-muted-foreground';
   let barColorClass = 'bg-muted';
   let Icon = Minus;
 
-  if (trend_score > 70) {
+  if (trend_score >= 70) {
     colorClass = 'text-success';
     barColorClass = 'bg-success';
     Icon = TrendingUp;
-  } else if (trend_score > 55) {
+  } else if (trend_score >= TREND_SCORE_BANDS.BULLISH_MIN) {
     colorClass = 'text-success/80';
     barColorClass = 'bg-success/80';
-    Icon = ArrowRight; // Up-right ideally, using ArrowRight for simplicity
-  } else if (trend_score < 30) {
+    Icon = ArrowRight;
+  } else if (trend_score <= 30) {
     colorClass = 'text-destructive';
     barColorClass = 'bg-destructive';
     Icon = TrendingDown;
-  } else if (trend_score < 45) {
+  } else if (trend_score <= TREND_SCORE_BANDS.BEARISH_MAX) {
     colorClass = 'text-destructive/80';
     barColorClass = 'bg-destructive/80';
-    Icon = ArrowRight; // Down-right ideally
+    Icon = ArrowRight;
   }
 
   return (

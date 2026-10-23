@@ -18,6 +18,8 @@ import {
   DollarSign, Shield, AlertTriangle, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { riskLevelFor } from '@/lib/signal-bands';
+import { sentimentTone } from '@/lib/sentiment';
 import { useIsMobile, chartMargins, xAxisConfig, yAxisConfig, tooltipStyle, CHART_HEIGHTS } from '@/lib/chartUtils';
 import ProfessionalCandlestickChart from '@/components/ProfessionalCandlestickChart';
 import {
@@ -69,22 +71,25 @@ function OverviewSection({ ticker }: { ticker: string }) {
     close: d.Close,
   }));
 
-  const sentimentLabel = overview.sentiment?.sentiment_label || 'Neutral';
+  const sentimentAvailable = overview.sentiment?.status === 'sufficient';
+  const sentimentLabel = sentimentAvailable ? overview.sentiment?.sentiment_label || 'Neutral' : 'No Data';
   const sentimentScore = overview.sentiment?.sentiment_score || 0;
+  const sentimentToneValue = sentimentTone(sentimentScore);
+  const riskValue = overview.risk?.risk_level || 'N/A';
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
-          { label: 'Price', value: `$${(overview.currentPrice || 0).toFixed(2)}`, change: `${(overview.changePercent || 0) >= 0 ? '+' : ''}${(overview.changePercent || 0).toFixed(2)}%`, positive: (overview.change || 0) >= 0 },
-          { label: 'Change', value: `${(overview.change || 0) >= 0 ? '+' : ''}$${Math.abs(overview.change || 0).toFixed(2)}`, change: overview.marketStatus || '', positive: (overview.change || 0) >= 0 },
-          { label: 'Sentiment', value: sentimentLabel, change: `${sentimentScore >= 0 ? '+' : ''}${sentimentScore.toFixed(2)}`, positive: sentimentScore > 0.15 },
-          { label: 'Risk', value: overview.risk?.risk_level || 'N/A', change: `Score: ${overview.risk?.risk_score || 0}`, positive: overview.risk?.risk_level !== 'High' },
+          { label: 'Price', value: `$${(overview.currentPrice || 0).toFixed(2)}`, change: `${(overview.changePercent || 0) >= 0 ? '+' : ''}${(overview.changePercent || 0).toFixed(2)}%`, tone: (overview.changePercent || 0) >= 0 ? 'good' : 'bad' },
+          { label: 'Change', value: `${(overview.change || 0) >= 0 ? '+' : ''}$${Math.abs(overview.change || 0).toFixed(2)}`, change: overview.marketStatus || '', tone: (overview.change || 0) >= 0 ? 'good' : 'bad' },
+          { label: 'Sentiment', value: sentimentLabel, change: sentimentAvailable ? `${sentimentScore >= 0 ? '+' : ''}${sentimentScore.toFixed(2)}` : 'No recent data', tone: sentimentToneValue === 'bullish' ? 'good' : sentimentToneValue === 'bearish' ? 'bad' : 'neutral' },
+          { label: 'Risk', value: riskValue, change: `Score: ${overview.risk?.risk_score || 0}`, tone: riskValue === 'Low' ? 'good' : riskValue === 'High' ? 'bad' : 'neutral' },
         ].map((stat, i) => (
           <div key={i} className="rounded-xl border border-border/50 p-3 sm:p-4 bg-card/50">
             <p className="text-[10px] sm:text-xs uppercase font-semibold text-muted-foreground">{stat.label}</p>
             <p className="text-base sm:text-xl font-bold mt-1">{stat.value}</p>
-            <p className={cn('text-xs mt-0.5 font-medium', stat.positive ? 'text-green-500' : 'text-red-500')}>{stat.change}</p>
+            <p className={cn('text-xs mt-0.5 font-medium', stat.tone === 'good' ? 'text-green-500' : stat.tone === 'bad' ? 'text-red-500' : 'text-muted-foreground')}>{stat.change}</p>
           </div>
         ))}
       </div>
@@ -441,7 +446,7 @@ function RiskSection({ ticker }: { ticker: string }) {
 
       <div className="h-2 rounded-full bg-muted/40 overflow-hidden" role="img" aria-label={`Risk score ${score} out of 100`}>
         <div
-          className={cn('h-full rounded-full', score >= 66 ? 'bg-red-500' : score >= 33 ? 'bg-yellow-500' : 'bg-green-500')}
+          className={cn('h-full rounded-full', riskLevelFor(score) === 'High' ? 'bg-red-500' : riskLevelFor(score) === 'Medium' ? 'bg-yellow-500' : 'bg-green-500')}
           style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
         />
       </div>

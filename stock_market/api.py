@@ -1977,17 +1977,20 @@ def _compute_trade_confirmation_raw(ticker: str, period: str) -> Dict[str, Any]:
     opp_data = calculate_opportunity_score(ticker, period, skip_sentiment=True)
 
     # --- Explainable Components ---
+    # --- Explainable Components with 1.00 Total Normalized Weights ---
+    # Weights: Trend (0.25) + RSI (0.15) + MACD (0.15) + Risk (0.15) + Vol (0.10) + Sent (0.10) + Opp (0.10) = 1.00
     components = []
 
-    # 1. Trend (weight: 0.25)
+    # 1. Trend Strength (weight: 0.25)
     trend_label = "Bullish" if trend_score > 60 else "Bearish" if trend_score < 40 else "Neutral"
-    trend_val = (trend_score - 50) / 50  # normalize to -1..+1
+    trend_val = (trend_score - 50.0) / 50.0  # normalize to -1.0 .. +1.0
+    trend_signal = "buy" if trend_val > 0.15 else "sell" if trend_val < -0.15 else "neutral"
     components.append({
         "name": "Trend Strength",
         "score": round(trend_val, 3),
         "weight": 0.25,
         "contribution": round(trend_val * 0.25, 4),
-        "signal": "buy" if trend_val > 0.1 else "sell" if trend_val < -0.1 else "neutral",
+        "signal": trend_signal,
         "detail": f"{trend_label} ({trend_score:.1f}/100)",
         "rationale": (
             f"Price {'above' if float(latest.get('Close', 0)) > float(latest.get('SMA50', 0)) else 'below'} SMA50. "
@@ -1996,130 +1999,189 @@ def _compute_trade_confirmation_raw(ticker: str, period: str) -> Dict[str, Any]:
     })
 
     # 2. RSI (weight: 0.15)
-    rsi_val = float(latest.get("RSI", 50))
-    if rsi_val < 30:
-        rsi_signal, rsi_detail = "buy", f"Oversold at {rsi_val:.1f}"
-    elif rsi_val > 70:
-        rsi_signal, rsi_detail = "sell", f"Overbought at {rsi_val:.1f}"
+    rsi_val = float(latest.get("RSI", 50.0))
+    if rsi_val < 30.0:
+        rsi_signal, rsi_detail = "buy", f"Oversold at {rsi_val:.1f} (reversal setup)"
+        rsi_contrib = 0.15 * min((30.0 - rsi_val) / 15.0, 1.0)
+    elif rsi_val > 70.0:
+        rsi_signal, rsi_detail = "sell", f"Overbought at {rsi_val:.1f} (exhaustion risk)"
+        rsi_contrib = -0.15 * min((rsi_val - 70.0) / 15.0, 1.0)
     else:
         rsi_signal, rsi_detail = "neutral", f"Neutral at {rsi_val:.1f}"
-    rsi_norm = (rsi_val - 50) / 50
+        rsi_contrib = 0.0
+    rsi_norm = (rsi_val - 50.0) / 50.0
     components.append({
         "name": "RSI",
         "score": round(-rsi_norm, 3),
         "weight": 0.15,
-        "contribution": round({"buy": 0.15, "sell": -0.15, "neutral": 0.0}[rsi_signal] * min(abs(rsi_norm), 1.0), 4),
+        "contribution": round(rsi_contrib, 4),
         "signal": rsi_signal,
         "detail": rsi_detail,
-        "rationale": f"14-period RSI: {rsi_val:.1f}. {'Consider taking profits.' if rsi_val > 70 else 'Potential bounce opportunity.' if rsi_val < 30 else 'No extreme reading.'}",
+        "rationale": f"14-period RSI: {rsi_val:.1f}. {'Overbought reading; profit-taking risk.' if rsi_val > 70 else 'Oversold reading; potential mean-reversion bounce.' if rsi_val < 30 else 'Balanced momentum reading.'}",
     })
 
     # 3. MACD (weight: 0.15)
-    macd_val = float(latest.get("MACD", 0))
-    signal_val = float(latest.get("Signal", 0))
-    macd_signal = "buy" if macd_val > signal_val else "sell"
+    macd_val = float(latest.get("MACD", 0.0))
+    signal_val = float(latest.get("Signal", 0.0))
     macd_diff = macd_val - signal_val
-    macd_norm = macd_diff / (abs(macd_val) + 1e-10)
+    macd_signal = "buy" if macd_diff > 0.001 else "sell" if macd_diff < -0.001 else "neutral"
+    macd_norm = macd_diff / (abs(macd_val) + 1e-6)
+    macd_norm_clamped = max(-1.0, min(1.0, macd_norm))
     components.append({
         "name": "MACD",
-        "score": round(macd_norm, 3),
+        "score": round(macd_norm_clamped, 3),
         "weight": 0.15,
-        "contribution": round(macd_norm * 0.15, 4),
+        "contribution": round(macd_norm_clamped * 0.15, 4),
         "signal": macd_signal,
-        "detail": f"MACD {'above' if macd_signal == 'buy' else 'below'} signal line",
-        "rationale": f"MACD: {macd_val:.4f}, Signal: {signal_val:.4f}. {'Bullish momentum building.' if macd_signal == 'buy' else 'Bearish momentum building.'}",
+        "detail": f"MACD {'above' if macd_signal == 'buy' else 'below' if macd_signal == 'sell' else 'at'} signal line",
+        "rationale": f"MACD: {macd_val:.4f}, Signal: {signal_val:.4f}. {'Bullish momentum building.' if macd_signal == 'buy' else 'Bearish momentum building.' if macd_signal == 'sell' else 'Neutral momentum.'}",
     })
 
-    # 4. Volatility (weight: 0.15)
-    daily_vol = vol_summary.get("daily_volatility", 20)
-    vol_level = "High" if daily_vol > 35 else "Low" if daily_vol < 15 else "Medium"
-    vol_signal = "neutral"
-    vol_detail = f"{vol_level} volatility ({daily_vol:.1f}%)"
-    components.append({
-        "name": "Volatility",
-        "score": 0.0,
-        "weight": 0.15,
-        "contribution": 0.0,
-        "signal": vol_signal,
-        "detail": vol_detail,
-        "rationale": f"Daily volatility: {daily_vol:.1f}%. {'Tight stops recommended.' if daily_vol > 35 else 'Normal position sizing appropriate.' if daily_vol > 15 else 'Low risk of large swings.'}",
-    })
-
-    # 5. Risk (weight: 0.15)
-    risk_score = risk_data.get("risk_score", 50)
+    # 4. Risk Assessment (weight: 0.15)
+    risk_score = float(risk_data.get("risk_score", 50.0))
     risk_level = risk_data.get("risk_level", "Unknown")
-    risk_norm = (risk_score - 50) / 50  # higher = riskier = negative for buy
+    risk_norm = (risk_score - 50.0) / 50.0  # higher = riskier = negative for trade setup
+    risk_signal = "sell" if risk_score >= 65.0 else "buy" if risk_score <= 35.0 else "neutral"
     components.append({
         "name": "Risk Assessment",
         "score": round(-risk_norm, 3),
         "weight": 0.15,
         "contribution": round(-risk_norm * 0.15, 4),
-        "signal": "sell" if risk_norm > 0.3 else "buy" if risk_norm < -0.3 else "neutral",
+        "signal": risk_signal,
         "detail": f"{risk_level} risk ({risk_score:.1f}/100)",
-        "rationale": risk_data.get("message", "Risk assessment complete."),
+        "rationale": risk_data.get("message", f"Risk level: {risk_level}."),
     })
 
-    # 6. Sentiment (weight: 0.15)
-    sent_score = sentiment_data.get("score", 0.0)
-    sent_signal = "buy" if sent_score > 0.1 else "sell" if sent_score < -0.1 else "neutral"
+    # 5. Volatility Regime (weight: 0.10)
+    daily_vol = float(vol_summary.get("daily_volatility", 20.0))
+    vol_level = "High" if daily_vol > 35.0 else "Low" if daily_vol < 15.0 else "Medium"
+    if daily_vol > 35.0:
+        vol_penalty = min((daily_vol - 35.0) / 25.0, 1.0)
+        vol_contrib = -vol_penalty * 0.10
+        vol_signal = "sell" if vol_penalty > 0.4 else "neutral"
+        vol_detail = f"High volatility ({daily_vol:.1f}%) elevates downside swing risk"
+    elif 15.0 <= daily_vol <= 35.0:
+        vol_contrib = 0.05
+        vol_signal = "neutral"
+        vol_detail = f"Optimal moderate volatility ({daily_vol:.1f}%)"
+    else:
+        vol_contrib = 0.0
+        vol_signal = "neutral"
+        vol_detail = f"Low volatility ({daily_vol:.1f}%)"
+    components.append({
+        "name": "Volatility Regime",
+        "score": round(vol_contrib / 0.10, 3),
+        "weight": 0.10,
+        "contribution": round(vol_contrib, 4),
+        "signal": vol_signal,
+        "detail": vol_detail,
+        "rationale": f"Annualized daily volatility: {daily_vol:.1f}%. {'Wide price swings expected.' if daily_vol > 35 else 'Stable volatility environment.'}",
+    })
+
+    # 6. News Sentiment (weight: 0.10)
+    sent_score = float(sentiment_data.get("score", 0.0))
+    sent_signal = "buy" if sent_score > 0.15 else "sell" if sent_score < -0.15 else "neutral"
     components.append({
         "name": "News Sentiment",
         "score": round(sent_score, 3),
-        "weight": 0.15,
-        "contribution": round(sent_score * 0.15, 4),
+        "weight": 0.10,
+        "contribution": round(sent_score * 0.10, 4),
         "signal": sent_signal,
         "detail": f"{sentiment_data.get('label', 'Neutral')} ({sent_score:.2f})",
-        "rationale": f"Sentiment score: {sent_score:.2f}. Market mood: {sentiment_data.get('label', 'Neutral')}.",
+        "rationale": f"Market mood: {sentiment_data.get('label', 'Neutral')} (sentiment score {sent_score:.2f}).",
     })
 
-    # 7. Opportunity (weight: 0.15)
-    opp_score = (opp_data["score"] if opp_data else 50.0) / 100.0
-    opp_norm = (opp_score - 0.5) * 2  # normalize to -1..+1
+    # 7. Opportunity Score (weight: 0.10)
+    opp_raw = float(opp_data.get("score", 50.0)) if opp_data else 50.0
+    opp_norm = (opp_raw - 50.0) / 50.0  # normalize to -1.0 .. +1.0
+    opp_signal = "buy" if opp_norm > 0.25 else "sell" if opp_norm < -0.25 else "neutral"
     components.append({
-        "name": "Opportunity Score",
+        "name": "Opportunity Setup",
         "score": round(opp_norm, 3),
-        "weight": 0.15,
-        "contribution": round(opp_norm * 0.15, 4),
-        "signal": "buy" if opp_norm > 0.2 else "sell" if opp_norm < -0.2 else "neutral",
-        "detail": f"Score: {opp_data['score'] if opp_data else 50:.0f}/100",
-        "rationale": f"Composite opportunity score: {opp_data['score'] if opp_data else 50:.0f}/100.",
+        "weight": 0.10,
+        "contribution": round(opp_norm * 0.10, 4),
+        "signal": opp_signal,
+        "detail": f"Setup score: {opp_raw:.0f}/100",
+        "rationale": f"Composite quantitative setup ranking: {opp_raw:.0f}/100.",
     })
 
-    # --- Aggregate ---
+    # --- Conflict Detection & Signal Determination ---
     total_score = sum(c["contribution"] for c in components)
-    if total_score > 0.1:
-        overall_signal = "Buy"
-    elif total_score < -0.1:
-        overall_signal = "Sell"
-    else:
-        overall_signal = "Hold"
-
-    confidence = min(abs(total_score) / 0.4, 1.0)
-
     bullish = [c["name"] for c in components if c["signal"] == "buy"]
     bearish = [c["name"] for c in components if c["signal"] == "sell"]
+    has_conflict = len(bullish) > 0 and len(bearish) > 0
+    is_high_risk = risk_level == "High"
+
+    if total_score > 0.18 and not (is_high_risk and len(bearish) >= 2):
+        overall_signal = "Buy"
+        evidence_state = "aligned_bullish"
+    elif total_score < -0.18:
+        overall_signal = "Sell"
+        evidence_state = "aligned_bearish"
+    elif has_conflict:
+        overall_signal = "Mixed Evidence"
+        evidence_state = "conflicting"
+    elif is_high_risk and (len(bearish) > 0 or total_score <= 0.05):
+        # High risk combined with bearish indicators must not produce a passive Hold
+        overall_signal = "Mixed Evidence"
+        evidence_state = "high_risk_divergence"
+    else:
+        overall_signal = "Neutral"
+        evidence_state = "neutral"
+
+    # Confidence calculation: lower when evidence is conflicting
+    confidence = min(abs(total_score) / 0.40, 1.0)
+    if evidence_state in ("conflicting", "high_risk_divergence"):
+        confidence = round(max(0.20, min(confidence, 0.50)), 3)
+    else:
+        confidence = round(confidence, 3)
+
+    # Contextual conflict explanation
+    conflict_explanation = ""
+    if has_conflict:
+        conflict_explanation = (
+            f"Bullish indicators ({', '.join(bullish)}) conflict with "
+            f"bearish indicators ({', '.join(bearish)}). "
+            f"This divergence indicates opposing technical momentum vs. risk forces."
+        )
+    elif is_high_risk:
+        conflict_explanation = (
+            f"Risk profile is High ({risk_score:.0f}/100) due to elevated volatility or drawdown, "
+            f"urging caution despite neutral baseline indicators."
+        )
+
     rationale_parts = []
     if bullish:
         rationale_parts.append(f"Bullish: {', '.join(bullish)}")
     if bearish:
         rationale_parts.append(f"Bearish: {', '.join(bearish)}")
+    if is_high_risk:
+        rationale_parts.append(f"Caution: High Risk ({risk_score:.0f}/100)")
 
     return {
         "ticker": ticker,
         "name": asset_info["name"],
         "signal": overall_signal,
+        "evidence_state": evidence_state,
+        "conflict_details": {
+            "has_conflict": has_conflict or is_high_risk,
+            "bullish_count": len(bullish),
+            "bearish_count": len(bearish),
+            "explanation": conflict_explanation,
+            "risk_warning": is_high_risk,
+        },
         "score": round(total_score, 4),
-        "confidence": round(confidence, 3),
+        "confidence": confidence,
         "components": components,
-        "rationale": " | ".join(rationale_parts) if rationale_parts else "Mixed signals across indicators.",
-        "opportunity_score": opp_data["score"] if opp_data else 50.0,
+        "rationale": " | ".join(rationale_parts) if rationale_parts else "Neutral readings across indicators.",
+        "opportunity_score": opp_raw,
         "trend": {
             "score": round(trend_score, 1),
             "label": trend_label,
         },
         "technicals": {
             "rsi": round(rsi_val, 1),
-            "macd_signal": "Bullish" if macd_signal == "buy" else "Bearish",
+            "macd_signal": "Bullish" if macd_signal == "buy" else "Bearish" if macd_signal == "sell" else "Neutral",
         },
         "risk": {
             "level": risk_level,

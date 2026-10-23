@@ -10,13 +10,18 @@ import {
   fetchCatalysts,
   fetchTimeframeDecision,
   fetchSignalEvidence,
+  fetchForecast,
   fetchAssetSearch,
+  DEFAULT_FORECAST_DAYS,
   type AssetInfo,
   type MarketOverviewResponse,
   type CatalystResponse,
   type TimeframeResponse,
   type SignalEvidenceResponse,
+  type ForecastResponse,
 } from '@/lib/api';
+import { assessBriefEvidence } from '@/lib/brief-assessment';
+import { deriveOutlook } from '@/lib/model-outlook';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,10 +76,14 @@ function SignalBadge({ signal, score }: { signal: string; score?: number }) {
     'Strong Buy': { bg: 'bg-success/10 border-success/20 text-success', icon: TrendingUp },
     'Buy': { bg: 'bg-success/8 border-success/15 text-success', icon: TrendingUp },
     'Hold': { bg: 'bg-warning/10 border-warning/20 text-warning', icon: Minus },
+    'Neutral': { bg: 'bg-warning/10 border-warning/20 text-warning', icon: Minus },
+    'Mixed Evidence': { bg: 'bg-warning/10 border-warning/20 text-warning', icon: AlertTriangle },
+    'Conflicting Signals': { bg: 'bg-warning/10 border-warning/20 text-warning', icon: AlertTriangle },
+    'Insufficient Data': { bg: 'bg-muted/50 border-border/60 text-muted-foreground', icon: AlertTriangle },
     'Sell': { bg: 'bg-destructive/8 border-destructive/15 text-destructive', icon: TrendingDown },
     'Strong Sell': { bg: 'bg-destructive/10 border-destructive/20 text-destructive', icon: TrendingDown },
   };
-  const c = config[signal] || config['Hold'];
+  const c = config[signal] || config['Insufficient Data'];
   const Icon = c.icon;
 
   return (
@@ -82,7 +91,7 @@ function SignalBadge({ signal, score }: { signal: string; score?: number }) {
       <Icon className="h-3.5 w-3.5" />
       <span className="text-sm font-semibold">{signal}</span>
       {score !== undefined && (
-        <span className="text-xs font-medium opacity-80">{score}/100</span>
+        <span className="text-xs font-medium opacity-80" title="Setup ranking score (not a probability of profit)">Setup: {score}/100</span>
       )}
     </div>
   );
@@ -229,6 +238,13 @@ export default function StockBriefPage() {
     retry: 1,
   });
 
+  const { data: forecast, isLoading: forecastLoading } = useQuery<ForecastResponse | null>({
+    queryKey: ['forecast', ticker, 'brief'],
+    queryFn: () => fetchForecast(ticker, DEFAULT_FORECAST_DAYS, '1y'),
+    staleTime: 600000,
+    retry: 1,
+  });
+
   const tradeConfirmation = overview?.tradeConfirmation;
   const sentiment = overview?.sentiment;
   const risk = overview?.risk;
@@ -250,37 +266,24 @@ export default function StockBriefPage() {
   // ── Overall Assessment & Signal Agreement ──────────────────────────────
   const overallAssessment = useMemo(() => {
     if (!tradeConfirmation) return null;
-    const sig = tradeConfirmation.signal || 'Hold';
-    const tfConsensus = timeframes?.consensus;
-    const sentimentLabel = sentiment?.status === 'sufficient' ? sentiment.sentiment_label : null;
-    const sentimentPositive = sentimentLabel === 'Positive' || sentimentLabel === 'Bullish' || sentimentLabel === 'Slightly Bullish';
-    const sentimentNegative = sentimentLabel === 'Negative' || sentimentLabel === 'Bearish' || sentimentLabel === 'Slightly Bearish';
+    return assessBriefEvidence({
+      signal: tradeConfirmation.signal,
+      evidenceState: tradeConfirmation.evidence_state,
+      hasConflict: tradeConfirmation.conflict_details?.has_conflict,
+      conflictExplanation: tradeConfirmation.conflict_details?.explanation,
+      riskWarning: tradeConfirmation.conflict_details?.risk_warning,
+      sentimentStatus: sentiment?.status,
+      sentimentLabel: sentiment?.status === 'sufficient' ? sentiment.sentiment_label : null,
+      timeframeConsensus: timeframes?.consensus,
+      riskLevel: risk?.risk_level,
+      riskScore: risk?.risk_score,
+    });
+  }, [tradeConfirmation, timeframes, sentiment, risk]);
 
-    // Determine signal directions for agreement calculation
-    const signals: Array<{ name: string; direction: 'bullish' | 'bearish' | 'neutral'; available: boolean }> = [
-      { name: 'Technical', direction: sig === 'Buy' || sig === 'Strong Buy' ? 'bullish' : sig === 'Sell' || sig === 'Strong Sell' ? 'bearish' : 'neutral', available: true },
-      { name: 'Sentiment', direction: sentimentPositive ? 'bullish' : sentimentNegative ? 'bearish' : 'neutral', available: sentiment?.status === 'sufficient' },
-      { name: 'Timeframe', direction: tfConsensus === 'Buy' ? 'bullish' : tfConsensus === 'Sell' ? 'bearish' : 'neutral', available: !!tfConsensus },
-    ];
-
-    const available = signals.filter((s) => s.available);
-    const bullish = available.filter((s) => s.direction === 'bullish').length;
-    const bearish = available.filter((s) => s.direction === 'bearish').length;
-    const neutral = available.filter((s) => s.direction === 'neutral').length;
-    const total = available.length;
-
-    let agreement: 'aligned' | 'mixed' | 'diverging' = 'aligned';
-    if (total >= 2) {
-      const maxCount = Math.max(bullish, bearish, neutral);
-      if (maxCount <= 1 && total >= 3) agreement = 'diverging';
-      else if (bullish > 0 && bearish > 0) agreement = 'mixed';
-    }
-
-    const assessmentLabel = sig === 'Strong Buy' || sig === 'Buy' ? 'Bullish' : sig === 'Strong Sell' || sig === 'Sell' ? 'Bearish' : 'Neutral';
-    const assessmentColor = assessmentLabel === 'Bullish' ? 'text-success' : assessmentLabel === 'Bearish' ? 'text-destructive' : 'text-warning';
-
-    return { assessmentLabel, assessmentColor, signals, agreement, bullish, bearish, neutral, total, tfConsensus };
-  }, [tradeConfirmation, timeframes, sentiment]);
+  const outlook = useMemo(
+    () => deriveOutlook(forecast, overview?.currentPrice),
+    [forecast, overview?.currentPrice]
+  );
 
   const investigateNext = useMemo(() => {
     const items: Array<{ icon: any; title: string; description: string }> = [];
@@ -363,7 +366,7 @@ export default function StockBriefPage() {
         </div>
         {tradeConfirmation && (
           <SignalBadge
-            signal={tradeConfirmation.signal || 'Hold'}
+            signal={tradeConfirmation.signal || 'Insufficient Data'}
             score={tradeConfirmation.opportunity_score}
           />
         )}
@@ -376,18 +379,18 @@ export default function StockBriefPage() {
             <FileText className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold">Overall Assessment</span>
           </div>
-          <div className="flex items-center gap-3 mb-3">
-            <span className={cn('text-2xl font-bold', overallAssessment.assessmentColor)}>
-              {overallAssessment.assessmentLabel}
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <span className={cn('text-2xl font-bold', overallAssessment.colorClass)}>
+              {overallAssessment.label}
             </span>
-            {overallAssessment.tfConsensus && (
+            {overallAssessment.timeframeConsensus && (
               <span className="text-xs text-muted-foreground">
-                Timeframe consensus: <span className="font-medium">{overallAssessment.tfConsensus}</span>
+                Timeframe consensus: <span className="font-medium">{overallAssessment.timeframeConsensus}</span>
               </span>
             )}
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            {overallAssessment.signals.map((s) => (
+            {overallAssessment.chips.map((s) => (
               <div key={s.name} className={cn(
                 'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1',
                 !s.available ? 'border-border/40 bg-muted/30 text-muted-foreground' :
@@ -396,15 +399,39 @@ export default function StockBriefPage() {
                 'border-warning/20 bg-warning/5 text-warning'
               )}>
                 <span className="font-medium">{s.name}:</span>
-                <span className="capitalize">{!s.available ? 'No data' : s.direction}</span>
+                <span className="capitalize">{!s.available ? 'No data' : s.display}</span>
               </div>
             ))}
+            {risk && (
+              <div
+                title="Risk is assessed independently of the directional evidence and is never converted into a Buy or Sell label"
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-1',
+                  risk.risk_level === 'High' ? 'border-destructive/40 bg-destructive/5 text-destructive' :
+                  risk.risk_level === 'Low' ? 'border-success/40 bg-success/5 text-success' :
+                  'border-warning/40 bg-warning/5 text-warning'
+                )}
+              >
+                <span className="font-medium">Risk: {risk.risk_level || 'Unknown'}</span>
+                <span className="opacity-70">(independent)</span>
+              </div>
+            )}
           </div>
+          {overallAssessment.riskNote && (
+            <p className="text-xs text-muted-foreground leading-relaxed mt-3">{overallAssessment.riskNote}</p>
+          )}
+          {overallAssessment.limitations.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {overallAssessment.limitations.map((l) => (
+                <li key={l} className="text-[11px] text-muted-foreground leading-relaxed">• {l}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
       {/* Signal Disagreement Explanation */}
-      {showData && overallAssessment && (overallAssessment.agreement === 'mixed' || overallAssessment.agreement === 'diverging') && (
+      {showData && overallAssessment && (overallAssessment.agreement === 'mixed' || overallAssessment.agreement === 'diverging' || overallAssessment.hasConflict) && (
         <div className="rounded-xl border border-warning/20 bg-warning/5 p-4">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
@@ -413,10 +440,10 @@ export default function StockBriefPage() {
                 Signals are {overallAssessment.agreement === 'diverging' ? 'diverging' : 'mixed'}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {overallAssessment.bullish > 0 && overallAssessment.bearish > 0
-                  ? `Some indicators lean bullish (${overallAssessment.bullish}) while others lean bearish (${overallAssessment.bearish}). This often means the stock is at a decision point — technical patterns may conflict with the news narrative or risk profile.`
-                  : `Signals are spread across bullish, bearish, and neutral readings. Each signal uses different data over different time horizons, so divergence is expected and informative.`}
-                {' '}Consider the timeframe that matches your research horizon.
+                {overallAssessment.conflictExplanation
+                  ? overallAssessment.conflictExplanation
+                  : `Some indicators lean bullish (${overallAssessment.counts.bullish}) while others lean bearish (${overallAssessment.counts.bearish}). Each signal uses different data over different time horizons, so divergence is expected and informative.`}
+                {' '}Consider the timeframe that matches your research horizon and do not interpret this as a unanimous conclusion.
               </p>
             </div>
           </div>
@@ -590,6 +617,40 @@ export default function StockBriefPage() {
               </>
             ) : (
               <p className="text-xs text-muted-foreground">No sentiment data</p>
+            )}
+          </div>
+        </ExpandableSection>
+
+        {/* Model Outlook */}
+        <ExpandableSection title="Model Outlook" icon={TrendingUp}>
+          <div className="space-y-2 pt-3">
+            {outlook ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Direction (next {outlook.horizonDays} trading days)</span>
+                  <span className={cn('text-sm font-semibold', outlook.direction === 'up' ? 'text-success' : outlook.direction === 'down' ? 'text-destructive' : 'text-warning')}>
+                    {outlook.direction === 'up' ? 'Upward' : outlook.direction === 'down' ? 'Downward' : 'Flat'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Model path</span>
+                  <span className="text-sm font-semibold tabular-nums">
+                    ${outlook.first.toFixed(2)} → ${outlook.last.toFixed(2)}{' '}
+                    {(() => {
+                      const ref = overview?.currentPrice && overview.currentPrice > 0 ? overview.currentPrice : outlook.first;
+                      const pct = ((outlook.last - ref) / ref) * 100;
+                      return <span className={pct > 0 ? 'text-success' : pct < 0 ? 'text-destructive' : 'text-muted-foreground'}>{pct >= 0 ? '+' : ''}{pct.toFixed(2)}%</span>;
+                    })()}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground border-t border-border/40 pt-2">
+                  Point estimates only — the model provides no confidence intervals, so the spread around this path is unknown. This is the model's own projection, not a recommendation. Methodology explains how it is produced.
+                </p>
+              </>
+            ) : forecastLoading ? (
+              <p className="text-xs text-muted-foreground">Loading model outlook…</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Model outlook unavailable for this ticker.</p>
             )}
           </div>
         </ExpandableSection>

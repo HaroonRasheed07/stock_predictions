@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useStockStore } from '@/store/stockStore';
 import { parseTickerParam } from '@/lib/ticker-routing';
-import { getSentimentColorClass } from '@/lib/sentiment';
+import { getSentimentColorClass, sentimentTone } from '@/lib/sentiment';
 
 export default function StockOverview() {
   const { selectedTicker, setSelectedTicker } = useStockStore();
@@ -232,7 +232,7 @@ export default function StockOverview() {
       title: 'Sentiment',
       value: sentimentStatus === 'insufficient' ? 'No Data' : sentimentLabel,
       change: sentimentStatus === 'insufficient' ? 'No recent news' : `${sentimentScore >= 0 ? '+' : ''}${sentimentScore.toFixed(2)} Score`,
-      trend: sentimentScore > 0.15 ? 'up' : sentimentScore < -0.15 ? 'down' : 'neutral',
+      trend: sentimentTone(sentimentScore) === 'bullish' ? 'up' : sentimentTone(sentimentScore) === 'bearish' ? 'down' : 'neutral',
       icon: Users,
       color: getSentimentColorClass(sentimentLabel, sentimentStatus),
     },

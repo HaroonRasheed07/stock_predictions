@@ -4,6 +4,8 @@
  * the existing forecast interface — never recomputed or rescaled.
  */
 import type { ForecastResponse } from '@/lib/api';
+// Relative import (not @/ alias) so this pure module stays transpilable in isolation for scripts/signal-checks.mjs.
+import { FORECAST_FLAT_PCT } from './signal-bands';
 
 export interface ModelOutlook {
   direction: 'up' | 'down' | 'flat';
@@ -23,6 +25,7 @@ export function deriveOutlook(
   if (!isFinite(first) || !isFinite(last)) return null;
   const ref = currentPrice && currentPrice > 0 ? currentPrice : first;
   const pct = (last - ref) / ref;
-  const direction: ModelOutlook['direction'] = pct > 0.003 ? 'up' : pct < -0.003 ? 'down' : 'flat';
+  const direction: ModelOutlook['direction'] =
+    pct > FORECAST_FLAT_PCT ? 'up' : pct < -FORECAST_FLAT_PCT ? 'down' : 'flat';
   return { direction, first, last, horizonDays: prices.length };
 }

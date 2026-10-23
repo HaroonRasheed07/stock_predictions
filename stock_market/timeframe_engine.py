@@ -311,6 +311,8 @@ def compute_all_timeframes(df: pd.DataFrame) -> Dict[str, Any]:
         consensus = "Buy"
     elif signals.count("Sell") >= 2:
         consensus = "Sell"
+    elif "Buy" in signals and "Sell" in signals:
+        consensus = "Mixed"
     else:
         consensus = "Hold"
 

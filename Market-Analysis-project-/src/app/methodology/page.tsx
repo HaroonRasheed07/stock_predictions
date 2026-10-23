@@ -54,7 +54,7 @@ export default function MethodologyPage() {
                 <li><strong>Moving Averages (SMA/EMA)</strong> — Smoothed price lines that help identify trend direction over different timeframes.</li>
                 <li><strong>Bollinger Bands</strong> — Volatility envelopes around price that expand and contract based on market conditions.</li>
                 <li><strong>ATR (Average True Range)</strong> — Measures volatility by calculating the average range of price movement.</li>
-                <li><strong>Trend Strength</strong> — Evaluates the consistency and strength of the current price trend.</li>
+                <li><strong>Trend Strength</strong> — Evaluates the consistency and strength of the current price trend on a 0–100 scale. Labels use the same bands as the scoring layer: Bullish above 60, Bearish below 40, Neutral in between; display colours follow those bands.</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-4">
                 <Link href="/learn/what-is-technical-analysis" className="text-primary hover:underline">Learn more about technical analysis →</Link>
@@ -71,7 +71,7 @@ export default function MethodologyPage() {
                 <li><strong>News Coverage Scanning</strong> — Aggregates recent financial news headlines and articles related to each stock.</li>
                 <li><strong>NLP Classification</strong> — Each article is scored for sentiment using language models trained on financial text.</li>
                 <li><strong>Sentiment Score</strong> — A composite score from -1 (very negative) to +1 (very positive) representing overall mood.</li>
-                <li><strong>Market Mood</strong> — A categorical label (Bullish, Bearish, Neutral) derived from the sentiment score and distribution.</li>
+                <li><strong>Market Mood</strong> — A categorical label (Bullish, Bearish, Neutral) derived from the sentiment score and distribution. The score label uses a neutral band of ±0.15: at or above +0.15 positive, at or below −0.15 negative, otherwise neutral. Charts and cards colour the score with the same band, so a Neutral label never shows a directional colour.</li>
                 <li><strong>News Impact Summary</strong> — A brief summary of the key news factors driving current sentiment.</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-4">
@@ -92,6 +92,7 @@ export default function MethodologyPage() {
                 <li><strong>Recursive Multi-Step Dynamics</strong> — The neural network predicts one step ahead. For multi-day projections, the model rolls its 60-day input forward, replacing the oldest price with its own latest prediction. Because prediction uncertainty compounds with every recursive step, forecasting beyond 10 sessions exhibits diminished statistical reliability.</li>
                 <li><strong>Trading Calendar Alignment</strong> — Forecast dates strictly follow exchange business days, excluding weekends and market holidays.</li>
                 <li><strong>No Confidence Intervals</strong> — The model produces point estimates only. No uncertainty bounds are generated or displayed. The projected range shown (min–max of the 10-step sequence) reflects the spread of estimates across the horizon, not a statistical confidence interval.</li>
+                <li><strong>Direction Convention</strong> — The Model Outlook direction compares the final modelled close against the reference price (the current price when available, otherwise the first forecast step). A change within ±0.3% is reported as Flat. This convention makes the direction reproducible and honest about the flat band; it does not imply a probability of the move occurring.</li>
                 <li><strong>Validation Approach</strong> — The model is evaluated against held-out historical data on a walk-forward basis. Past model accuracy does not guarantee future accuracy.</li>
               </ul>
               <div className="rounded-lg bg-muted/50 p-3 mt-4">
@@ -137,9 +138,30 @@ export default function MethodologyPage() {
                 <li><strong>Volatility (20%)</strong> — Moderate annualised volatility (15–35%) is scored positively; extreme volatility (&gt;50%) scores negatively.</li>
                 <li><strong>News Sentiment (20%)</strong> — Composite sentiment score from recent news articles, scaled from −20 to +20 points.</li>
                 <li><strong>Relative Volume (15%)</strong> — Volume above 1.5× average amplifies the current trend signal; unavailable for assets without reliable volume data.</li>
+                <li><strong>Display Bands</strong> — When the score is shown as a category (for example in screening lists), it is grouped as 70–100 strong, 40–70 moderate, below 40 weak. These are display groupings only; the underlying score is continuous and not a probability.</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-3">
                 Scores are recalculated from live data and are not calibrated against future returns. A high score does not indicate that a stock will rise. No backtest has been run linking score thresholds to profitable outcomes.
+              </p>
+            </section>
+
+            {/* Research Brief Assessment */}
+            <section className="rounded-xl border border-border/60 bg-card p-6">
+              <h2 className="text-xl font-bold mb-3">Research Brief Assessment</h2>
+              <p className="text-muted-foreground mb-4">
+                The Stock Brief aggregates evidence from three directional sources and reports how well they agree, instead of collapsing everything into a single verdict:
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><strong>Confirmation Signal</strong> — The technical setup signal is a weighted confirmation score combining trend (25%), RSI (15%), MACD (15%), risk (15%), volatility (10%), news sentiment (10%), and the opportunity setup (10%). A combined score above +0.18 reads Buy and below −0.18 reads Sell; when bullish and bearish components coexist the result is Mixed Evidence, and elevated risk with bearish components also produces Mixed Evidence rather than a passive Hold.</li>
+                <li><strong>Three directional votes</strong> — Technical signal, news sentiment (when coverage is sufficient), and the cross-timeframe consensus (Buy/Sell/Hold; Mixed when horizons disagree) each count as one vote. Risk and forecast direction are separate assessments shown alongside and never converted into Buy or Sell.</li>
+                <li><strong>Aligned</strong> — All available sources point the same way (or the data is too sparse to disagree).</li>
+                <li><strong>Mixed</strong> — Sources disagree on direction (bullish and bearish votes coexist), or the backend flagged conflicting or high-risk divergent evidence.</li>
+                <li><strong>Diverging</strong> — Some sources point one way while others read neutral: partial agreement only, never presented as a unanimous conclusion.</li>
+                <li><strong>Missing data is honest</strong> — A source without sufficient data is excluded from the counts and listed as a limitation (for example “News sentiment is excluded”). The brief never substitutes Hold or Neutral for missing evidence, and the model&apos;s setup score is never shown as a confidence percentage.</li>
+                <li><strong>Risk stays independent</strong> — Risk uses its own bands (Low below 35, Medium 35–65, High at or above 65). A High risk label does not mean Sell, and positive evidence does not cancel risk; when both appear the brief says so explicitly.</li>
+              </ul>
+              <p className="text-xs text-muted-foreground mt-3">
+                These agreement rules are presentation conventions chosen for transparency. They have not been backtested as predictive signals, and an assessment label is not an investment recommendation.
               </p>
             </section>
 
