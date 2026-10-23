@@ -33,6 +33,7 @@ from multi_asset import get_asset_info, search_assets, get_default_watchlist, ge
 from opportunity import scan_watchlist, calculate_opportunity_score
 from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
 from risk import assess_risk, calculate_trend_strength, get_technical_label
+from sentiment import analyze_sentiment
 from watchlist_monitor import scan_watchlist_intelligent
 from market_status import get_market_status as _get_market_status, is_market_open as _is_market_open
 
