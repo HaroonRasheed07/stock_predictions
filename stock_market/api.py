@@ -18,8 +18,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Import core logic
 from utils import get_top_performing_stocks, get_latest_price, load_data, STOCK_NAMES, get_cached_forecast, set_cached_forecast
 from indicators import calculate_indicators
-from sentiment import analyze_sentiment
-from forecast_onnx import load_forecast_model, forecast_stock
+from forecast_onnx import (
+    load_forecast_model,
+    forecast_stock,
+    validate_forecast_inputs,
+    DEFAULT_FORECAST_DAYS,
+    MIN_FORECAST_DAYS,
+    MAX_FORECAST_DAYS,
+    LOOKBACK_WINDOW,
+)
 
 # Import new modules
 from multi_asset import get_asset_info, search_assets, get_default_watchlist, get_watchlist_by_category
@@ -270,7 +277,12 @@ class IndicatorRequest(BaseModel):
 
 class ForecastRequest(BaseModel):
     ticker: str
-    forecast_days: int = 10
+    forecast_days: int = Field(
+        default=DEFAULT_FORECAST_DAYS,
+        ge=MIN_FORECAST_DAYS,
+        le=MAX_FORECAST_DAYS,
+        description=f"Forecast horizon in business days (default: {DEFAULT_FORECAST_DAYS}, supported: {MIN_FORECAST_DAYS}–{MAX_FORECAST_DAYS})"
+    )
     period: str = "1y"
 
 class WatchlistScanRequest(BaseModel):
@@ -2175,10 +2187,10 @@ def get_stock_forecast(request: ForecastRequest):
                 close_col = close_col.iloc[:, 0]
             df = pd.DataFrame({"Close": close_col}).dropna()
 
-            if df is None or len(df) < 61:
+            if df is None or len(df) < LOOKBACK_WINDOW + 1:
                 return {
                     "status": "error",
-                    "message": "Model not available on server",
+                    "message": f"Insufficient data: need at least {LOOKBACK_WINDOW + 1} rows",
                     "forecast_prices": [],
                     "forecast_dates": []
                 }
@@ -2194,8 +2206,20 @@ def get_stock_forecast(request: ForecastRequest):
                 close_prices = df[["Close"]].values
                 scaler.fit(close_prices)
 
+            # Pre-flight quantitative validation
+            issues = validate_forecast_inputs(
+                df, MODEL, scaler, forecast_days=request.forecast_days, window_size=LOOKBACK_WINDOW
+            )
+            if issues:
+                return {
+                    "status": "error",
+                    "message": f"Validation failed: {'; '.join(issues)}",
+                    "forecast_prices": [],
+                    "forecast_dates": []
+                }
+
             actual, predicted, forecast, dates = forecast_stock(
-                df, MODEL, scaler, forecast_days=request.forecast_days
+                df, MODEL, scaler, forecast_days=request.forecast_days, window_size=LOOKBACK_WINDOW
             )
 
             forecast_data = {
@@ -2220,7 +2244,7 @@ def get_stock_forecast(request: ForecastRequest):
             response = {
                 "status": "success",
                 "ticker": request.ticker,
-                "forecast_days": request.forecast_days,
+                "forecast_days": len(forecast),
                 "results": forecast_data
             }
 

@@ -6,7 +6,20 @@ import onnxruntime as ort
 import logging
 
 
-def validate_forecast_inputs(df, session, scaler, forecast_days=10, window_size=60):
+# ── Authoritative Forecast Horizon Constants ─────────────────────────────────
+DEFAULT_FORECAST_DAYS = 10  # Authoritative production standard (2 trading weeks)
+MIN_FORECAST_DAYS = 1       # Minimum valid forecast horizon
+MAX_FORECAST_DAYS = 30      # Maximum valid recursive horizon before error saturation
+LOOKBACK_WINDOW = 60        # Sliding window: 60 historical trading days (1 quarter)
+
+
+def validate_forecast_inputs(
+    df,
+    session,
+    scaler,
+    forecast_days: int = DEFAULT_FORECAST_DAYS,
+    window_size: int = LOOKBACK_WINDOW
+):
     """
     Pre-flight validation before running forecast.
     Returns list of issues (empty = OK).
@@ -27,8 +40,10 @@ def validate_forecast_inputs(df, session, scaler, forecast_days=10, window_size=
     if scaler is None:
         issues.append("Scaler is None")
 
-    if not isinstance(forecast_days, int) or forecast_days < 1 or forecast_days > 30:
-        issues.append(f"forecast_days={forecast_days} out of reasonable range [1, 30]")
+    if not isinstance(forecast_days, int) or forecast_days < MIN_FORECAST_DAYS or forecast_days > MAX_FORECAST_DAYS:
+        issues.append(
+            f"forecast_days={forecast_days} out of supported range [{MIN_FORECAST_DAYS}, {MAX_FORECAST_DAYS}]"
+        )
 
     return issues
 
@@ -55,7 +70,13 @@ def load_forecast_model(model_path="lstm_attention_final.onnx", scalers_path="sc
 
     return session, scalers
 
-def forecast_stock(df, session, scaler, forecast_days=10, window_size=60):
+def forecast_stock(
+    df,
+    session,
+    scaler,
+    forecast_days: int = DEFAULT_FORECAST_DAYS,
+    window_size: int = LOOKBACK_WINDOW
+):
     """
     df: dataframe containing a 'Close' column and datetime index (used ONLY for fetching data and date handling)
     session: loaded ONNX inference session

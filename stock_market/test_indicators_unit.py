@@ -410,12 +410,35 @@ class TestForecastValidation:
         issues = validate_forecast_inputs(df, session="fake", scaler=None)
         assert any("scaler" in i.lower() for i in issues), issues
 
+    def test_forecast_horizon_constants(self):
+        from forecast_onnx import (
+            DEFAULT_FORECAST_DAYS,
+            MIN_FORECAST_DAYS,
+            MAX_FORECAST_DAYS,
+            LOOKBACK_WINDOW,
+        )
+        assert DEFAULT_FORECAST_DAYS == 10, "Authoritative default horizon must be 10 days"
+        assert MIN_FORECAST_DAYS == 1, "Minimum horizon must be 1"
+        assert MAX_FORECAST_DAYS == 30, "Maximum horizon must be 30"
+        assert LOOKBACK_WINDOW == 60, "Lookback window must be 60"
+
     def test_forecast_days_out_of_range_flagged(self):
         from forecast_onnx import validate_forecast_inputs
         df = _make_ohlcv(100)
-        issues = validate_forecast_inputs(df, session="fake", scaler="fake",
-                                          forecast_days=50)
-        assert any("forecast_days" in i for i in issues), issues
+        # Below min (0, -5)
+        for invalid in [0, -5, 31, 50, "10"]:
+            issues = validate_forecast_inputs(df, session="fake", scaler="fake", forecast_days=invalid)
+            assert any("forecast_days" in i for i in issues), f"Expected issue for forecast_days={invalid}"
+
+    def test_forecast_days_boundary_values_valid(self):
+        from forecast_onnx import validate_forecast_inputs
+        df = _make_ohlcv(100)
+        # Min boundary (1)
+        assert validate_forecast_inputs(df, session="fake", scaler="fake", forecast_days=1) == []
+        # Authoritative default (10)
+        assert validate_forecast_inputs(df, session="fake", scaler="fake", forecast_days=10) == []
+        # Max boundary (30)
+        assert validate_forecast_inputs(df, session="fake", scaler="fake", forecast_days=30) == []
 
     def test_valid_inputs_produce_no_issues(self):
         from forecast_onnx import validate_forecast_inputs

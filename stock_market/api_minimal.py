@@ -21,7 +21,7 @@ class TickerRequest(BaseModel):
 
 class ForecastRequest(BaseModel):
     ticker: str
-    forecast_days: int = 7
+    forecast_days: int = 10
     period: str = "1y"
 
 class SentimentRequest(BaseModel):
@@ -78,13 +78,14 @@ async def get_indicators(request: TickerRequest):
 
 @app.post("/api/data/forecast")
 async def get_forecast(request: ForecastRequest):
+    days = request.forecast_days or 10
     actual = [150 + i + random.uniform(-2, 2) for i in range(30)]
-    forecast = [actual[-1] + i + random.uniform(-1, 1) for i in range(7)]
-    dates = [(datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    forecast = [actual[-1] + i + random.uniform(-1, 1) for i in range(days)]
+    dates = [(datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
     
     return {
         "ticker": request.ticker,
-        "forecast_days": 7,
+        "forecast_days": days,
         "results": {
             "actual_prices": actual,
             "predicted_historical_prices": actual, # Mock same as actual

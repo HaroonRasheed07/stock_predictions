@@ -88,9 +88,11 @@ export default function MethodologyPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><strong>Model Architecture</strong> — LSTM network with attention layer, serialised as an ONNX model for CPU-efficient inference.</li>
                 <li><strong>Input Feature</strong> — Closing price only, normalised via MinMaxScaler over a 60-day lookback window.</li>
-                <li><strong>Forecast Horizon</strong> — 10 business days ahead (approximately two calendar weeks). Each step is produced recursively using the previous step&apos;s prediction as the next input.</li>
+                <li><strong>Forecast Horizon</strong> — Fixed 10 business days ahead (2 trading weeks). While the underlying ONNX inference engine accepts a configurable range of 1 to 30 trading days, 10 trading days is the authoritative production standard across all StockVantex product views. Each day&apos;s estimate is produced recursively, using the previous day&apos;s predicted close as the next input in the 60-day lookback window.</li>
+                <li><strong>Recursive Multi-Step Dynamics</strong> — The neural network predicts one step ahead. For multi-day projections, the model rolls its 60-day input forward, replacing the oldest price with its own latest prediction. Because prediction uncertainty compounds with every recursive step, forecasting beyond 10 sessions exhibits diminished statistical reliability.</li>
+                <li><strong>Trading Calendar Alignment</strong> — Forecast dates strictly follow exchange business days, excluding weekends and market holidays.</li>
                 <li><strong>No Confidence Intervals</strong> — The model produces point estimates only. No uncertainty bounds are generated or displayed. The projected range shown (min–max of the 10-step sequence) reflects the spread of estimates across the horizon, not a statistical confidence interval.</li>
-                <li><strong>Validation Approach</strong> — The model is evaluated against held-out historical data on a walk-forward basis. See the training report for MAE and RMSE metrics. Past model accuracy does not guarantee future accuracy.</li>
+                <li><strong>Validation Approach</strong> — The model is evaluated against held-out historical data on a walk-forward basis. Past model accuracy does not guarantee future accuracy.</li>
               </ul>
               <div className="rounded-lg bg-muted/50 p-3 mt-4">
                 <p className="text-xs text-muted-foreground">

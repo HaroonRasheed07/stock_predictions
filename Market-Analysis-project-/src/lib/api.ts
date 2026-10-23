@@ -371,11 +371,20 @@ export async function fetchMarketOverview(
   return overviewData;
 }
 
+// ─── Authoritative Forecast Horizon Constants ──────────────────────────────
+export const DEFAULT_FORECAST_DAYS = 10;
+export const MIN_FORECAST_DAYS = 1;
+export const MAX_FORECAST_DAYS = 30;
+
 export async function fetchForecast(
   ticker: string,
-  forecastDays: number = 7,
+  forecastDays: number = DEFAULT_FORECAST_DAYS,
   period: string = "1y"
 ): Promise<ForecastResponse | null> {
+  const clampedDays = Math.max(
+    MIN_FORECAST_DAYS,
+    Math.min(MAX_FORECAST_DAYS, Math.round(forecastDays || DEFAULT_FORECAST_DAYS))
+  );
   let res: Response;
   try {
     res = await fetch(`${API_BASE}/api/forecast/onnx`, {
@@ -383,7 +392,7 @@ export async function fetchForecast(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ticker,
-        forecast_days: forecastDays,
+        forecast_days: clampedDays,
         period,
       }),
     });

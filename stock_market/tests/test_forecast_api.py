@@ -1,5 +1,5 @@
 """Tests for POST /api/forecast/onnx — response schema, actual_dates alignment,
-business-day forecast horizon, error handling, and period passthrough."""
+business-day forecast horizon, default & boundary validation, error handling, and period passthrough."""
 import numpy as np
 import pandas as pd
 import pytest
@@ -26,12 +26,11 @@ def forecast_env(monkeypatch, business_index):
     n_hist = len(df) - 60
     actual = df["Close"].values[-n_hist:]
     predicted = actual * 0.99
-    forecast = np.array([actual[-1] + i for i in range(1, 11)])
-    forecast_dates = pd.bdate_range(start=business_index[-1] + pd.Timedelta(days=1), periods=10)
 
-    def fake_forecast_stock(_df, _model, _scaler, forecast_days=10):
-        assert forecast_days == 10
-        return actual, predicted, forecast, forecast_dates
+    def fake_forecast_stock(_df, _model, _scaler, forecast_days=10, window_size=60):
+        fc = np.array([actual[-1] + i for i in range(1, forecast_days + 1)])
+        fc_dates = pd.bdate_range(start=business_index[-1] + pd.Timedelta(days=1), periods=forecast_days)
+        return actual, predicted, fc, fc_dates
 
     monkeypatch.setattr(api_module, "MODEL", object(), raising=False)
     monkeypatch.setattr(api_module, "SCALERS", {}, raising=False)
@@ -60,6 +59,52 @@ def test_forecast_success_schema(forecast_env):
     assert len(results["actual_prices"]) == 60
     assert len(results["forecast_prices"]) == 10
     assert len(results["forecast_dates"]) == 10
+
+
+def test_default_forecast_days_is_10(forecast_env):
+    """When forecast_days is omitted, backend defaults to authoritative 10 trading days."""
+    res = client.post("/api/forecast/onnx", json={"ticker": "TEST"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "success"
+    assert body["forecast_days"] == 10
+    assert len(body["results"]["forecast_prices"]) == 10
+    assert len(body["results"]["forecast_dates"]) == 10
+
+
+def test_configurable_horizon_min_bound(forecast_env):
+    """Minimum valid forecast horizon (1 day)."""
+    res = client.post("/api/forecast/onnx", json={"ticker": "TEST", "forecast_days": 1})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "success"
+    assert body["forecast_days"] == 1
+    assert len(body["results"]["forecast_prices"]) == 1
+    assert len(body["results"]["forecast_dates"]) == 1
+
+
+def test_configurable_horizon_max_bound(forecast_env):
+    """Maximum valid forecast horizon (30 days)."""
+    res = client.post("/api/forecast/onnx", json={"ticker": "TEST", "forecast_days": 30})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "success"
+    assert body["forecast_days"] == 30
+    assert len(body["results"]["forecast_prices"]) == 30
+    assert len(body["results"]["forecast_dates"]) == 30
+
+
+@pytest.mark.parametrize("invalid_days", [0, -1, -10, 31, 50, 100])
+def test_invalid_forecast_days_rejected_by_pydantic(forecast_env, invalid_days):
+    """Forecast horizons outside [1, 30] are rejected with HTTP 422 Unprocessable Entity."""
+    res = client.post("/api/forecast/onnx", json={"ticker": "TEST", "forecast_days": invalid_days})
+    assert res.status_code == 422
+
+
+def test_non_integer_forecast_days_rejected(forecast_env):
+    """Non-integer forecast horizons are rejected with HTTP 422."""
+    res = client.post("/api/forecast/onnx", json={"ticker": "TEST", "forecast_days": "ten"})
+    assert res.status_code == 422
 
 
 def test_actual_dates_align_with_prices_and_use_trading_days(forecast_env):
