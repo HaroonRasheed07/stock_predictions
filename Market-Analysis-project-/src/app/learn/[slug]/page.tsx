@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, LineChart } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
-import { getArticle, getAllArticleSlugs } from '@/lib/learn-articles';
+import { getArticle, getArticleCover, getAllArticleSlugs } from '@/lib/learn-articles';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -26,13 +26,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const article = getArticle(slug);
   if (!article) return {};
 
+  const cover = getArticleCover(article);
+  const coverUrl = cover.src.startsWith('http') ? cover.src : `${SITE_URL}${cover.src}`;
+
   return {
     title: { absolute: `${article.title} | ${SITE_NAME}` },
     description: article.description,
     alternates: { canonical: `${SITE_URL}/learn/${slug}` },
     robots: { index: true, follow: true },
     openGraph: {
-      images: ['/icon-512.png'],
+      images: [{ url: coverUrl, width: 1200, height: 630, alt: cover.alt }],
       title: article.title,
       description: article.description,
       url: `${SITE_URL}/learn/${slug}`,
@@ -44,7 +47,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       tags: article.tags,
     },
     twitter: {
-      images: ['/icon-512.png'],
+      images: [{ url: coverUrl, width: 1200, height: 630, alt: cover.alt }],
       card: 'summary_large_image',
       title: article.title,
       description: article.description,
@@ -88,6 +91,9 @@ export default async function LearnArticlePage({ params }: PageProps) {
       : []),
   ];
 
+  const cover = getArticleCover(article);
+  const coverUrl = cover.src.startsWith('http') ? cover.src : `${SITE_URL}${cover.src}`;
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -98,7 +104,7 @@ export default async function LearnArticlePage({ params }: PageProps) {
     dateModified: article.updatedAt,
     wordCount,
     inLanguage: 'en',
-    image: `${SITE_URL}/icon-512.png`,
+    image: coverUrl,
     author: {
       '@type': 'Person',
       name: article.author,
@@ -178,16 +184,15 @@ export default async function LearnArticlePage({ params }: PageProps) {
             </div>
           </header>
 
-          {article.coverImage && (
-            <Image
-              src={article.coverImage.src}
-              alt={article.coverImage.alt}
-              width={1200}
-              height={630}
-              sizes="(max-width: 768px) 100vw, 768px"
-              className="mb-8 h-auto w-full rounded-xl border border-border/60"
-            />
-          )}
+          <Image
+            src={cover.src}
+            alt={cover.alt}
+            width={1200}
+            height={630}
+            priority
+            sizes="(max-width: 768px) 100vw, 768px"
+            className="mb-8 h-auto w-full rounded-xl border border-border/60"
+          />
 
           <nav aria-label="Table of contents" className="mb-8 rounded-lg border border-border/60 bg-muted/30 p-4">
             <p className="mb-2 text-sm font-semibold">On this page</p>

@@ -906,10 +906,6 @@ const articles: Record<string, LearnArticle> = {
     tags: ['sentiment', 'fear and greed index', 'vix', 'beginners'],
     relatedTickers: ['SPY', 'QQQ', 'AAPL'],
     relatedArticles: ['what-is-stock-sentiment', 'how-news-sentiment-works', 'what-is-stock-volatility'],
-    coverImage: {
-      src: '/og-cover.png',
-      alt: 'Stock market sentiment guide: five free tools for checking the market mood',
-    },
     resources: [
       { href: '/learn/what-is-stock-sentiment', label: 'What Is Stock Market Sentiment?' },
       {
@@ -1087,4 +1083,14 @@ export function getRelatedArticles(slug: string): LearnArticle[] {
     .map((s) => articles[s])
     .filter(Boolean)
     .slice(0, 3);
+}
+
+/**
+ * Cover image for Learn cards, the article header, and social previews.
+ * Articles with an explicit `coverImage` use it; every other article uses
+ * the generated cover at `/learn/[slug]/cover`.
+ */
+export function getArticleCover(article: LearnArticle): { src: string; alt: string } {
+  if (article.coverImage) return article.coverImage;
+  return { src: `/learn/${article.slug}/cover`, alt: `Cover image for: ${article.title}` };
 }
