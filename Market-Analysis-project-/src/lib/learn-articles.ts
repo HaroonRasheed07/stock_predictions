@@ -12,11 +12,21 @@ export interface LearnArticle {
   relatedArticles: string[];
   /** In-product tools that let readers apply the concept (max 3). */
   toolLinks?: Array<{ href: string; label: string }>;
+  /** Cover image shown at the top of the article (next/image). */
+  coverImage?: { src: string; alt: string };
+  /** Further-reading links: internal Learn pages and external authoritative sources. */
+  resources?: Array<{ href: string; label: string; external?: boolean }>;
   content: {
     intro: string;
     sections: Array<{
       heading: string;
       content: string;
+      /** Additional paragraphs, each rendered as its own block. */
+      paragraphs?: string[];
+      /** Ordered or bulleted list rendered after the paragraphs. */
+      list?: { ordered?: boolean; items: string[] };
+      /** Closing paragraph rendered after the list. */
+      afterList?: string;
       subsections?: Array<{ heading: string; content: string }>;
     }>;
     keyTakeaways: string[];
@@ -880,6 +890,179 @@ const articles: Record<string, LearnArticle> = {
         { question: 'Can a stock forecast ever be accurate?', answer: 'Forecasts can be directionally useful and sometimes land close to the mark, but no model predicts prices with certainty. Accuracy varies with market conditions, and a model that performs well in calm markets may perform poorly in volatile ones.' },
         { question: 'Why do forecast models fail?', answer: 'Common reasons include regime changes the model never saw in training, unscheduled news events that have no precedent in price history, overfitting to historical noise, and the simple fact that markets are adaptive — participants change behavior when patterns become visible.' },
         { question: 'Should I make a trade based on a forecast?', answer: 'A forecast alone is not a sufficient reason to trade. Use it as one layer alongside technical analysis, sentiment, risk assessment, and your own thesis — with position sizing that assumes the forecast could be wrong.' },
+      ],
+    },
+  },
+  'how-to-check-stock-market-sentiment-free': {
+    slug: 'how-to-check-stock-market-sentiment-free',
+    title: 'How to Check Stock Market Sentiment for Free (2026)',
+    description:
+      'Learn how to check stock market sentiment for free with 5 simple tools, including the Fear and Greed Index, AAII survey, VIX, and more.',
+    h1: 'How to Check Stock Market Sentiment for Free: 5 Simple Tools for Beginners',
+    publishedAt: '2026-10-25',
+    updatedAt: '2026-10-25',
+    author: 'Haroon Rasheed',
+    readingTime: '8 min',
+    tags: ['sentiment', 'fear and greed index', 'vix', 'beginners'],
+    relatedTickers: ['SPY', 'QQQ', 'AAPL'],
+    relatedArticles: ['what-is-stock-sentiment', 'how-news-sentiment-works', 'what-is-stock-volatility'],
+    coverImage: {
+      src: '/og-cover.png',
+      alt: 'Stock market sentiment guide: five free tools for checking the market mood',
+    },
+    resources: [
+      { href: '/learn/what-is-stock-sentiment', label: 'What Is Stock Market Sentiment?' },
+      {
+        href: 'https://www.cnn.com/markets/fear-and-greed',
+        label: 'CNN Fear and Greed Index (free live score)',
+        external: true,
+      },
+      {
+        href: 'https://www.aaii.com/sentimentsurvey',
+        label: 'AAII Investor Sentiment Survey (free weekly readings)',
+        external: true,
+      },
+      {
+        href: 'https://www.cboe.com/tradable_products/vix/',
+        label: 'Cboe VIX — the market fear gauge (free data)',
+        external: true,
+      },
+    ],
+    content: {
+      intro:
+        'Ever wonder why a stock can fall on a day when the company did nothing wrong? Or why prices keep climbing when everyone online is shouting that the market is overvalued? Very often, the answer is stock market sentiment. The good news is that you do not need an expensive terminal or a paid subscription to see it. Several of the best sentiment tools are completely free. In this guide, you will learn what market sentiment is, why it matters, and exactly where to check it, step by step.',
+      sections: [
+        {
+          heading: 'What Is Stock Market Sentiment?',
+          content:
+            'Stock market sentiment is the overall mood of investors toward the market or a specific stock. When most people feel confident and expect prices to rise, sentiment is bullish. When most people feel worried and expect prices to fall, sentiment is bearish.',
+          paragraphs: [
+            "Sentiment is not about a company's profits or debt. It is about emotion: fear, excitement, greed, and doubt. And because millions of people trade on those emotions, sentiment can push prices up or down in the short term, even when the underlying business has not changed.",
+          ],
+        },
+        {
+          heading: 'Why Should Beginners Care About Sentiment?',
+          content: 'There are three good reasons.',
+          list: {
+            ordered: true,
+            items: [
+              'It helps you spot extremes. When everyone is euphoric, risk is often higher. When everyone is terrified, opportunities sometimes appear.',
+              'It keeps your own emotions in check. If you feel the urge to panic sell or chase a hot stock, a quick look at sentiment tells you whether the whole crowd feels the same way.',
+              'It adds context to your research. Company numbers tell you what to buy. Sentiment helps you think about timing and risk.',
+            ],
+          },
+          afterList:
+            'Sentiment is not a crystal ball, though. It works best as one clue alongside fundamentals, not as a stand-alone buy or sell signal.',
+        },
+        {
+          heading: 'Tool 1: The CNN Fear and Greed Index',
+          content:
+            'This is the easiest place to start. The Fear and Greed Index gives the market a score from 0 to 100. Low scores mean fear, and high scores mean greed.',
+          paragraphs: [
+            'The score is built from seven signals that are weighted equally: market momentum, stock price strength, stock price breadth, put and call options, market volatility, safe haven demand, and junk bond demand. Because it blends so many inputs, it gives a well-rounded picture in one glance.',
+            'How to use it: Visit the CNN Fear and Greed page, check the current score, and compare it with last week and last month. A fast drop toward extreme fear or a climb toward extreme greed is worth noticing.',
+          ],
+        },
+        {
+          heading: 'Tool 2: The AAII Investor Sentiment Survey',
+          content:
+            'Every week, the American Association of Individual Investors asks its members whether they expect stocks to be higher, lower, or unchanged over the next six months. The results are free on the AAII website.',
+          paragraphs: [
+            'The long-term averages are roughly 37.5% bullish, 31% neutral, and 31.5% bearish. Those numbers are your yardstick. When bearish readings jump far above 31.5%, a lot of the worry may already be priced in. When bullish readings run far above 37.5%, optimism may be stretched.',
+            'How to use it: Look at the latest reading and compare it with the averages. Watch the trend over several weeks rather than one number.',
+          ],
+        },
+        {
+          heading: 'Tool 3: The VIX (The Fear Gauge)',
+          content:
+            'The VIX, published by Cboe, estimates how much the S&P 500 is expected to swing over the next 30 days. It is calculated from S&P 500 options prices. When traders rush to buy protection, the VIX rises.',
+          paragraphs: [
+            'Here is the key point: the VIX does not predict direction. It shows how bumpy investors expect the ride to be. As a rough guide, many people view readings below about 15 as calm, 20 to 30 as nervous, and above 30 as high stress. Treat these as loose zones, not strict rules.',
+            "How to use it: Check it on Cboe's website or on FRED, the free data service from the St. Louis Fed, which also offers long VIX history for comparison.",
+          ],
+        },
+        {
+          heading: 'Tool 4: The Put/Call Ratio',
+          content:
+            'A put option is a bet that a price will fall, and a call option is a bet that it will rise. The put/call ratio divides the number of puts traded by the number of calls traded. A reading above 1 means more traders are buying downside protection. A reading below 1 means more are betting on gains.',
+          paragraphs: [
+            'Many investors read extremes in reverse, since very high put buying can show fear near its peak. Cboe publishes this data, and many free charting platforms show it too.',
+            'How to use it: Look at a multi-day average instead of a single day, because one-day readings can be noisy around big news events.',
+          ],
+        },
+        {
+          heading: 'Tool 5: Social and Search Trends',
+          content:
+            'Sentiment also shows up online. Free tools like Google Trends show how interest in a stock or topic is rising or falling. Platforms such as StockTwits display whether the crowd is mostly bullish or bearish on a particular ticker. Free heatmaps on sites like Finviz show at a glance which sectors are green or red.',
+          paragraphs: [
+            'Be careful here. Social media is full of hype and bots, so treat it as a rough mood check and never as proof.',
+          ],
+        },
+        {
+          heading: 'A Simple 5-Minute Daily Routine',
+          content: 'You can check sentiment quickly without getting lost in data:',
+          list: {
+            ordered: true,
+            items: [
+              'Open the Fear and Greed Index and note the score.',
+              'Check the VIX level and whether it is rising or falling.',
+              'Once a week, look at the new AAII survey numbers.',
+              'Glance at the put/call ratio if you follow options data.',
+              'Ask yourself: do most signals agree? If they do, the message is stronger. If they conflict, slow down.',
+            ],
+          },
+        },
+        {
+          heading: 'Common Mistakes to Avoid',
+          content: '',
+          list: {
+            items: [
+              'Using sentiment as your only reason to trade. Pair it with company research.',
+              'Acting on one day of data. Trends matter more than snapshots.',
+              'Assuming contrarian signals work instantly. Markets can stay fearful or greedy for a long time.',
+              'Trusting social media blindly. Hype can look like real demand.',
+              'Ignoring your risk tolerance. Only invest money you can afford to leave alone.',
+            ],
+          },
+        },
+        {
+          heading: 'Final Thoughts',
+          content:
+            "Checking stock market sentiment does not require fancy software. With free tools like the Fear and Greed Index, the AAII survey, the VIX, the put/call ratio, and simple trend data, you can read the market's mood in just a few minutes a day. Use it to stay calm, spot extremes, and add context to your research, then combine it with solid company analysis for better-informed decisions.",
+        },
+      ],
+      keyTakeaways: [
+        'Stock market sentiment is the overall mood of investors — bullish when people expect prices to rise, bearish when they expect them to fall.',
+        'Five free tools cover most of the picture: the CNN Fear and Greed Index, the AAII survey, the VIX, the put/call ratio, and social or search trends.',
+        'Sentiment works best as one clue alongside fundamentals, not as a stand-alone buy or sell signal.',
+        'Trends matter more than one-day readings, and social media hype is a rough mood check, never proof.',
+      ],
+      limitations:
+        'This article is for education only and is not financial advice. Investing involves risk, including the loss of money. Do your own research or consult a licensed financial advisor before making decisions.',
+      faq: [
+        {
+          question: 'What is the best free tool to check market sentiment?',
+          answer:
+            'For most beginners, the CNN Fear and Greed Index is the easiest starting point because it combines seven signals into one score.',
+        },
+        {
+          question: 'Is stock market sentiment accurate?',
+          answer:
+            'Sentiment tools show the current mood, not the future. They are helpful clues, but they can be wrong, especially in the short term.',
+        },
+        {
+          question: 'Can I make money using only sentiment?',
+          answer:
+            'It is risky to rely on sentiment alone. Most experienced investors combine it with fundamental analysis and sound risk management.',
+        },
+        {
+          question: 'How often should I check sentiment?',
+          answer: 'A quick daily look is plenty for most people, with the AAII survey checked once a week.',
+        },
+        {
+          question: 'What does bullish vs. bearish mean?',
+          answer: 'Bullish means expecting prices to rise. Bearish means expecting prices to fall.',
+        },
       ],
     },
   },

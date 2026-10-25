@@ -63,6 +63,8 @@ export default function LearnPage() {
                 </h2>
                 <p className="text-sm text-muted-foreground line-clamp-3">{article.description}</p>
                 <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                  <span>{article.publishedAt}</span>
+                  <span>·</span>
                   <span>{article.readingTime}</span>
                   <span>·</span>
                   <span>{article.author}</span>

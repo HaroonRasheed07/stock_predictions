@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, LineChart } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getArticle, getAllArticleSlugs } from '@/lib/learn-articles';
@@ -8,6 +9,13 @@ import { getArticle, getAllArticleSlugs } from '@/lib/learn-articles';
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
+
+const slugifyHeading = (text: string) =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-');
 
 export async function generateStaticParams() {
   return getAllArticleSlugs().map((slug) => ({ slug }));
@@ -22,6 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: { absolute: `${article.title} | ${SITE_NAME}` },
     description: article.description,
     alternates: { canonical: `${SITE_URL}/learn/${slug}` },
+    robots: { index: true, follow: true },
     openGraph: {
       images: ['/icon-512.png'],
       title: article.title,
@@ -48,7 +57,36 @@ export default async function LearnArticlePage({ params }: PageProps) {
   const article = getArticle(slug);
   if (!article) notFound();
 
-  const wordCount = [article.content.intro, ...article.content.sections.map((s) => [s.content, ...(s.subsections?.map((sub) => sub.content) ?? [])].join(' ')).join(' '), ...article.content.keyTakeaways].join(' ').split(/\s+/).filter(Boolean).length;
+  const wordCount = [
+    article.content.intro,
+    ...article.content.sections.flatMap((section) => [
+      section.content,
+      ...(section.paragraphs ?? []),
+      ...(section.list?.items ?? []),
+      section.afterList ?? '',
+      ...(section.subsections?.map((sub) => sub.content) ?? []),
+    ]),
+    ...article.content.keyTakeaways,
+    ...(article.content.faq ?? []).flatMap((item) => [item.question, item.answer]),
+    article.content.limitations,
+  ]
+    .join(' ')
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+  const tocItems = [
+    ...article.content.sections.map((section) => ({
+      id: slugifyHeading(section.heading),
+      label: section.heading,
+    })),
+    { id: 'key-takeaways', label: 'Key Takeaways' },
+    ...(article.content.faq && article.content.faq.length > 0
+      ? [{ id: 'frequently-asked-questions', label: 'Frequently Asked Questions' }]
+      : []),
+    ...(article.resources && article.resources.length > 0
+      ? [{ id: 'further-reading', label: 'Further Reading' }]
+      : []),
+  ];
 
   const structuredData = {
     '@context': 'https://schema.org',
@@ -133,16 +171,39 @@ export default async function LearnArticlePage({ params }: PageProps) {
               <Link href="/about" className="hover:text-primary transition-colors">By {article.author}</Link>
               <span>·</span>
               <time dateTime={article.publishedAt}>Published {article.publishedAt}</time>
-              {article.updatedAt !== article.publishedAt && (
-                <>
-                  <span>·</span>
-                  <time dateTime={article.updatedAt}>Updated {article.updatedAt}</time>
-                </>
-              )}
+              <span>·</span>
+              <time dateTime={article.updatedAt}>Updated {article.updatedAt}</time>
               <span>·</span>
               <span>{article.readingTime} read</span>
             </div>
           </header>
+
+          {article.coverImage && (
+            <Image
+              src={article.coverImage.src}
+              alt={article.coverImage.alt}
+              width={1200}
+              height={630}
+              sizes="(max-width: 768px) 100vw, 768px"
+              className="mb-8 h-auto w-full rounded-xl border border-border/60"
+            />
+          )}
+
+          <nav aria-label="Table of contents" className="mb-8 rounded-lg border border-border/60 bg-muted/30 p-4">
+            <p className="mb-2 text-sm font-semibold">On this page</p>
+            <ul className="space-y-1">
+              {tocItems.map((item) => (
+                <li key={item.id}>
+                  <a
+                    href={`#${item.id}`}
+                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
           <div className="prose prose-neutral dark:prose-invert max-w-none">
             <p className="text-lg leading-relaxed">{article.content.intro}</p>
@@ -170,8 +231,32 @@ export default async function LearnArticlePage({ params }: PageProps) {
 
             {article.content.sections.map((section, i) => (
               <section key={i} className="mt-8">
-                <h2 className="text-xl font-bold mb-3">{section.heading}</h2>
-                <p className="text-muted-foreground leading-relaxed">{section.content}</p>
+                <h2 id={slugifyHeading(section.heading)} className="mb-3 scroll-mt-24 text-xl font-bold">
+                  {section.heading}
+                </h2>
+                {section.content && <p className="text-muted-foreground leading-relaxed">{section.content}</p>}
+                {section.paragraphs?.map((paragraph, pi) => (
+                  <p key={pi} className="mt-3 text-muted-foreground leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))}
+                {section.list &&
+                  (section.list.ordered ? (
+                    <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground leading-relaxed">
+                      {section.list.items.map((item, li) => (
+                        <li key={li}>{item}</li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground leading-relaxed">
+                      {section.list.items.map((item, li) => (
+                        <li key={li}>{item}</li>
+                      ))}
+                    </ul>
+                  ))}
+                {section.afterList && (
+                  <p className="mt-3 text-muted-foreground leading-relaxed">{section.afterList}</p>
+                )}
                 {section.subsections?.map((sub, j) => (
                   <div key={j} className="mt-4 ml-4">
                     <h3 className="text-lg font-semibold mb-2">{sub.heading}</h3>
@@ -182,7 +267,9 @@ export default async function LearnArticlePage({ params }: PageProps) {
             ))}
 
             <section className="mt-8">
-              <h2 className="text-xl font-bold mb-3">Key Takeaways</h2>
+              <h2 id="key-takeaways" className="mb-3 scroll-mt-24 text-xl font-bold">
+                Key Takeaways
+              </h2>
               <ul className="space-y-2">
                 {article.content.keyTakeaways.map((takeaway, i) => (
                   <li key={i} className="flex items-start gap-2 text-muted-foreground">
@@ -195,7 +282,9 @@ export default async function LearnArticlePage({ params }: PageProps) {
 
             {article.content.faq && article.content.faq.length > 0 && (
               <section className="mt-8">
-                <h2 className="text-xl font-bold mb-3">Frequently Asked Questions</h2>
+                <h2 id="frequently-asked-questions" className="mb-3 scroll-mt-24 text-xl font-bold">
+                  Frequently Asked Questions
+                </h2>
                 <div className="space-y-4">
                   {article.content.faq.map((item, i) => (
                     <div key={i} className="rounded-lg border border-border/60 bg-card p-4">
@@ -204,6 +293,35 @@ export default async function LearnArticlePage({ params }: PageProps) {
                     </div>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {article.resources && article.resources.length > 0 && (
+              <section className="mt-8">
+                <h2 id="further-reading" className="mb-3 scroll-mt-24 text-xl font-bold">
+                  Further Reading
+                </h2>
+                <ul className="space-y-2">
+                  {article.resources.map((resource) => (
+                    <li key={resource.href} className="flex items-start gap-2 text-muted-foreground">
+                      <span className="text-primary mt-1">•</span>
+                      {resource.external ? (
+                        <a
+                          href={resource.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {resource.label}
+                        </a>
+                      ) : (
+                        <Link href={resource.href} className="text-primary hover:underline">
+                          {resource.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 
