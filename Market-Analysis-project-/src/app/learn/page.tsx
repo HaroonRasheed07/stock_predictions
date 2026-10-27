@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ArrowRight } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getAllArticles, getArticleCover } from '@/lib/learn-articles';
 
@@ -82,6 +83,10 @@ export default function LearnPage() {
                     <span>·</span>
                     <span>{article.author}</span>
                   </div>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                    Read article
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
                 </Link>
               );
             })}

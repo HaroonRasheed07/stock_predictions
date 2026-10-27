@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, LineChart } from 'lucide-react';
+import { ArrowRight, LineChart, Wrench } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 import { getArticle, getArticleCover, getAllArticleSlugs } from '@/lib/learn-articles';
 
@@ -60,14 +60,18 @@ export default async function LearnArticlePage({ params }: PageProps) {
   const article = getArticle(slug);
   if (!article) notFound();
 
+  const asTexts = (value?: string | string[]) =>
+    value == null ? [] : Array.isArray(value) ? value : [value];
+
   const wordCount = [
     article.content.intro,
+    ...(article.content.introParagraphs ?? []),
     ...article.content.sections.flatMap((section) => [
       section.content,
       ...(section.paragraphs ?? []),
       ...(section.list?.items ?? []),
-      section.afterList ?? '',
-      ...(section.subsections?.map((sub) => sub.content) ?? []),
+      ...asTexts(section.afterList),
+      ...(section.subsections?.flatMap((sub) => [sub.content, ...(sub.list?.items ?? [])]) ?? []),
     ]),
     ...article.content.keyTakeaways,
     ...(article.content.faq ?? []).flatMap((item) => [item.question, item.answer]),
@@ -82,7 +86,9 @@ export default async function LearnArticlePage({ params }: PageProps) {
       id: slugifyHeading(section.heading),
       label: section.heading,
     })),
-    { id: 'key-takeaways', label: 'Key Takeaways' },
+    ...(article.content.keyTakeaways.length > 0
+      ? [{ id: 'key-takeaways', label: 'Key Takeaways' }]
+      : []),
     ...(article.content.faq && article.content.faq.length > 0
       ? [{ id: 'frequently-asked-questions', label: 'Frequently Asked Questions' }]
       : []),
@@ -210,8 +216,11 @@ export default async function LearnArticlePage({ params }: PageProps) {
             </ul>
           </nav>
 
-          <div className="prose prose-neutral dark:prose-invert max-w-none">
+          <div className="prose prose-neutral dark:prose-invert">
             <p className="text-lg leading-relaxed">{article.content.intro}</p>
+            {article.content.introParagraphs?.map((paragraph, pi) => (
+              <p key={pi} className="text-lg leading-relaxed">{paragraph}</p>
+            ))}
 
             {article.toolLinks && article.toolLinks.length > 0 && (
               <section className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4 not-prose">
@@ -259,31 +268,48 @@ export default async function LearnArticlePage({ params }: PageProps) {
                       ))}
                     </ul>
                   ))}
-                {section.afterList && (
-                  <p className="mt-3 text-muted-foreground leading-relaxed">{section.afterList}</p>
-                )}
                 {section.subsections?.map((sub, j) => (
                   <div key={j} className="mt-4 ml-4">
                     <h3 className="text-lg font-semibold mb-2">{sub.heading}</h3>
-                    <p className="text-muted-foreground leading-relaxed">{sub.content}</p>
+                    {sub.content && <p className="text-muted-foreground leading-relaxed">{sub.content}</p>}
+                    {sub.list &&
+                      (sub.list.ordered ? (
+                        <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground leading-relaxed">
+                          {sub.list.items.map((item, li) => (
+                            <li key={li}>{item}</li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground leading-relaxed">
+                          {sub.list.items.map((item, li) => (
+                            <li key={li}>{item}</li>
+                          ))}
+                        </ul>
+                      ))}
                   </div>
                 ))}
+                {section.afterList &&
+                  asTexts(section.afterList).map((paragraph, ai) => (
+                    <p key={ai} className="mt-3 text-muted-foreground leading-relaxed">{paragraph}</p>
+                  ))}
               </section>
             ))}
 
-            <section className="mt-8">
-              <h2 id="key-takeaways" className="mb-3 scroll-mt-24 text-xl font-bold">
-                Key Takeaways
-              </h2>
-              <ul className="space-y-2">
-                {article.content.keyTakeaways.map((takeaway, i) => (
-                  <li key={i} className="flex items-start gap-2 text-muted-foreground">
-                    <span className="text-primary mt-1">•</span>
-                    <span>{takeaway}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {article.content.keyTakeaways.length > 0 && (
+              <section className="mt-8">
+                <h2 id="key-takeaways" className="mb-3 scroll-mt-24 text-xl font-bold">
+                  Key Takeaways
+                </h2>
+                <ul className="space-y-2">
+                  {article.content.keyTakeaways.map((takeaway, i) => (
+                    <li key={i} className="flex items-start gap-2 text-muted-foreground">
+                      <span className="text-primary mt-1">•</span>
+                      <span>{takeaway}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             {article.content.faq && article.content.faq.length > 0 && (
               <section className="mt-8">
@@ -327,6 +353,27 @@ export default async function LearnArticlePage({ params }: PageProps) {
                     </li>
                   ))}
                 </ul>
+              </section>
+            )}
+
+            {article.relatedTools && article.relatedTools.length > 0 && (
+              <section className="mt-8 rounded-lg border border-primary/20 bg-primary/5 p-4 not-prose">
+                <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-primary" aria-hidden="true" />
+                  Related tools
+                </h2>
+                <div className="flex flex-col gap-1.5">
+                  {article.relatedTools.map((tool) => (
+                    <Link
+                      key={tool.href}
+                      href={tool.href}
+                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      {tool.label}
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                  ))}
+                </div>
               </section>
             )}
 
