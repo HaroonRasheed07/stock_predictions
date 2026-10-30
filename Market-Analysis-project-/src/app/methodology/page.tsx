@@ -102,6 +102,8 @@ export default function MethodologyPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-4">
                 <Link href="/learn/how-ai-stock-forecasting-works" className="text-primary hover:underline">Learn more about AI forecasting →</Link>
+                {' · '}
+                <Link href="/learn/beyond-price-predictions" className="text-primary hover:underline">Research framework: combining indicators, sentiment and machine learning →</Link>
               </p>
             </section>
 

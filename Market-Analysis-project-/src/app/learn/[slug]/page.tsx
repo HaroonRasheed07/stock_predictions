@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, LineChart, Wrench } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
-import { getArticle, getArticleCover, getAllArticleSlugs } from '@/lib/learn-articles';
+import { getArticle, getArticleCover, getAllArticleSlugs, type LearnContentBlock } from '@/lib/learn-articles';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -16,6 +17,48 @@ const slugifyHeading = (text: string) =>
     .trim()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-');
+
+/** Renders inline **bold** and *italic* markers as real elements (plain text passes through). */
+function Inline({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  const re = /\*\*([^*]+)\*\*|\*([^*\n]+)\*/g;
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    if (m[1] !== undefined) nodes.push(<strong key={key++}>{m[1]}</strong>);
+    else nodes.push(<em key={key++}>{m[2]}</em>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return <>{nodes}</>;
+}
+
+function DataTable({ table }: { table: { headers: string[]; rows: string[][] } }) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[320px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border">
+            {table.headers.map((header, i) => (
+              <th key={i} className="py-2 pr-4 text-left font-semibold">{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, ri) => (
+            <tr key={ri} className="border-b border-border/60">
+              {row.map((cell, ci) => (
+                <td key={ci} className="py-2 pr-4">{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export async function generateStaticParams() {
   return getAllArticleSlugs().map((slug) => ({ slug }));
@@ -55,6 +98,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+function BulletList({ list, mt = true }: { list: { ordered?: boolean; items: string[] }; mt?: boolean }) {
+  const Tag: 'ol' | 'ul' = list.ordered ? 'ol' : 'ul';
+  return (
+    <Tag className={`${mt ? 'mt-3 ' : ''}space-y-2 pl-5 text-muted-foreground leading-relaxed ${list.ordered ? 'list-decimal' : 'list-disc'}`}>
+      {list.items.map((item, li) => (
+        <li key={li}><Inline text={item} /></li>
+      ))}
+    </Tag>
+  );
+}
+
+function ContentBlockView({ block }: { block: LearnContentBlock }) {
+  if (block.type === 'list' && block.items) return <BulletList list={{ ordered: block.ordered, items: block.items }} />;
+  if (block.type === 'table' && block.headers && block.rows)
+    return <DataTable table={{ headers: block.headers, rows: block.rows }} />;
+  if (block.type === 'p' && block.text)
+    return <p className="mt-3 text-muted-foreground leading-relaxed"><Inline text={block.text} /></p>;
+  return null;
+}
+
 export default async function LearnArticlePage({ params }: PageProps) {
   const { slug } = await params;
   const article = getArticle(slug);
@@ -63,15 +126,31 @@ export default async function LearnArticlePage({ params }: PageProps) {
   const asTexts = (value?: string | string[]) =>
     value == null ? [] : Array.isArray(value) ? value : [value];
 
+  const tableText = (table?: { headers: string[]; rows: string[][] }) =>
+    table ? [...table.headers, ...table.rows.flat()].join(' ') : '';
+
+  const blockText = (block: LearnContentBlock) =>
+    block.type === 'p' ? (block.text ?? '')
+    : block.type === 'list' ? (block.items ?? []).join(' ')
+    : [...(block.headers ?? []), ...(block.rows ?? []).flat()].join(' ');
+
   const wordCount = [
-    article.content.intro,
+    article.content.intro ?? '',
     ...(article.content.introParagraphs ?? []),
     ...article.content.sections.flatMap((section) => [
       section.content,
       ...(section.paragraphs ?? []),
       ...(section.list?.items ?? []),
+      tableText(section.table),
       ...asTexts(section.afterList),
-      ...(section.subsections?.flatMap((sub) => [sub.content, ...(sub.list?.items ?? [])]) ?? []),
+      ...(section.subsections?.flatMap((sub) => [
+        sub.content,
+        ...(sub.paragraphs ?? []),
+        ...(sub.list?.items ?? []),
+        tableText(sub.table),
+        ...asTexts(sub.afterList),
+      ]) ?? []),
+      ...(section.blocks?.map(blockText) ?? []),
     ]),
     ...article.content.keyTakeaways,
     ...(article.content.faq ?? []).flatMap((item) => [item.question, item.answer]),
@@ -179,6 +258,9 @@ export default async function LearnArticlePage({ params }: PageProps) {
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">{article.h1}</h1>
             <p className="text-lg text-muted-foreground">{article.description}</p>
+            {article.byline && (
+              <p className="mt-2 text-sm italic text-muted-foreground">{article.byline}</p>
+            )}
             <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
               <Link href="/about" className="hover:text-primary transition-colors">By {article.author}</Link>
               <span>·</span>
@@ -217,9 +299,11 @@ export default async function LearnArticlePage({ params }: PageProps) {
           </nav>
 
           <div className="prose prose-neutral dark:prose-invert">
-            <p className="text-lg leading-relaxed">{article.content.intro}</p>
+            {article.content.intro && (
+              <p className="text-lg leading-relaxed"><Inline text={article.content.intro} /></p>
+            )}
             {article.content.introParagraphs?.map((paragraph, pi) => (
-              <p key={pi} className="text-lg leading-relaxed">{paragraph}</p>
+              <p key={pi} className="text-lg leading-relaxed"><Inline text={paragraph} /></p>
             ))}
 
             {article.toolLinks && article.toolLinks.length > 0 && (
@@ -248,50 +332,48 @@ export default async function LearnArticlePage({ params }: PageProps) {
                 <h2 id={slugifyHeading(section.heading)} className="mb-3 scroll-mt-24 text-xl font-bold">
                   {section.heading}
                 </h2>
-                {section.content && <p className="text-muted-foreground leading-relaxed">{section.content}</p>}
+                {section.content && (
+                  <p className={i === 0 && !article.content.intro ? 'text-lg leading-relaxed' : 'text-muted-foreground leading-relaxed'}>
+                    <Inline text={section.content} />
+                  </p>
+                )}
                 {section.paragraphs?.map((paragraph, pi) => (
                   <p key={pi} className="mt-3 text-muted-foreground leading-relaxed">
-                    {paragraph}
+                    <Inline text={paragraph} />
                   </p>
                 ))}
-                {section.list &&
-                  (section.list.ordered ? (
-                    <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground leading-relaxed">
-                      {section.list.items.map((item, li) => (
-                        <li key={li}>{item}</li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground leading-relaxed">
-                      {section.list.items.map((item, li) => (
-                        <li key={li}>{item}</li>
-                      ))}
-                    </ul>
-                  ))}
+                {section.list && <BulletList list={section.list} />}
+                {section.table && <DataTable table={section.table} />}
                 {section.subsections?.map((sub, j) => (
                   <div key={j} className="mt-4 ml-4">
                     <h3 className="text-lg font-semibold mb-2">{sub.heading}</h3>
-                    {sub.content && <p className="text-muted-foreground leading-relaxed">{sub.content}</p>}
-                    {sub.list &&
-                      (sub.list.ordered ? (
-                        <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground leading-relaxed">
-                          {sub.list.items.map((item, li) => (
-                            <li key={li}>{item}</li>
-                          ))}
-                        </ol>
-                      ) : (
-                        <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground leading-relaxed">
-                          {sub.list.items.map((item, li) => (
-                            <li key={li}>{item}</li>
-                          ))}
-                        </ul>
+                    {sub.content && (
+                      <p className="text-muted-foreground leading-relaxed"><Inline text={sub.content} /></p>
+                    )}
+                    {sub.paragraphs?.map((paragraph, pi) => (
+                      <p key={pi} className="mt-3 text-muted-foreground leading-relaxed">
+                        <Inline text={paragraph} />
+                      </p>
+                    ))}
+                    {sub.list && <BulletList list={sub.list} />}
+                    {sub.table && <DataTable table={sub.table} />}
+                    {sub.afterList &&
+                      asTexts(sub.afterList).map((paragraph, ai) => (
+                        <p key={ai} className="mt-3 text-muted-foreground leading-relaxed">
+                          <Inline text={paragraph} />
+                        </p>
                       ))}
                   </div>
                 ))}
                 {section.afterList &&
                   asTexts(section.afterList).map((paragraph, ai) => (
-                    <p key={ai} className="mt-3 text-muted-foreground leading-relaxed">{paragraph}</p>
+                    <p key={ai} className="mt-3 text-muted-foreground leading-relaxed">
+                      <Inline text={paragraph} />
+                    </p>
                   ))}
+                {section.blocks?.map((block, bi) => (
+                  <ContentBlockView key={bi} block={block} />
+                ))}
               </section>
             ))}
 

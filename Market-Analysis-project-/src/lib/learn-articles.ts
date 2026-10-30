@@ -1,4 +1,16 @@
-﻿export interface LearnArticle {
+﻿export interface LearnContentBlock {
+  type: 'p' | 'list' | 'table';
+  /** For type: 'p' */
+  text?: string;
+  /** For type: 'list' */
+  ordered?: boolean;
+  items?: string[];
+  /** For type: 'table' */
+  headers?: string[];
+  rows?: string[][];
+}
+
+export interface LearnArticle {
   slug: string;
   title: string;
   description: string;
@@ -10,6 +22,8 @@
   tags: string[];
   relatedTickers: string[];
   relatedArticles: string[];
+  /** Optional author byline line rendered under the description. */
+  byline?: string;
   /** In-product tools that let readers apply the concept (max 3). */
   toolLinks?: Array<{ href: string; label: string }>;
   /** "Related tools" box rendered at the end of the article. */
@@ -19,7 +33,8 @@
   /** Further-reading links: internal Learn pages and external authoritative sources. */
   resources?: Array<{ href: string; label: string; external?: boolean }>;
   content: {
-    intro: string;
+    /** Lead paragraph rendered above the first section. */
+    intro?: string;
     /** Extra paragraphs rendered between the intro and the first section. */
     introParagraphs?: string[];
     sections: Array<{
@@ -29,13 +44,20 @@
       paragraphs?: string[];
       /** Ordered or bulleted list rendered after the paragraphs. */
       list?: { ordered?: boolean; items: string[] };
+      /** Data table rendered after the list. */
+      table?: { headers: string[]; rows: string[][] };
       /** Closing paragraph(s) rendered after the list and subsections. */
       afterList?: string | string[];
       subsections?: Array<{
         heading: string;
         content: string;
+        paragraphs?: string[];
         list?: { ordered?: boolean; items: string[] };
+        table?: { headers: string[]; rows: string[][] };
+        afterList?: string | string[];
       }>;
+      /** Extra blocks (paragraphs, lists, tables) rendered last, in order. */
+      blocks?: LearnContentBlock[];
     }>;
     keyTakeaways: string[];
     limitations: string;
@@ -607,7 +629,7 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '8 min',
     tags: ['AI forecasting', 'machine learning', 'price prediction', 'LSTM'],
     relatedTickers: ['AAPL', 'NVDA', 'MSFT'],
-    relatedArticles: ['how-lstm-forecasting-works', 'how-to-analyze-a-stock', 'what-is-stock-volatility'],
+    relatedArticles: ['how-lstm-forecasting-works', 'how-to-analyze-a-stock', 'what-is-stock-volatility', 'beyond-price-predictions',],
     content: {
       intro: 'AI stock forecasting uses machine learning modelsâ€”particularly recurrent neural networks like LSTM (Long Short-Term Memory)â€”to analyze historical price patterns and project potential future price paths. These models identify complex patterns in sequential data that may not be apparent through traditional analysis.',
       sections: [
@@ -648,7 +670,7 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '7 min',
     tags: ['LSTM', 'neural network', 'time series', 'deep learning', 'forecasting'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
-    relatedArticles: ['how-ai-stock-forecasting-works', 'what-is-stock-volatility', 'how-to-analyze-a-stock', 'why-stock-forecasts-are-uncertain'],
+    relatedArticles: ['how-ai-stock-forecasting-works', 'what-is-stock-volatility', 'how-to-analyze-a-stock', 'why-stock-forecasts-are-uncertain', 'beyond-price-predictions',],
     toolLinks: [
       { href: '/markets/stock/forecast', label: 'Open the live LSTM forecast page' },
       { href: '/learn/why-stock-forecasts-are-uncertain', label: 'Why forecasts are uncertain' },
@@ -913,7 +935,7 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '8 min',
     tags: ['sentiment', 'fear and greed index', 'vix', 'beginners'],
     relatedTickers: ['SPY', 'QQQ', 'AAPL'],
-    relatedArticles: ['what-is-stock-sentiment', 'how-news-sentiment-works', 'what-is-stock-volatility'],
+    relatedArticles: ['what-is-stock-sentiment', 'how-news-sentiment-works', 'what-is-stock-volatility', 'beyond-price-predictions',],
     resources: [
       { href: '/learn/what-is-stock-sentiment', label: 'What Is Stock Market Sentiment?' },
       {
@@ -1323,6 +1345,7 @@ const articles: Record<string, LearnArticle> = {
       'what-is-macd',
       'support-and-resistance-explained',
       'rsi-vs-macd',
+      'beyond-price-predictions',
     ],
     relatedTools: [
       { href: '/markets/stock/watchlist', label: 'Watchlist' },
@@ -1651,6 +1674,402 @@ const articles: Record<string, LearnArticle> = {
           answer: 'Yes. The value goes up and down with the market.',
         },
       ],
+    },
+  },
+  'beyond-price-predictions': {
+    slug: 'beyond-price-predictions',
+    title:
+      'Beyond Price Predictions: Combining Technical Indicators, News Sentiment, and Machine Learning for Smarter Stock Market Research',
+    description:
+      'Learn how technical indicators, financial news sentiment, and machine learning models like LSTMs combine into a more systematic framework for stock research.',
+    h1: 'Beyond Price Predictions: Combining Technical Indicators, News Sentiment, and Machine Learning for Smarter Stock Market Research',
+    publishedAt: '2026-10-30',
+    updatedAt: '2026-10-30',
+    author: 'Haroon Rasheed',
+    readingTime: '19 min',
+    byline: 'By Haroon Rasheed | AI/ML Engineer and Founder of StockVantex',
+    tags: ['machine learning', 'technical indicators', 'news sentiment', 'stock research'],
+    relatedTickers: [],
+    relatedArticles: [
+      'technical-indicators-rsi-macd-moving-averages',
+      'how-to-check-stock-market-sentiment-free',
+      'technical-vs-fundamental-analysis',
+      'what-is-macd',
+      'how-lstm-forecasting-works',
+    ],
+    relatedTools: [
+      { href: '/markets/stock/watchlist', label: 'Watchlist' },
+      { href: '/markets/stock/technical', label: 'Technical Analysis' },
+      { href: '/markets/brief', label: 'Stock Brief' },
+    ],
+    content: {
+      sections: [
+        {
+          heading: 'Introduction: The Problem With Looking at Price Alone',
+          content:
+            "A stock's closing price tells us where the market ended a trading session. It does not necessarily explain why the stock moved, what information influenced investors, or whether the movement reflects a developing trend or a temporary reaction.",
+          paragraphs: [
+            'This distinction matters because financial markets are influenced by several forces operating simultaneously. Historical price movements, trading volume, company announcements, economic conditions, investor expectations, and unexpected news can all contribute to changes in market behaviour.',
+            'Traditional technical analysis attempts to interpret some of these dynamics through price and volume data. Fundamental analysis examines company performance and economic conditions. More recently, machine learning has introduced additional ways to identify relationships within large financial datasets.',
+            'However, using these approaches independently can leave important information unexplored.',
+            'Consider a company whose share price is showing improving technical momentum while its latest earnings announcement has raised concerns about future revenue. A technical indicator may suggest strengthening buying pressure, while news sentiment may remain negative. Neither signal necessarily makes the other incorrect. They are measuring different aspects of the market.',
+            'This creates an interesting opportunity for quantitative research: can historical market data, technical indicators, and financial news sentiment be combined into a more comprehensive analytical framework?',
+            'The answer is worth investigating, but it requires more than simply feeding additional data into a machine learning model. The quality, timing, relevance, and interpretation of each input matter just as much as the model architecture itself.',
+          ],
+        },
+        {
+          heading: '1. Understanding What Technical Indicators Actually Measure',
+          content:
+            'Technical indicators are mathematical transformations of historical market data. They are commonly calculated using prices, trading volume, or both.',
+          paragraphs: [
+            'Their purpose is not to reveal the future with certainty. Instead, they help researchers describe market conditions, identify potential patterns, and quantify behaviour that may otherwise be difficult to compare consistently.',
+            'Several indicators are particularly useful when constructing machine learning features.',
+          ],
+          subsections: [
+            {
+              heading: 'Relative Strength Index (RSI)',
+              content:
+                'The Relative Strength Index measures the magnitude of recent upward price movements relative to downward movements over a specified period.',
+              paragraphs: [
+                'It is commonly calculated over 14 periods and ranges from 0 to 100.',
+                'Values above 70 are traditionally associated with overbought conditions, while values below 30 are associated with oversold conditions.',
+                'However, these thresholds should not be interpreted as automatic reversal signals. A stock can remain above an RSI of 70 during a strong upward trend, just as it can remain below 30 during persistent selling pressure.',
+                'For machine learning applications, RSI can be treated as a continuous numerical feature rather than a simple Buy or Sell instruction.',
+              ],
+            },
+            {
+              heading: 'Moving Averages',
+              content:
+                'Moving averages smooth historical price movements to help identify underlying trends.',
+              paragraphs: [
+                'A Simple Moving Average (SMA) calculates the average closing price over a defined number of periods. An Exponential Moving Average (EMA) assigns greater weight to more recent observations.',
+                'For example, researchers might examine the relationship between the 20-day and 50-day moving averages.',
+                'When the shorter moving average rises above the longer one, it may indicate improving momentum. When it falls below, it may indicate weakening momentum.',
+                'These relationships can be represented numerically and supplied to a predictive model.',
+              ],
+            },
+            {
+              heading: 'Moving Average Convergence Divergence (MACD)',
+              content:
+                'MACD measures the relationship between two exponential moving averages, commonly the 12-period and 26-period EMAs.',
+              paragraphs: [
+                'Its signal line is generally a nine-period EMA of the MACD line.',
+                'The difference between these lines can help describe changes in momentum. The MACD histogram provides another representation of the distance between the two.',
+                'For quantitative research, MACD can provide information about momentum that is not identical to what RSI or moving averages capture.',
+              ],
+            },
+            {
+              heading: 'Average True Range (ATR)',
+              content:
+                'Price direction is only one part of market behaviour. Volatility is equally important.',
+              paragraphs: [
+                'ATR measures the average range of price movement over a specified period, accounting for gaps between trading sessions.',
+                'A stock gaining 2% with relatively low volatility may represent a different market condition from a stock gaining 2% after several unusually large price movements.',
+                'ATR helps quantify this difference and can contribute to risk analysis.',
+              ],
+            },
+          ],
+          afterList:
+            'The important consideration is that technical indicators are often correlated. Adding RSI, MACD, several moving averages, and multiple variations of the same indicator does not automatically provide more information. It can instead introduce redundancy and increase the risk of overfitting.',
+        },
+        {
+          heading: '2. Why Financial News Sentiment Adds Another Dimension',
+          content:
+            'Price data describes what has happened in the market. News can provide context about the information that investors are reacting to.',
+          paragraphs: [
+            'Earnings announcements, management changes, regulatory decisions, product launches, interest-rate decisions, and geopolitical developments can influence expectations before their effects become fully visible in historical price indicators.',
+            'This is where financial sentiment analysis becomes useful.',
+            'Natural Language Processing (NLP) techniques allow researchers to analyse financial text and estimate its overall tone.',
+            'For example, consider three hypothetical headlines:',
+          ],
+          list: {
+            items: [
+              'A company reports stronger-than-expected quarterly revenue.',
+              'A major customer cancels a long-term contract.',
+              'Management reduces its annual earnings guidance.',
+            ],
+          },
+          afterList: [
+            'A sentiment model may classify these headlines as positive, negative, and negative, respectively.',
+            'However, financial sentiment analysis is more complicated than identifying positive and negative words.',
+            'The word "decline" might appear in a headline describing declining operating costs, which could be positive for a company\'s profitability. Similarly, a company reporting higher revenue may still disappoint investors if expectations were substantially higher.',
+            'Financial language is context-dependent.',
+            'Researchers therefore need to consider models trained or adapted for financial text, rather than assuming that general-purpose sentiment classification will perform equally well.',
+            'One important example is FinBERT, a BERT-based language model adapted for financial sentiment analysis.',
+            'It can classify financial text into positive, negative, and neutral categories, offering a more domain-specific approach to interpreting market-related language.',
+            'Research also provides evidence that news and sentiment can contain information relevant to stock movements.',
+            'Heston and Sinha\'s Federal Reserve research, *News versus Sentiment: Predicting Stock Returns from News Stories* (2016), examined more than 900,000 news stories. Their findings indicated that daily news-related return predictability was concentrated over a relatively short horizon, while weekly news measures displayed different predictive relationships.',
+            'This highlights an important distinction: news sentiment is not simply a permanent directional signal. Its relevance can depend on the timing and nature of the information.',
+          ],
+        },
+        {
+          heading: '3. Combining Technical Indicators and Sentiment With Machine Learning',
+          content:
+            'The next challenge is bringing numerical market information and unstructured financial text into a common analytical framework.',
+          paragraphs: [
+            'These data sources have different structures.',
+            'Historical market data is generally organised into time-indexed numerical observations. Financial news consists of text, publication timestamps, company references, and potentially several reports about the same event.',
+            'A practical system must convert both into features that can be analysed together.',
+          ],
+          subsections: [
+            {
+              heading: 'Step 1: Collect and prepare historical market data',
+              content:
+                'The process begins with historical Open, High, Low, Close, and Volume (OHLCV) data.',
+              paragraphs: ['From this information, researchers can calculate indicators such as:'],
+              list: {
+                items: [
+                  'RSI',
+                  'MACD',
+                  'SMA and EMA',
+                  'ATR',
+                  'Daily and weekly returns',
+                  'Volume changes',
+                  'Historical volatility',
+                ],
+              },
+              afterList: [
+                'The data should be checked for missing observations, stock splits, dividends, incorrect timestamps, and inconsistent trading calendars.',
+                'Adjusted prices may be appropriate for return calculations, while unadjusted prices can be necessary for certain market microstructure analyses. The choice should be documented.',
+              ],
+            },
+            {
+              heading: 'Step 2: Process financial news',
+              content:
+                'Each article or headline should be associated with the correct company and a reliable publication timestamp.',
+              paragraphs: [
+                'A sentiment model can then estimate probabilities for positive, negative, and neutral sentiment.',
+                'For example:',
+              ],
+              table: {
+                headers: ['Sentiment category', 'Model probability'],
+                rows: [
+                  ['Positive', '0.72'],
+                  ['Neutral', '0.18'],
+                  ['Negative', '0.10'],
+                ],
+              },
+              afterList: [
+                'These probabilities describe the model\'s classification output. They are not probabilities of the stock price increasing or decreasing.',
+                'Researchers can aggregate multiple articles into daily sentiment features.',
+                'One simple approach is to calculate a net sentiment score:',
+                '**Net Sentiment = Positive Sentiment \u2212 Negative Sentiment**',
+                'A more advanced approach can weight each article by source reliability, relevance, recency, and the confidence of its classification.',
+                'The aggregation method should be defined before testing the model.',
+              ],
+            },
+            {
+              heading: 'Step 3: Align information by time',
+              content: 'This is one of the most important parts of the entire process.',
+              paragraphs: [
+                'Imagine a company publishes disappointing earnings results at 4:30 PM Eastern Time, after the regular US trading session has closed.',
+                'A model predicting the next day\'s market movement may use this announcement because it was publicly available before the next session.',
+                'However, a model predicting the same day\'s closing price cannot legitimately use information published after that close.',
+                'Using information that was unavailable at the prediction timestamp creates look-ahead bias.',
+                'A reliable dataset must therefore preserve when information became publicly available, not merely the date printed on an article.',
+                'For news arriving during market hours, researchers should also distinguish between publication time and the time at which the information could realistically have been collected and processed.',
+                'Without this discipline, even a sophisticated model can produce misleading backtest results.',
+              ],
+            },
+          ],
+        },
+        {
+          heading: '4. Where LSTM Models Fit Into the Framework',
+          content:
+            'Financial time series contain sequential relationships. Today\'s market conditions may be influenced by observations from previous sessions.',
+          paragraphs: [
+            'Traditional machine learning algorithms can process engineered financial features, but they do not inherently model temporal sequences unless that structure is explicitly provided.',
+            'Long Short-Term Memory networks, commonly known as LSTMs, are a type of recurrent neural network designed to learn relationships across sequences.',
+            'They use memory cells and gating mechanisms to regulate which information is retained, updated, or discarded over time.',
+            'In a stock research application, an LSTM might receive a rolling sequence of 60 trading sessions.',
+            'Each session could contain features such as:',
+          ],
+          list: {
+            items: [
+              'Closing-price returns',
+              'RSI and MACD',
+              'Moving-average relationships',
+              'Volatility measurements',
+              'Trading-volume changes',
+              'Aggregated news sentiment',
+            ],
+          },
+          afterList: [
+            'The model processes this sequence to estimate a defined future target.',
+            'That target could be the next trading session\'s return, the probability of an upward price movement, or a multi-day forecast.',
+            'The choice of target is important because predicting a stock\'s exact future price is a different problem from estimating its return direction or volatility.',
+            'A useful modelling principle is to establish a baseline before introducing a more complicated neural network.',
+            'For example, researchers can compare:',
+          ],
+          blocks: [
+            {
+              type: 'list',
+              ordered: true,
+              items: [
+                'A simple historical-return or moving-average baseline.',
+                'A linear regression model.',
+                'A tree-based model such as Random Forest or gradient boosting.',
+                'An LSTM using historical market features.',
+                'An LSTM using both market features and news sentiment.',
+              ],
+            },
+            {
+              type: 'p',
+              text: 'This comparison helps answer a more meaningful question: does adding sentiment improve performance beyond what the price-based model already provides?',
+            },
+            {
+              type: 'p',
+              text: 'If a complex model cannot consistently outperform a simpler baseline on unseen data, its additional computational cost may not be justified.',
+            },
+          ],
+        },
+        {
+          heading: '5. What Happens When Technical Signals and News Sentiment Disagree?',
+          content:
+            'Conflicting signals are not necessarily a problem. In many cases, they provide some of the most useful information for further investigation.',
+          paragraphs: ['Consider a hypothetical technology stock with the following conditions:'],
+          list: {
+            items: [
+              'RSI increases from 42 to 58.',
+              'MACD moves above its signal line.',
+              'Trading volume rises above its recent average.',
+              'News sentiment becomes negative following a reduction in management\'s revenue guidance.',
+            ],
+          },
+          afterList: [
+            'The technical indicators suggest improving short-term momentum, while the news reflects deteriorating expectations about the company\'s business.',
+            'A simplistic system might attempt to force these observations into a single Buy or Sell recommendation.',
+            'A more thoughtful analytical framework would preserve the disagreement.',
+            'There are several possible explanations:',
+            '**First, the signals may operate over different time horizons.**',
+            'Technical momentum may reflect short-term buying activity, while negative news could affect expectations over a longer period.',
+            '**Second, the market may have already anticipated the news.**',
+            'If investors expected weak guidance, the announcement itself may produce a smaller reaction than its headline suggests.',
+            '**Third, the news may be relevant but not equally important to every investor.**',
+            'A temporary operational problem and a structural deterioration in business performance should not receive identical treatment.',
+            '**Fourth, the technical movement may be unstable.**',
+            'An apparent improvement in momentum could disappear if trading volume declines or the broader market weakens.',
+            'Instead of automatically cancelling one signal against another, a research system should examine their individual contributions.',
+            'This can be achieved through separate feature groups, model comparisons, confidence estimates, and scenario analysis.',
+            'For example, a system could report that technical momentum has improved while news sentiment remains negative, resulting in mixed evidence rather than a strong directional conclusion.',
+            'This is a more transparent approach to communicating uncertainty.',
+          ],
+        },
+        {
+          heading: '6. The Biggest Challenge: Avoiding Overfitting and Misleading Backtests',
+          content:
+            'A machine learning model can produce impressive historical results without possessing genuine predictive value.',
+          paragraphs: [
+            'This is particularly dangerous in financial forecasting because markets are noisy, relationships change, and researchers have many opportunities to experiment with different indicators and model configurations.',
+            'Several mistakes can make a model appear more successful than it actually is.',
+          ],
+          subsections: [
+            {
+              heading: 'Data leakage',
+              content:
+                'Data leakage occurs when information from outside the legitimate training process influences model development or evaluation.',
+              paragraphs: [
+                'Examples include using future news sentiment, calculating features with future observations, or fitting a scaler on the complete dataset before splitting it into training and testing periods.',
+                'For time-series forecasting, preprocessing parameters should be learned from the training data and then applied to validation and test data.',
+              ],
+            },
+            {
+              heading: 'Random train-test splitting',
+              content:
+                'Randomly dividing financial time-series observations can allow information from later periods to enter training while earlier observations appear in testing.',
+              paragraphs: [
+                'This does not reflect how a forecasting system would operate in the real world.',
+                'Chronological splits are generally more appropriate.',
+                'For example:',
+              ],
+              list: {
+                items: ['Training: 2018\u20132022', 'Validation: 2023', 'Testing: 2024'],
+              },
+              afterList:
+                'These dates are illustrative rather than a recommended universal split. The appropriate periods depend on the asset, data frequency, and research question.',
+            },
+            {
+              heading: 'Overfitting through repeated experimentation',
+              content:
+                'Suppose a researcher tests 100 different combinations of RSI periods, moving averages, model architectures, and sentiment thresholds.',
+              paragraphs: [
+                'Eventually, one configuration may perform extremely well on historical data simply because it captures random patterns in that particular sample.',
+                'This is why performance should be evaluated on data that was not used to select the model.',
+                'Researchers should also document how many experiments were conducted, rather than reporting only the best result.',
+              ],
+            },
+            {
+              heading: 'Ignoring transaction costs',
+              content:
+                'A model may predict market direction reasonably well but still produce an unattractive trading strategy after commissions, bid-ask spreads, slippage, and turnover are considered.',
+              paragraphs: [
+                'Forecasting accuracy and investment profitability are not interchangeable.',
+                'A model should therefore be evaluated according to its intended use.',
+                'For price forecasting, metrics such as Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) may be useful.',
+                'For directional classification, researchers can examine precision, recall, F1-score, and balanced accuracy.',
+                'For portfolio applications, risk-adjusted performance, drawdowns, turnover, and transaction costs also matter.',
+              ],
+            },
+          ],
+        },
+        {
+          heading: '7. A More Reliable Evaluation Framework',
+          content:
+            'A practical way to investigate whether combined signals provide meaningful value is through an ablation study.',
+          paragraphs: [
+            'Instead of evaluating only one model containing every feature, construct several controlled configurations.',
+          ],
+          table: {
+            headers: ['Model', 'Input features'],
+            rows: [
+              ['Model A', 'Historical price and volume'],
+              ['Model B', 'Price, volume, and technical indicators'],
+              ['Model C', 'Price and news sentiment'],
+              ['Model D', 'Price, technical indicators, and news sentiment'],
+            ],
+          },
+          afterList: [
+            'All models should use the same prediction target, comparable training periods, and consistent evaluation procedures.',
+            'The results can then reveal whether sentiment provides additional information, whether technical indicators improve the baseline, and whether combining the two creates a measurable benefit.',
+            'Walk-forward validation can provide an additional layer of realism.',
+            'In this approach, the model is trained using historical observations, evaluated on a subsequent period, and then updated as new data becomes available.',
+            'For example, a model might train on 2018\u20132021, evaluate on the first quarter of 2022, and subsequently expand its training window before evaluating the next quarter.',
+            'This process better reflects how a forecasting system would be maintained in practice.',
+            'It also helps identify whether a model\'s performance deteriorates when market conditions change.',
+          ],
+        },
+        {
+          heading: '8. From Prediction Models to Better Research Decisions',
+          content:
+            'The purpose of combining technical indicators, sentiment analysis, and machine learning should not be to create an artificial sense of certainty.',
+          paragraphs: [
+            'Financial markets remain uncertain, and no model can reliably anticipate every earnings surprise, regulatory announcement, geopolitical development, or sudden change in investor behaviour.',
+            'The real value of a multi-signal framework is its ability to organise different types of information into a more structured research process.',
+            'An analyst can examine whether price momentum is strengthening, whether recent news supports the movement, whether volatility is increasing, and whether the forecasting model has historically performed well under comparable conditions.',
+            'These observations can help identify situations that deserve further investigation.',
+            'For example, improving technical momentum accompanied by positive news sentiment may provide relatively consistent evidence. The same technical improvement accompanied by deteriorating sentiment may warrant a closer examination of the underlying business developments.',
+            'Neither scenario guarantees a particular market outcome.',
+            'This distinction is particularly important when presenting AI-generated forecasts to retail investors. Predictions should be accompanied by their time horizon, assumptions, uncertainty, and limitations.',
+            'A forecast without context can be misleading, even when the underlying model is technically sound.',
+          ],
+        },
+        {
+          heading: 'Conclusion: Better Research Comes From Better Integration',
+          content:
+            'Technical indicators, financial news sentiment, and machine learning each offer a different perspective on market behaviour.',
+          paragraphs: [
+            'Technical indicators help quantify historical price and volume patterns. Sentiment analysis provides a structured way to examine information contained in financial text. Sequence-learning architectures such as LSTMs can investigate temporal relationships across these different features.',
+            'However, combining these methods does not automatically produce a better forecasting system.',
+            'The quality of the underlying data, correct timestamp alignment, appropriate validation, realistic transaction-cost assumptions, and careful interpretation of model outputs are essential.',
+            'Perhaps the most important lesson is that disagreement between signals should not simply be hidden behind a single numerical prediction.',
+            'A useful stock research framework should make it easier to understand what the available evidence suggests, where the evidence conflicts, and how much confidence should be placed in the result.',
+            'The objective of financial AI should not be to replace analytical judgment with a prediction. It should be to make the research process more systematic, transparent, and informed.',
+          ],
+        },
+      ],
+      keyTakeaways: [],
+      limitations:
+        'Disclaimer: This article is for educational and research purposes only. Machine learning forecasts and technical indicators are not guarantees of future performance and should not be treated as individual investment advice.',
     },
   },
 };
