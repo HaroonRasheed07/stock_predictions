@@ -18,17 +18,29 @@ const slugifyHeading = (text: string) =>
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-');
 
-/** Renders inline **bold** and *italic* markers as real elements (plain text passes through). */
+/** Renders inline **bold**, *italic* and [markdown links](/path or https://) as real elements. */
 function Inline({ text }: { text: string }) {
   const nodes: ReactNode[] = [];
-  const re = /\*\*([^*]+)\*\*|\*([^*\n]+)\*/g;
+  const re = /\[([^\]]+)\]\(((?:https?:\/\/|\/)[^)\s]+)\)|\*\*([^*]+)\*\*|\*([^*\n]+)\*/g;
   let last = 0;
   let key = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) nodes.push(text.slice(last, m.index));
-    if (m[1] !== undefined) nodes.push(<strong key={key++}>{m[1]}</strong>);
-    else nodes.push(<em key={key++}>{m[2]}</em>);
+    if (m[1] !== undefined) {
+      const external = /^https?:\/\//.test(m[2]);
+      nodes.push(
+        <a
+          key={key++}
+          href={m[2]}
+          {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+          className="text-primary hover:underline"
+        >
+          {m[1]}
+        </a>
+      );
+    } else if (m[3] !== undefined) nodes.push(<strong key={key++}>{m[3]}</strong>);
+    else nodes.push(<em key={key++}>{m[4]}</em>);
     last = m.index + m[0].length;
   }
   if (last < text.length) nodes.push(text.slice(last));
@@ -154,6 +166,7 @@ export default async function LearnArticlePage({ params }: PageProps) {
     ]),
     ...article.content.keyTakeaways,
     ...(article.content.faq ?? []).flatMap((item) => [item.question, item.answer]),
+    ...(article.aboutNote ? [article.aboutNote.heading, ...article.aboutNote.paragraphs] : []),
     article.content.limitations,
   ]
     .join(' ')
@@ -467,6 +480,15 @@ export default async function LearnArticlePage({ params }: PageProps) {
                 <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
               </p>
             </section>
+
+            {article.aboutNote && (
+              <section className="mt-8 border-t border-border/60 pt-6">
+                <p className="font-semibold mb-2">{article.aboutNote.heading}</p>
+                {article.aboutNote.paragraphs.map((paragraph, pi) => (
+                  <p key={pi} className="text-sm text-muted-foreground leading-relaxed">{paragraph}</p>
+                ))}
+              </section>
+            )}
           </div>
 
           <footer className="mt-8 pt-6 border-t border-border/60">

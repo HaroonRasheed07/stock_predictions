@@ -32,6 +32,8 @@ export interface LearnArticle {
   coverImage?: { src: string; alt: string };
   /** Further-reading links: internal Learn pages and external authoritative sources. */
   resources?: Array<{ href: string; label: string; external?: boolean }>;
+  /** Publisher note (bold heading + paragraphs) rendered after the disclaimer. */
+  aboutNote?: { heading: string; paragraphs: string[] };
   content: {
     /** Lead paragraph rendered above the first section. */
     intro?: string;
@@ -2070,6 +2072,312 @@ const articles: Record<string, LearnArticle> = {
       keyTakeaways: [],
       limitations:
         'Disclaimer: This article is for educational and research purposes only. Machine learning forecasts and technical indicators are not guarantees of future performance and should not be treated as individual investment advice.',
+    },
+  },
+  'how-to-research-a-stock-before-buying': {
+    slug: 'how-to-research-a-stock-before-buying',
+    title: 'How to Research a Stock Before Buying: A Practical Guide',
+    description:
+      'Learn how to research a stock before buying by examining company fundamentals, financial statements, technical indicators, market sentiment, valuation, and investment risk.',
+    h1: 'How to Research a Stock Before Buying: A Practical Guide',
+    publishedAt: '2026-10-31',
+    updatedAt: '2026-10-31',
+    author: 'Haroon Rasheed',
+    readingTime: '15 min',
+    tags: [
+      'stock market',
+      'stock research',
+      'investing',
+      'fundamental analysis',
+      'technical analysis',
+      'market sentiment',
+      'risk analysis',
+      'artificial intelligence',
+    ],
+    relatedTickers: [],
+    relatedArticles: [
+      'how-to-analyze-a-stock',
+      'beyond-price-predictions',
+      'technical-vs-fundamental-analysis',
+      'how-to-check-stock-market-sentiment-free',
+      'stock-watchlist-guide',
+    ],
+    relatedTools: [
+      { href: '/markets/stock/watchlist', label: 'Watchlist' },
+      { href: '/markets/stock/technical', label: 'Technical Analysis' },
+      { href: '/markets/brief', label: 'Stock Brief' },
+    ],
+    content: {
+      intro:
+        'A stock can attract attention because its price is rising, a company has announced exciting news, or investors are discussing it across social media. But none of these factors, on its own, tells you whether a stock is worth researching further.',
+      introParagraphs: [
+        'Successful stock research involves looking beyond the latest price movement. Investors need to understand the business, examine its financial performance, evaluate market conditions, and consider the risks that could affect its future.',
+        'This process does not guarantee a profitable investment. Markets are uncertain, and even well-researched companies can experience unexpected setbacks. However, a structured research process can help investors make more informed decisions and avoid relying on headlines or isolated trading signals.',
+        'Here is a practical framework for researching a stock before making an investment decision.',
+      ],
+      sections: [
+        {
+          heading: '1. Understand the Business Before Studying Its Stock Price',
+          content: 'Start with the company itself.',
+          paragraphs: [
+            'Before examining charts or price forecasts, understand what the business does, how it generates revenue, and what drives demand for its products or services.',
+            'Consider questions such as:',
+          ],
+          list: {
+            items: [
+              'What products or services does the company sell?',
+              'Who are its main customers?',
+              'How does it generate revenue?',
+              'What are its major competitors?',
+              'Is its industry growing, slowing down, or changing?',
+              'What could threaten its competitive position?',
+            ],
+          },
+          afterList: [
+            'A company may have a popular product but still face high operating costs, intense competition, or declining demand. Similarly, a business operating in a growing industry is not automatically a good investment at every valuation.',
+            "For publicly traded US companies, investors can review annual and quarterly reports through the SEC's EDGAR database. These filings provide information about business operations, financial performance, management discussion, and potential risks.",
+            "The SEC's investor education resource, [Research Before You Invest](https://www.investor.gov/research-you-invest), is a useful starting point for understanding investment research and company disclosures.",
+          ],
+        },
+        {
+          heading: '2. Examine Financial Statements and Company Performance',
+          content: 'Once you understand the business, examine its financial condition.',
+          paragraphs: [
+            'Three financial statements are particularly important:',
+            '**Income statement**',
+            "The income statement shows a company's revenue, expenses, and profitability over a reporting period.",
+            'Useful figures include:',
+          ],
+          list: {
+            items: [
+              'Revenue growth',
+              'Gross profit margin',
+              'Operating income',
+              'Net income',
+              'Earnings per share (EPS)',
+            ],
+          },
+          afterList: [
+            'Revenue growth can indicate expanding demand, but it should be considered alongside profitability. A company increasing sales while its operating losses continue to grow may require closer examination.',
+            '**Balance sheet**',
+            "The balance sheet provides a snapshot of a company's assets, liabilities, and shareholders' equity.",
+            'Pay attention to:',
+          ],
+          blocks: [
+            {
+              type: 'list',
+              items: [
+                'Cash and cash equivalents',
+                'Total debt',
+                'Current assets and current liabilities',
+                "Shareholders' equity",
+              ],
+            },
+            {
+              type: 'p',
+              text: 'A company with substantial debt may be more vulnerable to higher borrowing costs or weaker business conditions. However, debt levels should be assessed in the context of the company\'s industry and cash-generating ability.',
+            },
+            { type: 'p', text: '**Cash flow statement**' },
+            { type: 'p', text: 'Profit and cash flow are not the same thing.' },
+            {
+              type: 'p',
+              text: 'The cash flow statement helps investors understand how much cash a company generates and how it uses that money. Operating cash flow and free cash flow can provide useful insight into the financial flexibility of a business.',
+            },
+            {
+              type: 'p',
+              text: 'It is also worth comparing results across several reporting periods. A single quarter may be affected by seasonal demand, unusual expenses, or one-time events.',
+            },
+          ],
+        },
+        {
+          heading: '3. Evaluate Whether the Stock\'s Valuation Makes Sense',
+          content: 'A strong company is not necessarily an attractive investment at every price.',
+          paragraphs: [
+            'Valuation helps investors compare a company\'s market price with its financial performance and expected growth.',
+            'Some commonly used valuation measures include:',
+            '**Price-to-earnings ratio (P/E)**',
+            'The P/E ratio compares a company\'s share price with its earnings per share. Investors often use it to compare companies in similar industries.',
+            'A higher P/E ratio may reflect expectations of stronger future growth, but it can also indicate that investors are paying a premium. A lower P/E ratio does not automatically mean a stock is undervalued.',
+            '**Price-to-sales ratio (P/S)**',
+            'The P/S ratio compares market capitalization with revenue. It can be useful when examining companies with limited or negative earnings, although it does not reveal whether revenue is profitable.',
+            '**Price-to-book ratio (P/B)**',
+            'The P/B ratio compares a company\'s market value with its accounting book value. It is more relevant in some industries than others, particularly those where balance-sheet assets play an important role.',
+            'No single valuation metric should determine an investment decision. Comparisons are generally more meaningful when made against companies with similar business models, growth characteristics, and financial structures.',
+          ],
+        },
+        {
+          heading: '4. Use Technical Analysis to Understand Market Behaviour',
+          content: 'Fundamental analysis focuses on the business. Technical analysis focuses on price and trading activity.',
+          paragraphs: [
+            'Investors and traders use technical indicators to examine trends, momentum, volatility, and potential areas of support or resistance.',
+            'Some widely used indicators include:',
+            '**Moving averages**',
+            'Moving averages smooth price data over a selected period. They can help identify whether a stock is generally trending upward, downward, or moving sideways.',
+            '**Relative Strength Index (RSI)**',
+            'RSI measures the speed and magnitude of recent price changes. It is commonly used to examine momentum and identify conditions that traders may consider overbought or oversold.',
+            'However, an overbought reading does not guarantee that a stock will decline, and an oversold reading does not guarantee a recovery.',
+            '**Moving Average Convergence Divergence (MACD)**',
+            'MACD compares moving averages to help assess changes in momentum and trend direction. Traders often examine its signal-line crossovers and relationship with the zero line.',
+            '**Trading volume**',
+            'Volume shows how many shares are traded during a particular period. A price movement accompanied by unusually high volume may indicate stronger participation, although volume alone does not explain why investors are buying or selling.',
+            'Technical indicators are most useful when interpreted together with the broader price structure and market environment. Relying on one indicator can create a misleading picture.',
+          ],
+        },
+        {
+          heading: '5. Consider News and Market Sentiment',
+          content:
+            'Stock prices are influenced by more than financial statements and chart patterns. News, economic developments, company announcements, and investor expectations can all affect market behaviour.',
+          paragraphs: [
+            'For example, a company might report revenue growth while issuing cautious guidance for the next quarter. Its financial results may appear positive, but investors could react negatively because expectations were higher.',
+            'When reviewing market news, consider:',
+          ],
+          list: {
+            items: [
+              'Earnings announcements and financial guidance',
+              'Product launches and business developments',
+              'Management changes',
+              'Regulatory developments',
+              'Industry competition',
+              'Interest rates and economic data',
+              'Major geopolitical or supply-chain events',
+            ],
+          },
+          afterList: [
+            'It is also important to distinguish between factual information and market opinion.',
+            'A headline, social media discussion, or analyst commentary should not replace independent research. The SEC advises investors to investigate investments and review company information rather than relying solely on promotional material or recommendations.',
+            'Sentiment analysis tools can help organize large volumes of news and identify changes in the tone of market coverage. However, automated sentiment scores may misunderstand context, sarcasm, conflicting reports, or the significance of an event.',
+            'Treat sentiment as one research input, not a definitive measure of future price direction.',
+          ],
+        },
+        {
+          heading: '6. Understand Volatility and Investment Risk',
+          content:
+            'One of the most common mistakes in stock research is focusing entirely on potential returns while overlooking the possibility of losses.',
+          paragraphs: [
+            'Risk analysis helps investors understand how a stock behaves and what could make its price decline.',
+            'Consider these factors:',
+            '**Historical volatility**',
+            'Volatility measures how much a stock\'s price fluctuates over time. Higher volatility means larger price movements, although it does not tell you whether the next movement will be upward or downward.',
+            '**Maximum drawdown**',
+            'Maximum drawdown measures the largest peak-to-trough decline over a selected period. It can help investors understand the scale of historical losses a stock has experienced.',
+            '**Liquidity**',
+            'Liquidity describes how easily shares can be bought or sold without significantly affecting the price. Lower liquidity can create wider bid-ask spreads and make it more difficult to execute trades at expected prices.',
+            '**Company-specific risks**',
+            'These may include excessive debt, declining demand, customer concentration, regulatory challenges, operational problems, or dependence on a small number of products.',
+            '**Market-wide risks**',
+            'Interest-rate changes, economic slowdowns, inflation, and broader market declines can affect companies even when their individual businesses remain relatively stable.',
+            'Investors should also consider diversification. Holding investments across different companies, industries, and asset classes can help reduce dependence on the performance of a single investment. Diversification does not eliminate market risk or guarantee against losses.',
+            "The SEC's [Introduction to Investing](https://www.investor.gov/introduction-investing) explains the role of asset allocation, diversification, and risk tolerance in investment decisions.",
+          ],
+        },
+        {
+          heading: '7. Can Artificial Intelligence Improve Stock Research?',
+          content: 'Artificial intelligence is increasingly being used to support financial research.',
+          paragraphs: [
+            'Machine learning models can process historical price data, identify statistical patterns, classify news sentiment, and generate forecasts based on previously observed relationships.',
+            'These capabilities can help investors organize information and explore questions that may otherwise require significant manual work.',
+            'For example, an AI-assisted research workflow might combine:',
+          ],
+          list: {
+            items: [
+              'Technical indicators to examine price trends and momentum',
+              'News sentiment to summarize the tone of recent market coverage',
+              'Historical price patterns to estimate possible future scenarios',
+              'Volatility measures to provide additional risk context',
+            ],
+          },
+          afterList: [
+            'The important point is that these outputs should be interpreted together rather than treated as independent investment instructions.',
+            'AI forecasts have significant limitations. A model trained on historical data may perform poorly when market conditions change. Unexpected company announcements, economic shocks, changes in investor behaviour, and unusual market events can all affect its reliability.',
+            'A forecast is an estimate, not a promise.',
+            'Investors should also consider how a model was evaluated. Was it tested on data that was not used during training? Were transaction costs and realistic trading conditions considered? Does the model account for survivorship bias and look-ahead bias? Are its limitations clearly explained?',
+            'Without careful testing, an impressive-looking forecast may not provide reliable evidence of future performance.',
+            'AI is best viewed as a research assistant that helps organize information and generate questions for further investigation. It should not replace independent judgment or an understanding of the underlying business.',
+          ],
+        },
+        {
+          heading: '8. Bring the Research Together Before Making a Decision',
+          content: 'The most useful research process combines different perspectives.',
+          paragraphs: ['Imagine a stock with the following signals:'],
+          list: {
+            items: [
+              'Its technical indicators suggest positive momentum.',
+              'Recent news sentiment is neutral.',
+              'Its historical volatility is relatively high.',
+              'Its valuation appears expensive compared with some industry peers.',
+            ],
+          },
+          blocks: [
+            { type: 'p', text: 'Is the stock automatically a buy because its technical indicators look positive?' },
+            { type: 'p', text: 'Not necessarily.' },
+            {
+              type: 'p',
+              text: 'The other findings introduce questions that deserve further investigation. Is the positive momentum supported by improving business performance? Why is sentiment neutral? Does the company\'s expected growth justify its valuation? Is the level of volatility appropriate for the investor\'s time horizon and risk tolerance?',
+            },
+            { type: 'p', text: 'This is why investors should avoid relying on a single signal.' },
+            { type: 'p', text: 'A practical research checklist can help:' },
+            {
+              type: 'table',
+              headers: ['Research area', 'Questions to investigate'],
+              rows: [
+                ['Business', 'Do I understand how the company makes money?'],
+                ['Financials', 'Are revenue, earnings, and cash flow sustainable?'],
+                ['Valuation', 'How does the stock compare with similar businesses?'],
+                ['Technicals', 'What do the trend, momentum, and volume indicate?'],
+                ['Sentiment', 'What are recent news reports and expectations suggesting?'],
+                ['Risk', 'What could cause a significant loss?'],
+                ['AI forecasts', 'What assumptions and limitations affect the model?'],
+                ['Portfolio fit', 'Does this investment suit my goals and risk tolerance?'],
+              ],
+            },
+            {
+              type: 'p',
+              text: 'The checklist is not a scoring system that automatically produces a buy or sell decision. It is a way to identify unanswered questions before committing capital.',
+            },
+          ],
+        },
+        {
+          heading: '9. Build a Consistent Stock Research Routine',
+          content: 'Good stock research is not a one-time activity.',
+          paragraphs: [
+            'Company performance changes, valuations move, market sentiment shifts, and new information becomes available. Investors should revisit their research when important developments occur and compare new information with their original assumptions.',
+            'A consistent routine might involve:',
+          ],
+          list: {
+            ordered: true,
+            items: [
+              'Reviewing major company announcements and financial reports.',
+              'Checking whether the original investment thesis remains valid.',
+              'Monitoring changes in valuation and financial performance.',
+              'Reviewing technical conditions without treating indicators as guarantees.',
+              'Assessing new risks and changes in market sentiment.',
+              'Recording the reasons behind important research conclusions.',
+            ],
+          },
+          afterList: [
+            'Keeping a written record can be particularly useful. It allows investors to compare what they expected with what actually happened and identify weaknesses in their research process.',
+          ],
+        },
+        {
+          heading: 'Final Thoughts',
+          content:
+            'Researching a stock before buying requires more than finding a positive chart pattern or reading a promising headline.',
+          paragraphs: [
+            'A stronger approach combines an understanding of the business, financial performance, valuation, technical indicators, market sentiment, and investment risk. Artificial intelligence can help bring some of this information together, but its forecasts and analytical outputs must be evaluated critically.',
+            'There is no research method that can remove uncertainty from financial markets. The objective is not to predict every price movement. It is to understand what you are investing in, recognize the risks, and make decisions based on evidence rather than excitement or fear.',
+            'The more consistently investors follow a structured research process, the better equipped they are to question assumptions, compare opportunities, and make informed decisions.',
+          ],
+        },
+      ],
+      keyTakeaways: [],
+      limitations:
+        'Disclaimer: This article is for educational and informational purposes only. It does not constitute financial, investment, or trading advice, and it is not a recommendation to buy, sell, or hold any security. All investments involve risk, including the possible loss of principal. Readers should conduct their own research and consider consulting a qualified financial professional.',
+    },
+    aboutNote: {
+      heading: 'About StockVantex',
+      paragraphs: [
+        'StockVantex is an AI-assisted stock research platform that brings together technical indicators, market news sentiment, model-based price outlooks, and risk insights to help users explore stocks from multiple perspectives. Its analytical outputs are informational tools, not guaranteed predictions or investment recommendations.',
+      ],
     },
   },
 };
