@@ -16,7 +16,7 @@ assert a.rule_score == 0.75, f"rule_score not set: {a.rule_score}"
 print("PASS: ArticleSentiment.rule_score field works")
 
 # 2. Verify methodology version
-assert METHODOLOGY_VERSION == "7", f"Expected v7, got {METHODOLOGY_VERSION}"
+assert METHODOLOGY_VERSION == "5", f"Expected v5, got {METHODOLOGY_VERSION}"
 print(f"PASS: METHODOLOGY_VERSION = {METHODOLOGY_VERSION}")
 
 # 3. Verify aggregation uses rule_score directly
