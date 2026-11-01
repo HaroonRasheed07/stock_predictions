@@ -260,7 +260,7 @@ export default async function StockPage({ params }: PageProps) {
               </div>
             )}
             <p className="text-muted-foreground max-w-3xl mt-3">
-              Live snapshot of {displayName} ({sym}) — price, technical indicators, news sentiment, risk assessment, and a model-based price forecast — from {SITE_NAME}'s multi-layer research platform. All figures below are server-rendered from the latest cached market data.
+              Research snapshot of {displayName} ({sym}) — price, technical indicators, news sentiment, risk assessment, and a model-based price forecast — from {SITE_NAME}'s multi-layer research platform. All figures are server-rendered from cached market data (prices may be delayed).
             </p>
             <div className="mt-4 max-w-md">
               <StockSearch

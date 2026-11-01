@@ -1389,6 +1389,7 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
                 return (ticker, None)
             asset_info = get_asset_info(ticker)
             current_price = 0.0
+            price_change = 0.0
             price_change_pct = 0.0
             try:
                 live = get_latest_price(ticker, cached_df=df)
@@ -1397,12 +1398,21 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
                     if len(df) >= 2:
                         prev = float(df["Close"].iloc[-2])
                         if prev > 0:
-                            price_change_pct = ((current_price - prev) / prev) * 100
+                            price_change = current_price - prev
+                            price_change_pct = (price_change / prev) * 100
                 elif len(df) > 0:
                     last_c = df["Close"].iloc[-1]
                     if isinstance(last_c, pd.DataFrame):
                         last_c = last_c.iloc[:, 0]
                     current_price = float(last_c)
+                    if len(df) >= 2:
+                        prev = float(df["Close"].iloc[-2])
+                        if isinstance(prev, pd.DataFrame):
+                            prev = prev.iloc[:, 0]
+                        prev = float(prev)
+                        if prev > 0:
+                            price_change = current_price - prev
+                            price_change_pct = (price_change / prev) * 100
             except Exception:
                 pass
 
@@ -1448,6 +1458,7 @@ def _discover_scan_raw(tickers: List[str], period: str) -> Dict[str, Any]:
                 "ticker": ticker,
                 "name": asset_info.get("name", ticker),
                 "price": round(current_price, 2),
+                "change": round(price_change, 2),
                 "changePercent": round(price_change_pct, 2),
                 "signal": signal,
                 "risk": risk_level,

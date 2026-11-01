@@ -149,8 +149,8 @@ export const Navbar = () => {
 
             {/* Right Section */}
             <div className="flex items-center gap-1">
-              {/* Instant search (large screens) */}
-              <div className="hidden lg:block w-56 xl:w-64 mr-1">
+              {/* Instant search (desktop & tablet) */}
+              <div className="hidden md:block w-48 lg:w-56 xl:w-64 mr-1">
                 <StockSearch />
               </div>
               <Button
@@ -172,7 +172,7 @@ export const Navbar = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 lg:hidden"
+                className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 md:hidden"
                 aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={mobileOpen}
               >
@@ -186,7 +186,7 @@ export const Navbar = () => {
       {/* Mobile slide-down menu */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 top-[calc(3.5rem+env(safe-area-inset-top))] z-40 lg:hidden"
+          className="fixed inset-0 top-[calc(3.5rem+env(safe-area-inset-top))] z-40 md:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Navigation menu"

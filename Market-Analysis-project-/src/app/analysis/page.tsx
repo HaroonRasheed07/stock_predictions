@@ -11,14 +11,14 @@ export default function Analysis() {
     {
       icon: Brain,
       title: 'AI Sentiment Analysis',
-      description: 'Real-time sentiment tracking across news and social media.',
+      description: 'Multi-source news sentiment scoring and market mood tracking.',
       link: '/markets/stock/sentiment',
       gradient: 'from-purple-500 to-pink-500',
     },
     {
       icon: TrendingUp,
       title: 'Price Forecasting',
-      description: 'Advanced ML models for accurate price predictions.',
+      description: 'Model-driven directional projections and price scenarios.',
       link: '/markets/stock/forecast',
       gradient: 'from-blue-500 to-cyan-500',
     },
@@ -32,7 +32,7 @@ export default function Analysis() {
     {
       icon: BarChart3,
       title: 'Market Overview',
-      description: 'Real-time market data and key performance metrics.',
+      description: 'Market data, performance metrics, and sector trends.',
       link: '/markets/stock',
       gradient: 'from-green-500 to-teal-500',
     },

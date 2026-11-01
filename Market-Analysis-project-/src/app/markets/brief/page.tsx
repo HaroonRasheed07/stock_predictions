@@ -24,6 +24,7 @@ import {
 } from '@/lib/api';
 import { assessBriefEvidence } from '@/lib/brief-assessment';
 import { deriveOutlook } from '@/lib/model-outlook';
+import { getStockInfo } from '@/lib/stock-allowlist';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -354,7 +355,7 @@ export default function StockBriefPage() {
           <TickerLogo ticker={ticker} size="lg" />
           <div>
             <h1 className="text-xl font-bold">{ticker}</h1>
-            <p className="text-sm text-muted-foreground">{overview?.ticker || ticker}</p>
+            <p className="text-sm text-muted-foreground">{getStockInfo(ticker)?.name || (overview as any)?.name || ticker}</p>
           </div>
         </div>
         <WatchlistButton ticker={ticker} />

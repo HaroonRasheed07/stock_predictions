@@ -158,7 +158,7 @@ export default function StockOverview() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Stock Market Overview</h1>
-            <p className="text-sm text-muted-foreground">Real-time market data and analytics</p>
+            <p className="text-sm text-muted-foreground">Market data and analytics (prices may be delayed)</p>
           </div>
           <div className="flex items-center gap-2">
             <WatchlistButton ticker={ticker} />
@@ -258,7 +258,7 @@ export default function StockOverview() {
                 Market {marketStatus}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">Real-time market data and analytics</p>
+            <p className="text-sm text-muted-foreground">Market data and analytics (prices may be delayed)</p>
           </div>
           <div className="flex items-center gap-2">
             <WatchlistButton ticker={ticker} />

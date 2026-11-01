@@ -455,7 +455,7 @@ export default function PriceForecasting() {
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Current Price</p>
                 <p className="text-2xl font-bold">${currentPrice.toFixed(2)}</p>
-                <Badge variant="secondary" className="mt-2">Live</Badge>
+                <Badge variant="secondary" className="mt-2">Latest Close</Badge>
               </div>
               <Target className="h-8 w-8 text-primary" />
             </div>
