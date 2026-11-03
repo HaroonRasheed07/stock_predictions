@@ -515,8 +515,11 @@ export async function getHomeData(): Promise<HomeData> {
   const idx = indexes ?? [];
   const stocks = universe.stocks;
   const dailyChips = getDailyChips();
+  // Only feature an allowlisted individual equity — never a forex pair,
+  // commodity, or index that the backend might rank highly by % move.
+  const briefTicker = brief?.selectedStock?.ticker?.toUpperCase() ?? null;
   const heroTicker =
-    brief?.selectedStock?.ticker?.toUpperCase() ||
+    (briefTicker && getStockInfo(briefTicker) ? briefTicker : null) ||
     dailyChips[0] ||
     symbols[0] ||
     'AAPL';

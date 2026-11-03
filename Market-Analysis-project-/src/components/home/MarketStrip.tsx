@@ -55,7 +55,7 @@ export function MarketStrip({
 
           {indexes.length === 0 ? (
             <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
-              <span>Loading market quotes...</span>
+              <span>Market quotes unavailable</span>
             </div>
           ) : (
             indexes.map((idx) => (
@@ -74,13 +74,15 @@ export function MarketStrip({
 
           <div className="ml-auto hidden shrink-0 items-center gap-2 text-muted-foreground md:flex">
             {status.status === 'open' ? (
-              <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                Live Feed
+              <span
+                className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning"
+                title="Index values come from the latest available session data and may be delayed. Not a verified real-time feed."
+              >
+                Quotes may be delayed
               </span>
             ) : (
               <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Market Closed · Latest Close
+                Latest close
               </span>
             )}
             {updated && <span>{updated}</span>}
