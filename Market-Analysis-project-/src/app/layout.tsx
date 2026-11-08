@@ -86,6 +86,15 @@ export default function RootLayout({
               "(function(){var dark=true;try{var raw=localStorage.getItem('insightforge-theme');var t=raw?(JSON.parse(raw).state||{}).theme:null;if(t==='light'||t==='dark'){dark=t==='dark';}else{dark=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)').matches:true;}}catch(e){try{dark=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)').matches:true;}catch(e2){dark=true;}}document.documentElement.classList.toggle('dark',dark);try{if(localStorage.getItem('sv-analytics-consent')||(navigator.globalPrivacyControl===true)){document.documentElement.setAttribute('data-sv-hide-consent','');}}catch(e3){}})();",
           }}
         />
+        {/* Google AdSense site verification/review loader. Async external
+            script in head: renders once in the static HTML, does not block
+            first paint, and is reused as-is during hydration (no duplicate
+            execution). No ad units are placed yet. */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1677592301143827"
+          crossOrigin="anonymous"
+        />
         <OrganizationJsonLd />
         <WebsiteJsonLd />
       </head>
