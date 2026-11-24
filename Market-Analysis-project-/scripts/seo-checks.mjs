@@ -48,6 +48,7 @@ const mustHaveMetadata = [
   'src/app/learn/page.tsx',
   'src/app/learn/[slug]/page.tsx',
   'src/app/methodology/page.tsx',
+  'src/app/editorial-standards/page.tsx',
   'src/app/privacy/page.tsx',
   'src/app/terms/page.tsx',
   'src/app/disclaimer/page.tsx',
@@ -107,7 +108,7 @@ for (const [rel, re] of noindexChecks) {
 {
   const page = read('src/app/stocks/[symbol]/page.tsx');
   ok('Ticker page uses server snapshot', page.includes('getStockSnapshot'));
-  ok('Ticker page emits JSON-LD (WebPage)', page.includes("'@type': 'WebPage'"));
+  ok('Ticker page emits JSON-LD (WebPage)', page.includes("'@type': 'WebPage'") || page.includes('<WebPageJsonLd'));
   ok('Ticker page emits BreadcrumbList', page.includes('BreadcrumbList'));
   ok('Ticker page has FAQ/AEO block when data present', page.includes('FAQPage'));
   ok('Ticker page links internally to learn content', page.includes('/learn/'));
@@ -174,6 +175,24 @@ for (const [rel, re] of noindexChecks) {
   ok('Homepage browse-all targets /stocks', /href="\/stocks"/.test(home));
   const client = read('src/app/stocks/[symbol]/StockPageClient.tsx');
   ok('View switches are query-string based (single indexable URL)', client.includes('router.replace') && client.includes('?view='));
+}
+
+// 14. Financial-trust corrections stay in place.
+{
+  const editorial = read('src/app/editorial-standards/page.tsx');
+  const footer = read('src/components/layout/Footer.tsx');
+  const sm = read('src/app/sitemap.ts');
+  const analysis = read('src/app/analysis/page.tsx');
+  const forecastLayout = read('src/app/markets/stock/forecast/layout.tsx');
+  const methodology = read('src/app/methodology/page.tsx');
+  ok('Editorial standards page declares metadata', editorial.includes('export const metadata'));
+  ok('Footer links to /editorial-standards', footer.includes('href="/editorial-standards"'));
+  ok('Sitemap includes /editorial-standards', sm.includes('${SITE_URL}/editorial-standards'));
+  ok('Analysis page avoids price-accuracy claim', !analysis.includes('accurate price predictions'));
+  ok('Forecast metadata avoids confidence-range claim', !forecastLayout.includes('confidence ranges'));
+  ok('Methodology avoids trained-financial-text claim', !methodology.includes('language models trained on financial text'));
+  ok('Methodology discloses walk-forward gap', methodology.includes('not walk-forward fold validation'));
+  ok('Methodology discloses no calibrated intervals', methodology.includes('No confidence intervals'));
 }
 
 console.log('');

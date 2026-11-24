@@ -28,9 +28,16 @@ export interface ForecastResponse {
     predicted_historical_prices: number[];
     forecast_prices: number[];
     forecast_dates: string[];
-    /** Trading-calendar dates matching actual_prices (added server-side so
-     *  clients never invent axis dates). Optional for older cached responses. */
+    /** Weekday-calendar dates matching actual_prices (added server-side so
+     *  clients never invent axis dates). Exchange holidays are not modeled.
+     *  Optional for older cached responses. */
     actual_dates?: string[];
+  };
+  model_metadata?: {
+    output_type: string;
+    date_calendar: string;
+    confidence_intervals: boolean;
+    scaler_source: string;
   };
 }
 
@@ -425,6 +432,15 @@ export async function fetchForecast(
 
   if (!data || data.detail || data.status === "error" || !data.results) {
     throw new Error(data?.message || data?.detail || "Forecast service returned no results");
+  }
+
+  const prices = data.results.forecast_prices;
+  if (
+    !Array.isArray(prices) ||
+    prices.length === 0 ||
+    prices.some((price: unknown) => typeof price !== "number" || !Number.isFinite(price) || price <= 0)
+  ) {
+    throw new Error("Forecast service returned invalid forecast prices");
   }
 
   return data as ForecastResponse;

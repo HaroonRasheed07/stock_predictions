@@ -9,7 +9,7 @@ export function TrustStrip() {
     },
     {
       title: 'Honest methodology',
-      body: 'How each score is computed is documented in plain language, including limits, error measures and where a pipeline can be wrong.',
+      body: 'How each score is computed is documented in plain language, including limits, known validation gaps and where a pipeline can be wrong.',
     },
     {
       title: 'Research not advice',

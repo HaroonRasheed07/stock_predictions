@@ -18,6 +18,36 @@ export function WebsiteJsonLd() {
   );
 }
 
+export function WebPageJsonLd({
+  name,
+  url,
+  description,
+  dateModified,
+}: {
+  name: string;
+  url: string;
+  description?: string;
+  dateModified?: string;
+}) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    '@id': `${url}#webpage`,
+    url,
+    name,
+    ...(description ? { description } : {}),
+    ...(dateModified ? { dateModified } : {}),
+    isPartOf: { '@id': `${SITE_URL}/#website` },
+    publisher: { '@id': `${SITE_URL}/#organization` },
+  };
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+    />
+  );
+}
+
 export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; url: string }> }) {
   const data = {
     '@context': 'https://schema.org',

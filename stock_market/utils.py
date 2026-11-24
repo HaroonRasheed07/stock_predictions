@@ -15,6 +15,7 @@ import logging
 import threading
 from yahooquery_adapter import get_fast_history, get_fast_batch_history, get_fast_live_data
 from cache_manager import cache_manager
+from multi_asset import get_asset_info
 
 logger = logging.getLogger(__name__)
 
@@ -249,7 +250,8 @@ def _compute_top_performers_raw():
                 "name": STOCK_NAMES.get(ticker, ticker),
                 "price": price,
                 "change": change,
-                "changePercent": change_percent
+                "changePercent": change_percent,
+                "asset_class": get_asset_info(ticker).get("asset_class", "stock"),
             })
         except Exception:
             continue

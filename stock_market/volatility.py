@@ -6,6 +6,7 @@ Average True Range (ATR), expected trading range, and relative volume.
 
 import numpy as np
 import pandas as pd
+import hashlib
 import math
 from typing import Dict, Any, Optional
 from utils import _get_cached_scan, _set_cached_scan
@@ -20,6 +21,27 @@ def safe_float(val, default=0.0):
         return round(f, 6)
     except (TypeError, ValueError):
         return default
+
+
+def _snapshot_fingerprint(df: pd.DataFrame, has_volume: bool) -> str:
+    try:
+        close = df["Close"]
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        volume = df.get("Volume")
+        if isinstance(volume, pd.DataFrame):
+            volume = volume.iloc[:, 0]
+        parts = [
+            str(len(df)),
+            str(close.index[0]) if len(close) > 0 else "",
+            str(close.index[-1]) if len(close) > 0 else "",
+            str(safe_float(close.iloc[-1])) if len(close) > 0 else "",
+            str(safe_float(volume.iloc[-1])) if volume is not None and len(volume) > 0 else "",
+            str(bool(has_volume)),
+        ]
+        return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:12]
+    except Exception:
+        return str(len(df))
 
 
 def calculate_daily_volatility(df: pd.DataFrame) -> float:
@@ -216,7 +238,7 @@ def calculate_relative_volume(df: pd.DataFrame, lookback: int = 30) -> Dict[str,
         "available": True,
         "current_volume": int(current_vol),
         "avg_volume": int(avg_vol),
-        "relative_volume": safe_float(rel_vol, 2),
+        "relative_volume": safe_float(round(rel_vol, 2)),
         "classification": classification,
         "recent_volumes": recent_volumes,
     }
@@ -228,7 +250,7 @@ def get_volatility_summary(df: pd.DataFrame, has_volume: bool = True, ticker: st
     Combines daily vol, weekly vol, ATR, expected range, and relative volume.
     """
     # Check scan cache first
-    cache_key = f"volatility_{ticker}_{period}"
+    cache_key = f"volatility_{ticker}_{period}_{_snapshot_fingerprint(df, has_volume)}"
     cached = _get_cached_scan(cache_key)
     if cached is not None:
         return cached

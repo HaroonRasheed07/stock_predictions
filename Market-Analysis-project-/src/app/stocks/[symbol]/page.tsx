@@ -9,6 +9,7 @@ import { isValidSymbolPath, normalizeSymbolPath } from '@/lib/ticker-routing';
 import { StockSearch } from '@/components/common/StockSearch';
 import { StockResearchNav, StockResearchNavFallback } from './StockResearchNav';
 import { StockPageClient } from './StockPageClient';
+import { WebPageJsonLd } from '@/components/seo/StructuredData';
 
 interface PageProps {
   params: Promise<{ symbol: string }>;
@@ -140,6 +141,26 @@ export default async function StockPage({ params }: PageProps) {
   const trendScore: number | null =
     typeof ov?.trendStrength?.trend_score === 'number' ? ov.trendStrength.trend_score : null;
 
+  const vol: any = ov?.volatility ?? null;
+  const expRange: any = vol?.expected_range ?? null;
+  const atrVal: number | null =
+    typeof expRange?.atr === 'number' && expRange.atr > 0
+      ? expRange.atr
+      : typeof vol?.atr === 'number' && vol.atr > 0
+        ? vol.atr
+        : null;
+  const atrPct: number | null =
+    typeof expRange?.range_percent === 'number' && expRange.range_percent > 0
+      ? expRange.range_percent
+      : atrVal !== null && typeof expRange?.current_price === 'number' && expRange.current_price > 0
+        ? (atrVal / expRange.current_price) * 100
+        : null;
+  const dailyVol: number | null =
+    typeof vol?.daily_volatility === 'number' && vol.daily_volatility > 0 ? vol.daily_volatility : null;
+  const relVol: any = vol?.relative_volume ?? null;
+  const hasRelVol =
+    Boolean(relVol?.available) && typeof relVol?.relative_volume === 'number' && relVol.relative_volume > 0;
+
   const fPrices: number[] = snapshot.forecast?.results?.forecast_prices ?? [];
   const fDates: string[] = snapshot.forecast?.results?.forecast_dates ?? [];
   const fAvg = fPrices.length > 0 ? fPrices.reduce((a, b) => a + b, 0) / fPrices.length : null;
@@ -195,21 +216,13 @@ export default async function StockPage({ params }: PageProps) {
         a: `StockVantex rates ${sym} at ${risk.risk_level || 'unknown'} risk with a score of ${risk.risk_score ?? 0}/100. ${risk.message || ''}`.trim(),
       });
     }
+    if (atrVal !== null && atrPct !== null) {
+      faqs.push({
+        q: `How volatile is ${sym} stock right now?`,
+        a: `${sym}'s 14-day Average True Range is ${fmtUsd(atrVal)}, or ${atrPct.toFixed(2)}% of its latest daily close${atrPct < 1 ? ' — below the 1% low-volatility marker' : atrPct > 5 ? ' — above the 5% high-volatility marker' : ' — between the 1% low and 5% high markers used in StockVantex scoring'}. ATR measures the size of typical daily moves, not their direction.`,
+      });
+    }
   }
-
-  const jsonLdWebPage = {
-    '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    '@id': `${url}#webpage`,
-    url,
-    name: `${sym} Stock Analysis — ${displayName}`,
-    description: `Technical indicators, news sentiment, risk assessment and model forecast snapshot for ${displayName} (${sym}).`,
-    isPartOf: { '@id': `${SITE_URL}/#website` },
-    publisher: { '@id': `${SITE_URL}/#organization` },
-    ...(ov && snapshot.updatedAt
-      ? { dateModified: new Date(snapshot.updatedAt * 1000).toISOString() }
-      : {}),
-  };
 
   const jsonLdBreadcrumbs = {
     '@context': 'https://schema.org',
@@ -235,7 +248,12 @@ export default async function StockPage({ params }: PageProps) {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebPage) }} />
+      <WebPageJsonLd
+        name={`${sym} Stock Analysis — ${displayName}`}
+        url={url}
+        description={`Technical indicators, news sentiment, risk assessment and model forecast snapshot for ${displayName} (${sym}).`}
+        dateModified={ov && snapshot.updatedAt ? new Date(snapshot.updatedAt * 1000).toISOString() : undefined}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumbs) }} />
       {jsonLdFaq && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFaq) }} />}
 
@@ -303,8 +321,8 @@ export default async function StockPage({ params }: PageProps) {
 
               <p className="text-xs text-muted-foreground">
                 {snapshot.updatedAt
-                  ? `Market data updated ${fmtUtc(snapshot.updatedAt)}${snapshot.overviewStale ? ' (refreshing live snapshot)' : ''}.`
-                  : 'Market data updated via live feeds.'}
+                  ? `Snapshot refreshed ${fmtUtc(snapshot.updatedAt)}${snapshot.overviewStale ? ' (refreshing cached snapshot)' : ''}.`
+                  : 'Snapshot from cached research data.'}
               </p>
 
               <section aria-labelledby="tech-snapshot">
@@ -365,6 +383,61 @@ export default async function StockPage({ params }: PageProps) {
                   )}
                 </ul>
               </section>
+
+              {(atrVal !== null || dailyVol !== null || hasRelVol) && (
+                <section aria-labelledby="vol-heading" className="rounded-xl border border-border/60 bg-card p-4">
+                  <h2 id="vol-heading" className="text-lg font-semibold mb-2">Volatility &amp; expected range</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs uppercase text-muted-foreground">14-Day ATR</p>
+                      <p className="text-lg font-bold">{atrVal !== null ? fmtUsd(atrVal) : 'N/A'}</p>
+                      {atrPct !== null && <p className="text-xs text-muted-foreground">{atrPct.toFixed(2)}% of daily close</p>}
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-muted-foreground">Expected daily range</p>
+                      <p className="text-lg font-bold">
+                        {typeof expRange?.expected_high === 'number' && typeof expRange?.expected_low === 'number' && atrVal !== null
+                          ? `${fmtUsd(expRange.expected_low)} – ${fmtUsd(expRange.expected_high)}`
+                          : 'N/A'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">latest daily close ± 1 × ATR</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-muted-foreground">Relative volume</p>
+                      <p className="text-lg font-bold">{hasRelVol ? `${relVol.relative_volume.toFixed(2)}×` : 'N/A'}</p>
+                      {hasRelVol && relVol.classification && (
+                        <p className="text-xs text-muted-foreground">{relVol.classification}</p>
+                      )}
+                    </div>
+                  </div>
+                  <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                    {atrVal !== null && atrPct !== null && (
+                      <li>
+                        ATR of {fmtUsd(atrVal)} equals {atrPct.toFixed(2)}% of the latest daily close —{' '}
+                        {atrPct < 1
+                          ? 'below the 1% low-volatility marker'
+                          : atrPct > 5
+                            ? 'above the 5% high-volatility marker'
+                            : 'between the 1% low and 5% high markers'}{' '}
+                        used in StockVantex scoring.
+                        <Link href="/methodology" className="text-primary hover:underline ml-1">How ATR/price is scored</Link>
+                      </li>
+                    )}
+                    {dailyVol !== null && (
+                      <li>
+                        Annualized volatility (daily returns × √252) is {dailyVol.toFixed(1)}% — the platform's scoring
+                        treats 15–35% as moderate and above 50% as extreme.
+                      </li>
+                    )}
+                    {atrVal !== null && (
+                      <li>
+                        ATR measures the size of typical moves, not their direction.
+                        <Link href="/learn/what-is-atr" className="text-primary hover:underline ml-1">How ATR works</Link>
+                      </li>
+                    )}
+                  </ul>
+                </section>
+              )}
 
               <section aria-labelledby="sentiment-heading" className="rounded-xl border border-border/60 bg-card p-4">
                 <h2 id="sentiment-heading" className="text-lg font-semibold mb-2">News sentiment</h2>
@@ -592,8 +665,8 @@ export default async function StockPage({ params }: PageProps) {
 
             <p className="text-xs text-muted-foreground">
               {snapshot.updatedAt
-                ? `Market snapshot updated ${fmtUtc(snapshot.updatedAt)}. `
-                : 'Market data updated via live feeds. '}
+                ? `Snapshot refreshed ${fmtUtc(snapshot.updatedAt)}. `
+                : 'Snapshot from cached research data. '}
               This analysis is for informational purposes only and does not constitute investment advice.{' '}
               <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
             </p>

@@ -1,0 +1,59 @@
+keyword,gsc_impressions_historical,intent,primary_target_url,supporting_urls,overlap_flag,decision,phase,notes
+"technical vs fundamental analysis",84,informational,/learn/technical-vs-fundamental-analysis,"/learn/what-is-technical-analysis | /methodology",none,Improve,Phase C,"Highest-impression query; page was thinnest priority article (387 words) — expanded with objectives/inputs/horizons table, worked example, FAQ"
+"what is technical analysis",66,informational,/learn/what-is-technical-analysis,"/learn/technical-indicators-rsi-macd-moving-averages | /markets/stock/technical","mixed with 'technical analysis' head term",Improve,Phase C,"Informational intent -> learn article; tool page /markets/stock/technical serves transactional intent — split is intentional"
+"vantex resources ltd. forecast and analysis",41,informational (brand),NONE,,,,DoNotCreate,Documented,"Zero occurrences of 'Vantex Resources' in site source/content (audit documents excluded) — likely brand confusion or third-party query. Do NOT create a thin page; documented as observation only"
+"technical analysis" (head term),29,mixed,/learn/what-is-technical-analysis,/markets/stock/technical,intent split,Retain,"Phase B (document)","Informational target = learn article; transactional target = tool page. No cannibalization — different intents, deliberate split"
+"atr" / "average true range",27 + 27,informational,/learn/what-is-atr,"/methodology | /markets/stock/technical",none,Improve,Phase C,"Add Wilder-vs-simple smoothing nuance, ATR% bands, position-sizing math; link to /methodology (ATR/price ratio 30% of risk score)"
+"adx" / "average directional index",21,informational,/learn/what-is-adx,"/learn/technical-indicators-rsi-macd-moving-averages | /markets/stock/technical",none,Improve,Phase C,"Add explicit +DM/-DM/+DI/DX formulas; state platform shows composite trend score instead of ADX (honest platform note)"
+"rsi vs macd",0 (spec-required),informational,/learn/rsi-vs-macd,"/learn/what-is-rsi | /learn/what-is-macd",none,Improve,Phase C,"Thin (432 words) — expanded with calculation comparison, conflicting-signal scenarios, FAQ"
+"how to build a stock watchlist",0,informational,/learn/how-to-build-a-stock-watchlist,"/markets/stock/watchlist | /learn/stock-watchlist-guide",HIGH cannibalization pair,Retain (primary),Phase E/F,"Designated PRIMARY target for this intent (778 words, richer workflow content)"
+"stock watchlist guide" / "what is a stock watchlist",0,informational,/learn/stock-watchlist-guide,"/learn/how-to-build-a-stock-watchlist",HIGH cannibalization pair,Improve (differentiate),Phase E,"Retitled to beginner 'what is / 5-step setup' intent to separate from primary; full 301 consolidation documented as future option"
+"how to analyze a stock",0,informational,/learn/how-to-analyze-a-stock,"/learn/how-to-research-a-stock-before-buying | /markets/stock/technical",medium overlap,Differentiate,Phase F,"Analysis-method steps vs pre-purchase due diligence — distinct angles confirmed; cross-linked both directions"
+"how to research a stock before buying",0,informational,/learn/how-to-research-a-stock-before-buying,"/learn/how-to-analyze-a-stock | /learn/how-to-analyze-stock-risk",medium overlap,Improve,Phase F,"Near-orphan (1 inbound) — rescue with contextual links from analyze/research/risk articles"
+"what is rsi",0,informational,/learn/what-is-rsi,"/learn/rsi-vs-macd | /markets/stock/technical",none,Retain,,Definitional explainer; supports rsi-vs-macd cluster
+"what is macd",0,informational,/learn/what-is-macd,"/learn/rsi-vs-macd | /markets/stock/technical",none,Retain,,"Explainer; platform uses 12/26/9 recursive EMA — article must not claim histogram is computed by platform"
+"sma vs ema",0,informational,/learn/sma-vs-ema,"/learn/what-is-technical-analysis",hub overlap (defensible),Retain,,"Narrow comparison intent; hub article covers overview"
+"what are bollinger bands",0,informational,/learn/what-are-bollinger-bands,"/markets/stock/technical",none,Retain,,Definitional
+"what is stock volatility",0,informational,/learn/what-is-stock-volatility,"/learn/what-is-atr | /learn/how-to-analyze-stock-risk",none,Retain,Phase F,"Add FAQ (currently missing FAQ JSON-LD) — roadmap"
+"what is stock sentiment",0,informational,/learn/what-is-stock-sentiment,"/learn/how-news-sentiment-works | /markets/stock/sentiment",low (distinct intents),Retain,,"what / how-it-works / how-to-check split is defensible"
+"how news sentiment analysis works",0,informational,/learn/how-news-sentiment-works,"/learn/what-is-stock-sentiment | /markets/stock/sentiment",none,Retain (roadmap: expand),Phase G,"Thin (348) — scheduled in editorial roadmap"
+"how to check stock market sentiment free",0,informational,/learn/how-to-check-stock-market-sentiment-free,"/markets/stock/sentiment",none,Retain,,Practical free-methods piece
+"lstm stock forecasting explained",0,informational,/learn/how-lstm-forecasting-works,"/learn/how-ai-stock-forecasting-works | /markets/stock/forecast",none,Retain,,Platform-model explainer
+"how ai stock forecasting works",0,informational,/learn/how-ai-stock-forecasting-works,"/learn/why-stock-forecasts-are-uncertain",none,Retain (roadmap: expand),Phase G,"Thin (426) — scheduled in roadmap"
+"are ai stocks in a bubble",0,informational,/learn/are-ai-stocks-in-a-bubble,"/learn/what-is-a-stock-market-correction",none,Retain,,Seasonal/trending evergreen
+"what is a stock market correction",0,informational,/learn/what-is-a-stock-market-correction,"/learn/are-ai-stocks-in-a-bubble | /learn/what-is-stock-volatility",none,Retain,,New evergreen
+"how treasury yields affect stock market",0,informational,/learn/how-treasury-yields-affect-stock-market,"/learn/what-is-a-stock-market-correction",none,Retain,,Macro explainer
+"s&p 500 etf voo spy ivv comparison",0,investigational,/learn/sp-500-etf-explained-voo-spy-ivv,"/stocks | /learn/what-is-stock-volatility",none,Improve,Phase F,"Near-orphan (1 inbound) — rescue with contextual links"
+"swing trading vs day trading",0,informational,/learn/swing-trading-vs-day-trading,"/learn/how-to-build-a-stock-watchlist",none,Retain,,
+"support and resistance explained",0,informational,/learn/support-and-resistance-explained,"/learn/what-is-technical-analysis",none,Retain,,
+"technical indicators for beginners",0,informational,/learn/technical-indicators-rsi-macd-moving-averages,"/learn/what-is-rsi | /learn/what-is-macd | /learn/sma-vs-ema",hub-and-spoke (defensible),Retain,,Beginner overview hub pointing to individual explainers
+"why stock forecasts are uncertain",0,informational,/learn/why-stock-forecasts-are-uncertain,"/learn/how-lstm-forecasting-works | /methodology",none,Retain,,Required honesty content
+"how to analyze stock risk",0,informational,/learn/how-to-analyze-stock-risk,"/learn/what-is-stock-volatility | /learn/what-is-atr",none,Retain (roadmap: expand),Phase G,"Thin (355) — scheduled in roadmap"
+"combining technical analysis sentiment machine learning",0,informational,/learn/beyond-price-predictions,"/methodology | /learn/what-is-technical-analysis",none,Improve,Phase E,"Title trimmed from 142 chars (severely over-length)"
+"free stock analysis",0,transactional,/,"/analysis | /markets/brief | /stocks",none,Retain,,Homepage is branded/navigational target for platform queries
+"stock analysis tools",0,transactional,/analysis,"/ | /markets/stock/technical | /markets/stock/sentiment",none,Improve,Phase E/F,"Missing canonical + duplicate homepage title + orphan — fixed in Phase E, inbound link in Phase F"
+"research brief stock analysis",0,transactional,/markets/brief,"/analysis | /stocks",none,Improve (roadmap),Phase G,"Core product page with only 143 SSR words — stronger unique-value intro copy scheduled"
+"free stock screener",0,transactional,/markets/discover,"/stocks",none,Retain,,"Client-rendered tool; SSR thin by architecture"
+"free ai stock forecast",0,transactional,/markets/stock/forecast,"/learn/how-lstm-forecasting-works | /learn/why-stock-forecasts-are-uncertain",none,Retain,,"Forecast tool; limitations already stated"
+"stock sentiment analysis tool",0,transactional,/markets/stock/sentiment,"/learn/what-is-stock-sentiment",none,Retain,,
+"technical analysis tool online (rsi macd)",0,transactional,/markets/stock/technical,"/learn/what-is-technical-analysis | /methodology",none,Retain,,"Transactional counterpart to informational TA queries"
+"stock watchlist app free",0,transactional,/markets/stock/watchlist,/learn/how-to-build-a-stock-watchlist,none,Not targeted (noindex),,"Watchlist tool is noindex by design — keyword not targeted; learn articles carry this intent instead"
+"stock market overview indices movers",0,transactional,/markets/stock,"/ | /markets/discover",none,Retain,,
+"how does stockvantex calculate signals",0,informational,/methodology,"/analysis | /learn/what-is-atr",none,Improve,Phase F,"Trust cornerstone — add inbound contextual links from priority articles"
+"{ticker} stock analysis" (pattern x52),0,investigational,/stocks/{ticker} (52 URLs),"/learn/* (related articles) | /markets/stock/technical",template uniformity (intentional),Retain,"Phase D (template)","Data-grounded pages; Phase D adds volatility/ATR section to every stock page; /stocks/sq transient noindex to recheck"
+"{ticker} stock forecast" (pattern x52),0,investigational,/stocks/{ticker} (forecast section),/learn/why-stock-forecasts-are-uncertain,none,Retain,Phase D,"Forecast + limitations already present"
+"is {ticker} a buy" (pattern),0,investigational,/stocks/{ticker} (FAQ section),/learn/what-is-technical-analysis,none,Retain,,"FAQ JSON-LD answers with 'not financial advice' framing"
+"relative volume explained",0,informational,CREATE (roadmap),/methodology,none,Create,Phase G,"Platform computes relative volume; no explanatory article exists"
+"golden cross vs death cross",0,informational,CREATE (roadmap),/learn/sma-vs-ema,none,Create,Phase G,"Natural extension of MA cluster"
+"how to read a candlestick chart",0,informational,CREATE (roadmap),/learn/what-is-technical-analysis,none,Create,Phase G,"Large head-term opportunity; no current coverage"
+"p/e ratio explained",0,informational,CREATE (roadmap),/learn/how-to-research-a-stock-before-buying,none,Create,Phase G,"Fundamental-side gap (site is TA-heavy; complements technical-vs-fundamental)"
+"market orders guide (limit stop market)",0,informational,CREATE (roadmap),/learn/what-is-technical-analysis,none,Create,Phase G,"Practical beginner gap"
+"rsi divergence explained",0,informational,CREATE (roadmap),/learn/what-is-rsi,none,Create,Phase G,"Depth for RSI cluster"
+"what is a market index (spx ndx djia)",0,informational,CREATE (roadmap),/learn/sp-500-etf-explained-voo-spy-ivv,none,Create,Phase G,"Feeds ETF article cluster"
+"dividend yield explained",0,informational,CREATE (roadmap),/learn/how-to-research-a-stock-before-buying,none,Create,Phase G,
+"etf vs individual stock",0,investigational,CREATE (roadmap),/learn/sp-500-etf-explained-voo-spy-ivv,none,Create,Phase G,
+"how to read a financial statement (beginner)",0,informational,CREATE (roadmap),/learn/how-to-research-a-stock-before-buying,none,Create,Phase G,"Fundamental coverage balancing TA dominance — must stay accurate, no platform claims"
+"market breadth indicators",0,informational,CREATE (roadmap),/learn/what-is-technical-analysis,none,Create,Phase G,
+"dollar cost averaging explained",0,informational,CREATE (roadmap),/learn/why-stock-forecasts-are-uncertain,none,Create,Phase G,
+"stock valuation methods overview",0,informational,CREATE (roadmap),/learn/technical-vs-fundamental-analysis,none,Create,Phase G,"Extends the top-performing comparison article"
+"stop loss strategy guide",0,informational,CREATE (roadmap),/learn/what-is-atr,none,Create,Phase G,"Builds on ATR-based stop content in what-is-atr"

@@ -95,6 +95,25 @@ WATCHLIST_BY_CATEGORY = {
 
 # ─── Utility Functions ─────────────────────────────────────────────────────────
 
+# Asset classes that represent an individual equity security. Explicitly excludes
+# forex pairs, commodities/futures, and indices — these must never be surfaced as
+# a "stock pick" or featured research subject.
+EQUITY_CLASSES = {"stock", "etf"}
+
+
+def is_equity(ticker: str) -> bool:
+    """True only for individual stocks and ETFs.
+
+    Known forex/commodity/future/index symbols always return False. Unknown
+    symbols default to the "stock" class inside ``get_asset_info`` and are
+    therefore treated as equities (safe for allowlisted stock tickers).
+    """
+    try:
+        return get_asset_info(ticker).get("asset_class") in EQUITY_CLASSES
+    except Exception:
+        return False
+
+
 def get_asset_info(ticker: str) -> Dict[str, Any]:
     """
     Get asset metadata for a ticker.

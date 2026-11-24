@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { GoogleAnalytics } from '@next/third-parties/google';
+import Script from 'next/script';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ADSENSE_SCRIPT_SRC } from '@/lib/adsense';
 import { toast } from 'sonner';
 import type { ConsentTier } from '@/lib/consent-region';
 import {
@@ -114,6 +116,14 @@ export function AnalyticsConsent() {
   return (
     <>
       {gaActive && <GoogleAnalytics gaId={GA_MEASUREMENT_ID} />}
+      {gaActive && (
+        <Script
+          id="sv-adsense-verification"
+          strategy="afterInteractive"
+          src={ADSENSE_SCRIPT_SRC}
+          crossOrigin="anonymous"
+        />
+      )}
 
       {bannerVisible && (
         <div
@@ -123,9 +133,10 @@ export function AnalyticsConsent() {
           className="fixed bottom-4 left-4 right-4 sm:left-auto sm:w-[24rem] z-[60] rounded-lg border border-border/60 bg-card p-3 shadow-lg"
         >
           <p className="text-xs leading-relaxed text-muted-foreground mb-2.5">
-            We&apos;d like to use Google Analytics to count anonymous page views and improve
-            StockVantex. Nothing loads unless you allow it — no ads, no personal or financial
-            data. Details in our{' '}
+            We&apos;d like to use Google Analytics and a Google AdSense verification script to
+            count anonymous page views and verify the publisher account. Nothing loads unless you
+            allow it — no ad units are displayed, and no personal or financial data is sent. Details
+            in our{' '}
             <Link href="/privacy" className="underline text-foreground hover:text-primary">
               Privacy Policy
             </Link>
@@ -155,9 +166,9 @@ export function AnalyticsConsent() {
           <DialogHeader>
             <DialogTitle>Privacy Settings</DialogTitle>
             <DialogDescription>
-              Manage how StockVantex measures anonymous usage. Google Analytics counts page
-              views only — no personal, portfolio, or financial data is ever sent, and no
-              advertising cookies are set.
+              Manage anonymous measurement and publisher verification. Google Analytics counts
+              page views and the AdSense verification script checks the publisher account. No ad
+              units are displayed, and no personal, portfolio, or financial data is ever sent.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

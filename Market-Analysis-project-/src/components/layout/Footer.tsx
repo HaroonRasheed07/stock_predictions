@@ -38,7 +38,7 @@ export const Footer = () => {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              AI-powered stock research combining technical analysis, market sentiment, forecasting and risk insights.
+              Automated stock research combining technical analysis, news sentiment, forecasting and risk insights.
             </p>
           </div>
 
@@ -74,6 +74,11 @@ export const Footer = () => {
             <h3 className="font-semibold mb-4">Analysis</h3>
             <ul className="space-y-2 text-sm">
               <li>
+                <Link href="/analysis" className="text-muted-foreground hover:text-primary transition-colors">
+                  Analysis Tools
+                </Link>
+              </li>
+              <li>
                 <Link href="/markets/stock/technical" className="text-muted-foreground hover:text-primary transition-colors">
                   Technical Analysis
                 </Link>
@@ -103,6 +108,11 @@ export const Footer = () => {
               <li>
                 <Link href="/methodology" className="text-muted-foreground hover:text-primary transition-colors">
                   Methodology
+                </Link>
+              </li>
+              <li>
+                <Link href="/editorial-standards" className="text-muted-foreground hover:text-primary transition-colors">
+                  Editorial Standards
                 </Link>
               </li>
               <li>

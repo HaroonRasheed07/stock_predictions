@@ -672,7 +672,7 @@ export default function StockBriefPage() {
             ) : evidence ? (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Overall Accuracy</span>
+                  <span className="text-sm">Technical signal hit rate (historical)</span>
                   <span className="text-sm font-semibold">{(evidence.overall_accuracy * 100).toFixed(1)}%</span>
                 </div>
                 <Badge variant="secondary" className="text-xs">{evidence.evidence_label} Evidence</Badge>

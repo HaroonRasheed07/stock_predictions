@@ -657,16 +657,16 @@ export function Explorer({ bundle }: { bundle: HeroBundle }) {
                               : '—'}
                       </span>
                       <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${TONE_CLS.mute}`}>
-                        Historical fit shown
+                        In-sample fit shown
                       </span>
                       <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${TONE_CLS.mute}`}>
-                        10 trading days
+                        10 weekday steps
                       </span>
                     </div>
                     <p className="text-[11px] leading-relaxed text-muted-foreground">
-                      10-session close-price outlook from the ONNX LSTM pipeline — 60-day lookback, recursive
-                      step-ahead, evaluated with MAPE-based error. Values shown unmodified; uncertainty grows
-                      with every session.
+                      10-step close-price outlook from the ONNX LSTM pipeline — 60-day lookback, recursive
+                      point estimates, with an in-sample MAPE-based fit proxy. No calibrated intervals or
+                      out-of-sample accuracy claim is made.
                     </p>
                   </div>
                 </div>

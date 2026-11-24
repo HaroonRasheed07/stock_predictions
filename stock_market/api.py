@@ -29,7 +29,7 @@ from forecast_onnx import (
 )
 
 # Import new modules
-from multi_asset import get_asset_info, search_assets, get_default_watchlist, get_watchlist_by_category
+from multi_asset import get_asset_info, search_assets, get_default_watchlist, get_watchlist_by_category, is_equity
 from opportunity import scan_watchlist, calculate_opportunity_score
 from volatility import get_volatility_summary, calculate_relative_volume, calculate_expected_range
 from risk import assess_risk, calculate_trend_strength, get_technical_label
@@ -137,9 +137,12 @@ def _background_precompute_daemon():
                 Writes result to cache so user requests never trigger expensive computation."""
                 try:
                     default_ticker = "AAPL"
-                    top = get_top_performing_stocks(limit=1)
-                    if top:
-                        default_ticker = top[0].get("symbol", "AAPL")
+                    top = get_top_performing_stocks(limit=10)
+                    # Featured subject must be an individual equity — never a forex
+                    # pair, commodity/future, or index.
+                    equity = next((t for t in top if is_equity(t.get("symbol", ""))), None)
+                    if equity:
+                        default_ticker = equity.get("symbol", "AAPL")
                     # Compute overview directly — do NOT use get_swr (it would block on MISS)
                     overview_payload = _compute_market_overview_raw(default_ticker, "1y")
                     result = {}
@@ -1028,11 +1031,12 @@ def get_home_intelligence():
         except Exception:
             result["topStocks"] = []
 
-        # 3. Selected stock brief (use AAPL default or first top stock)
+        # 3. Selected stock brief (use AAPL default or first *equity* top stock)
         try:
             default_ticker = "AAPL"
-            if result["topStocks"]:
-                default_ticker = result["topStocks"][0].get("symbol", "AAPL")
+            equity = next((t for t in result["topStocks"] if is_equity(t.get("symbol", ""))), None)
+            if equity:
+                default_ticker = equity.get("symbol", "AAPL")
 
             brief_key = f"overview:{default_ticker}:1y"
             brief_payload, _ = cache_manager.get_swr(
@@ -1284,9 +1288,11 @@ def get_home_brief():
         result = {}
         try:
             default_ticker = "AAPL"
-            top = get_top_performing_stocks(limit=1)
-            if top:
-                default_ticker = top[0].get("symbol", "AAPL")
+            top = get_top_performing_stocks(limit=10)
+            # Never feature a non-equity (forex/commodity/index) as a stock pick.
+            equity = next((t for t in top if is_equity(t.get("symbol", ""))), None)
+            if equity:
+                default_ticker = equity.get("symbol", "AAPL")
             brief_payload, _ = cache_manager.get_swr(
                 key=f"overview:{default_ticker}:1y",
                 refresh_func=lambda t=default_ticker: _compute_market_overview_raw(t, "1y"),
@@ -1950,6 +1956,8 @@ def _compute_trade_confirmation_raw(ticker: str, period: str) -> Dict[str, Any]:
 
     df_ind_records = calculate_indicators(df)
     df_ind = pd.DataFrame(df_ind_records)
+    if df_ind.empty:
+        return {"ticker": ticker, "error": "Insufficient data for confirmation"}
 
     trend_score = calculate_trend_strength(df_ind)
     risk_data = assess_risk(df_ind, ticker)
@@ -2260,11 +2268,13 @@ def get_stock_forecast(request: ForecastRequest):
 
             # Use the pre-fitted scaler for this ticker
             ticker = request.ticker
+            scaler_source = "pre_fitted"
             if ticker in SCALERS:
                 scaler = SCALERS[ticker]
             else:
                 # Fallback if ticker was not in training set
                 from sklearn.preprocessing import MinMaxScaler
+                scaler_source = "fitted_on_request"
                 scaler = MinMaxScaler(feature_range=(0, 1))
                 close_prices = df[["Close"]].values
                 scaler.fit(close_prices)
@@ -2308,7 +2318,13 @@ def get_stock_forecast(request: ForecastRequest):
                 "status": "success",
                 "ticker": request.ticker,
                 "forecast_days": len(forecast),
-                "results": forecast_data
+                "results": forecast_data,
+                "model_metadata": {
+                    "output_type": "point_estimate",
+                    "date_calendar": "weekday_only_no_holidays",
+                    "confidence_intervals": False,
+                    "scaler_source": scaler_source,
+                },
             }
 
             # Cache the successful result
@@ -2316,11 +2332,18 @@ def get_stock_forecast(request: ForecastRequest):
 
             return response
 
-        except Exception as e:
+        except ValueError as e:
+            return {
+                "status": "error",
+                "message": str(e),
+                "forecast_prices": [],
+                "forecast_dates": []
+            }
+        except Exception:
             traceback.print_exc()
             return {
                 "status": "error",
-                "message": "Model not available on server",
+                "message": "Forecast service unavailable",
                 "forecast_prices": [],
                 "forecast_dates": []
             }

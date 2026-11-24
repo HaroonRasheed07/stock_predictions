@@ -7,10 +7,10 @@ import logging
 
 
 # ── Authoritative Forecast Horizon Constants ─────────────────────────────────
-DEFAULT_FORECAST_DAYS = 10  # Authoritative production standard (2 trading weeks)
+DEFAULT_FORECAST_DAYS = 10  # Default weekday-step horizon
 MIN_FORECAST_DAYS = 1       # Minimum valid forecast horizon
 MAX_FORECAST_DAYS = 30      # Maximum valid recursive horizon before error saturation
-LOOKBACK_WINDOW = 60        # Sliding window: 60 historical trading days (1 quarter)
+LOOKBACK_WINDOW = 60        # Sliding window: 60 historical close-price observations
 
 
 def validate_forecast_inputs(
@@ -118,6 +118,9 @@ def forecast_stock(
     predicted_prices = scaler.inverse_transform(predicted_scaled).flatten()
     actual_prices = close_prices[-len(predicted_prices):].flatten()
 
+    if not np.isfinite(predicted_prices).all() or not np.isfinite(actual_prices).all():
+        raise ValueError("Model produced non-finite historical reconstruction prices")
+
     # =====================
     # Forward Forecast
     # =====================
@@ -142,6 +145,11 @@ def forecast_stock(
         forecast_input = np.append(forecast_input[1:], [[pred_val]], axis=0).astype(np.float32)
 
     forecast = scaler.inverse_transform(np.array(future_scaled).reshape(-1, 1)).flatten()
+
+    if not np.isfinite(forecast).all():
+        raise ValueError("Model produced non-finite forecast prices")
+    if (forecast <= 0).any():
+        raise ValueError("Model produced non-positive forecast prices")
 
     # ⚠️ 4. Use Pandas ONLY for date handling
     forecast_dates = pd.date_range(

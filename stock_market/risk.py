@@ -86,9 +86,12 @@ def calculate_trend_strength(df: pd.DataFrame) -> float:
 
     latest = df.iloc[-1]
 
-    # Guard against NaN in any component
-    vals = {c: latest[c] for c in required}
-    if any(not isinstance(v, (int, float)) or math.isnan(float(v)) for v in vals.values()):
+    # Guard against NaN/Inf in any component
+    try:
+        vals = {c: float(latest[c]) for c in required}
+    except (TypeError, ValueError):
+        return 50.0
+    if any(not math.isfinite(v) for v in vals.values()):
         return 50.0
 
     score = 50.0  # neutral baseline

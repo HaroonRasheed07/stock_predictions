@@ -160,7 +160,9 @@ export function HeroBriefCard({
 
   const overview = bundle.overview;
   const chipRow = chips.find((c) => c.ticker === bundle.ticker);
-  const price = overview?.currentPrice ?? chipRow?.price ?? 0;
+  const rawPrice = overview?.currentPrice ?? chipRow?.price ?? null;
+  // A zero/absent price means "no quote", never a real $0.00.
+  const price = typeof rawPrice === 'number' && isFinite(rawPrice) && rawPrice > 0 ? rawPrice : null;
   const changePct = overview?.changePercent ?? chipRow?.changePercent ?? null;
   const trendLabel = overview?.trendStrength?.trend_label || '—';
   const sentimentLabel = overview?.sentiment?.sentiment_label || bundle.sentiment?.sentiment_label || '—';
@@ -205,7 +207,7 @@ export function HeroBriefCard({
               <h2 className="truncate text-base font-bold">{bundle.name}</h2>
             </div>
             <span className="ml-auto rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-              Today’s pick
+              Featured brief
             </span>
           </div>
 
@@ -219,7 +221,7 @@ export function HeroBriefCard({
             {updated && <span>{updated}</span>}
             {!overview && (
               <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 font-medium text-muted-foreground">
-                Latest quote
+                Data unavailable
               </span>
             )}
           </div>

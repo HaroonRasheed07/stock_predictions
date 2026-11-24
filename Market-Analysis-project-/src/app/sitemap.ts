@@ -32,6 +32,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/about` },
     { url: `${SITE_URL}/contact` },
     { url: `${SITE_URL}/methodology` },
+    { url: `${SITE_URL}/analysis` },
+    { url: `${SITE_URL}/editorial-standards` },
     { url: `${SITE_URL}/learn` },
     // Legal pages
     { url: `${SITE_URL}/privacy` },

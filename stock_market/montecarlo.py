@@ -31,6 +31,28 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
+
+def simulate_price_paths(returns, last_price, days=30, simulations=300, seed=42):
+    clean_returns = np.asarray(returns, dtype=float)
+    clean_returns = clean_returns[np.isfinite(clean_returns)]
+    if clean_returns.size == 0:
+        raise ValueError("No finite returns available for simulation")
+    if not np.isfinite(last_price) or last_price <= 0:
+        raise ValueError("last_price must be finite and positive")
+
+    rng = np.random.default_rng(seed)
+    simulated_returns = rng.normal(
+        clean_returns.mean(), clean_returns.std(), size=(days, simulations)
+    )
+    simulated_returns = np.maximum(simulated_returns, -0.999)
+
+    price_paths = np.zeros((days, simulations), dtype=float)
+    price_paths[0] = last_price
+    for t in range(1, days):
+        price_paths[t] = price_paths[t - 1] * (1 + simulated_returns[t])
+    return price_paths
+
+
 def run_simulation(df):
     st.subheader("Monte Carlo Simulation")
     try:
@@ -38,12 +60,7 @@ def run_simulation(df):
         days = 30
         simulations = 300
         last_price = df['Close'].iloc[-1]
-        np.random.seed(42)
-        simulated_returns = np.random.normal(returns.mean(), returns.std(), size=(days, simulations))
-        price_paths = np.zeros_like(simulated_returns)
-        price_paths[0] = last_price
-        for t in range(1, days):
-            price_paths[t] = price_paths[t-1] * (1 + simulated_returns[t])
+        price_paths = simulate_price_paths(returns, last_price, days=days, simulations=simulations, seed=42)
         fig_sim = go.Figure()
         for i in range(min(50, simulations)):
             fig_sim.add_trace(go.Scatter(x=list(range(days)), y=price_paths[:, i], mode='lines', line=dict(width=1, color='rgba(0,0,255,0.1)'), showlegend=False))

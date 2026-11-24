@@ -11,14 +11,14 @@ export default function Analysis() {
     {
       icon: Brain,
       title: 'AI Sentiment Analysis',
-      description: 'Real-time sentiment tracking across news and social media.',
+      description: 'Recent financial-news sentiment with headline drivers and source attribution.',
       link: '/markets/stock/sentiment',
       gradient: 'from-purple-500 to-pink-500',
     },
     {
       icon: TrendingUp,
       title: 'Price Forecasting',
-      description: 'Advanced ML models for accurate price predictions.',
+      description: 'Point-estimate price outlooks from a historical-close LSTM model, with documented limitations.',
       link: '/markets/stock/forecast',
       gradient: 'from-blue-500 to-cyan-500',
     },
@@ -32,7 +32,7 @@ export default function Analysis() {
     {
       icon: BarChart3,
       title: 'Market Overview',
-      description: 'Real-time market data and key performance metrics.',
+      description: 'Cached market snapshots and key performance metrics.',
       link: '/markets/stock',
       gradient: 'from-green-500 to-teal-500',
     },
@@ -48,7 +48,7 @@ export default function Analysis() {
             Analysis <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Tools</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Professional-grade analytics and forecasting tools for data-driven trading decisions
+            Educational research tools for comparing technical, sentiment, forecast, and risk evidence.
           </p>
         </div>
 
@@ -89,7 +89,7 @@ export default function Analysis() {
               <p className="font-semibold">Risk Calculator</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/30">
-              <p className="font-semibold">Backtesting Engine</p>
+              <p className="font-semibold">Backtesting Concepts</p>
             </div>
           </div>
         </div>

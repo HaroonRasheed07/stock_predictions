@@ -31,11 +31,15 @@ def _backtest_rsi(df: pd.DataFrame, period: int = 14, hold_days: int = 5) -> Dic
         if rsi[i] < 30:  # Buy signal
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (exit_price - entry) / entry * 100
             signals.append({"type": "buy", "rsi": round(rsi[i], 1), "return_pct": round(ret, 2), "correct": ret > 0})
         elif rsi[i] > 70:  # Sell signal
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (entry - exit_price) / entry * 100  # short P&L
             signals.append({"type": "sell", "rsi": round(rsi[i], 1), "return_pct": round(ret, 2), "correct": ret > 0})
 
@@ -71,12 +75,16 @@ def _backtest_macd(df: pd.DataFrame, hold_days: int = 5) -> Dict[str, Any]:
         if macd[i] > signal[i] and macd[i-1] <= signal[i-1]:
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (exit_price - entry) / entry * 100
             signals.append({"type": "buy", "return_pct": round(ret, 2), "correct": ret > 0})
         # Bearish crossover
         elif macd[i] < signal[i] and macd[i-1] >= signal[i-1]:
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (entry - exit_price) / entry * 100
             signals.append({"type": "sell", "return_pct": round(ret, 2), "correct": ret > 0})
 
@@ -111,12 +119,16 @@ def _backtest_trend(df: pd.DataFrame, hold_days: int = 10) -> Dict[str, Any]:
         if sma20[i] > sma50[i] and sma20[i-1] <= sma50[i-1]:
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (exit_price - entry) / entry * 100
             signals.append({"type": "golden_cross", "return_pct": round(ret, 2), "correct": ret > 0})
         # Death cross
         elif sma20[i] < sma50[i] and sma20[i-1] >= sma50[i-1]:
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (entry - exit_price) / entry * 100
             signals.append({"type": "death_cross", "return_pct": round(ret, 2), "correct": ret > 0})
 
@@ -151,11 +163,15 @@ def _backtest_bollinger(df: pd.DataFrame, hold_days: int = 5) -> Dict[str, Any]:
         if closes[i] <= lower[i]:
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (exit_price - entry) / entry * 100
             signals.append({"type": "buy_at_lower", "return_pct": round(ret, 2), "correct": ret > 0})
         elif closes[i] >= upper[i]:
             entry = closes[i]
             exit_price = closes[min(i + hold_days, len(closes) - 1)]
+            if not np.isfinite(entry) or entry == 0 or not np.isfinite(exit_price):
+                continue
             ret = (entry - exit_price) / entry * 100
             signals.append({"type": "sell_at_upper", "return_pct": round(ret, 2), "correct": ret > 0})
 
