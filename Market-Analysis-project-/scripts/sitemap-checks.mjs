@@ -105,7 +105,7 @@ console.log('\nSitemap checks — static\n');
 // (Phase 3/6) Listed routes exist and stay canonical/indexable.
 {
   const sm = read('src/app/sitemap.ts');
-  for (const dir of ['', 'stocks', 'about', 'contact', 'methodology', 'learn', 'privacy', 'terms', 'disclaimer']) {
+  for (const dir of ['', 'stocks', 'about', 'contact', 'methodology', 'analysis', 'editorial-standards', 'learn', 'privacy', 'terms', 'disclaimer']) {
     const p = dir ? path.join(root, 'src', 'app', dir) : path.join(root, 'src', 'app');
     ok(`Route exists: /${dir}`, fs.existsSync(path.join(p, dir ? 'page.tsx' : 'page.tsx')));
   }
@@ -212,10 +212,10 @@ if (!fs.existsSync(BUILD_ID)) {
       const badTickers = stockLocs.filter((l) => !allow.has(l.slice(`${ORIGIN}/stocks/`.length)));
       ok('(10) Every /stocks/ URL is a supported allowlisted ticker', badTickers.length === 0, badTickers.join(','));
       ok('(10) Stock URL count matches the registry (52)', stockLocs.length === 52, String(stockLocs.length));
-      const forbidden = ['/test-chart', '/analysis', '/api/', '/markets/more', '/watchlist', 'view='];
+      const forbidden = ['/test-chart', '/api/', '/markets/more', '/watchlist', 'view='];
       const badUrls = locs.filter((l) => forbidden.some((f) => l.includes(f)));
       ok('(11) No noindex/blocked/diagnostic routes listed', badUrls.length === 0, badUrls.join(','));
-      const core = ['', '/stocks', '/about', '/contact', '/methodology', '/learn', '/privacy', '/terms', '/disclaimer'];
+      const core = ['', '/stocks', '/about', '/contact', '/methodology', '/analysis', '/editorial-standards', '/learn', '/privacy', '/terms', '/disclaimer'];
       const unexplained = locs.filter((l) => {
         const p = l === ORIGIN ? '' : l.slice(ORIGIN.length);
         if (core.includes(p)) return false;

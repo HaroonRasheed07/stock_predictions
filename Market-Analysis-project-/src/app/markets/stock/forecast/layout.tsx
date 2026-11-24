@@ -3,7 +3,7 @@ import { SITE_URL, SITE_NAME } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: { absolute: `AI Stock Forecasting — LSTM Price Projections | ${SITE_NAME}` },
-  description: `View AI-generated stock price forecasts using LSTM neural network models on ${SITE_NAME}. Probabilistic projections with confidence ranges.`,
+  description: `Model-based point-estimate stock outlooks on ${SITE_NAME}, with no calibrated confidence intervals.`,
   alternates: { canonical: `${SITE_URL}/markets/stock/forecast` },
   openGraph: {
     images: ['/icon-512.png'],

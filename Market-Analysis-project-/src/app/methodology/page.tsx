@@ -65,11 +65,11 @@ export default function MethodologyPage() {
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Sentiment Analysis</h2>
               <p className="text-muted-foreground mb-4">
-                Sentiment analysis evaluates the overall market mood toward a stock by analyzing financial news coverage. StockVantex processes news articles using natural language processing (NLP) to classify coverage as positive, negative, or neutral.
+                Sentiment analysis summarizes automated scores of recent financial-news headlines for a company. It is not a direct measurement of investor mood or a prediction of price direction. The engine prefers provider-supplied sentiment tags and falls back to a deterministic keyword lexicon; no language model trained on financial text is used in production.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><strong>News Coverage Scanning</strong> — Aggregates recent financial news headlines and articles related to each stock.</li>
-                <li><strong>NLP Classification</strong> — Each article is scored for sentiment using language models trained on financial text.</li>
+                <li><strong>Article Scoring</strong> — Provider sentiment tags are used when available; otherwise a keyword lexicon produces an article-level score.</li>
                 <li><strong>Sentiment Score</strong> — A composite score from -1 (very negative) to +1 (very positive) representing overall mood.</li>
                 <li><strong>Market Mood</strong> — A categorical label (Bullish, Bearish, Neutral) derived from the sentiment score and distribution. The score label uses a neutral band of ±0.15: at or above +0.15 positive, at or below −0.15 negative, otherwise neutral. Charts and cards colour the score with the same band, so a Neutral label never shows a directional colour.</li>
                 <li><strong>News Impact Summary</strong> — A brief summary of the key news factors driving current sentiment.</li>
@@ -87,17 +87,17 @@ export default function MethodologyPage() {
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><strong>Model Architecture</strong> — LSTM network with attention layer, serialised as an ONNX model for CPU-efficient inference.</li>
-                <li><strong>Input Feature</strong> — Closing price only, normalised via MinMaxScaler over a 60-day lookback window.</li>
-                <li><strong>Forecast Horizon</strong> — Fixed 10 business days ahead (2 trading weeks). While the underlying ONNX inference engine accepts a configurable range of 1 to 30 trading days, 10 trading days is the authoritative production standard across all StockVantex product views. Each day&apos;s estimate is produced recursively, using the previous day&apos;s predicted close as the next input in the 60-day lookback window.</li>
-                <li><strong>Recursive Multi-Step Dynamics</strong> — The neural network predicts one step ahead. For multi-day projections, the model rolls its 60-day input forward, replacing the oldest price with its own latest prediction. Because prediction uncertainty compounds with every recursive step, forecasting beyond 10 sessions exhibits diminished statistical reliability.</li>
-                <li><strong>Trading Calendar Alignment</strong> — Forecast dates strictly follow exchange business days, excluding weekends and market holidays.</li>
+                <li><strong>Input Feature</strong> — Closing price only, scaled with MinMaxScaler and shaped into 60 close-price observations. Production uses the fitted scaler for tickers present in training; unseen tickers use a scaler fitted on the supplied history.</li>
+                <li><strong>Forecast Horizon</strong> — 10 weekday steps ahead by default (configurable 1–30 in the API). Exchange holidays and half-days are not modeled, so these are approximate weekday steps rather than a verified trading calendar. Each step is produced recursively, using the previous step&apos;s predicted close as the next input in the 60-day lookback window.</li>
+                <li><strong>Recursive Multi-Step Dynamics</strong> — The neural network predicts one step ahead. For multi-day projections, the model rolls its 60-day input forward, replacing the oldest price with its own latest prediction. Errors can compound with every recursive step; no calibrated uncertainty is produced or displayed.</li>
+                <li><strong>Date Generation</strong> — Forecast dates use pandas business-day frequency (weekdays only). Exchange holidays and half-days are not modeled.</li>
                 <li><strong>No Confidence Intervals</strong> — The model produces point estimates only. No uncertainty bounds are generated or displayed. The projected range shown (min–max of the 10-step sequence) reflects the spread of estimates across the horizon, not a statistical confidence interval.</li>
                 <li><strong>Direction Convention</strong> — The Model Outlook direction compares the final modelled close against the reference price (the current price when available, otherwise the first forecast step). A change within ±0.3% is reported as Flat. This convention makes the direction reproducible and honest about the flat band; it does not imply a probability of the move occurring.</li>
-                <li><strong>Validation Approach</strong> — The model is evaluated against held-out historical data on a walk-forward basis. Past model accuracy does not guarantee future accuracy.</li>
+                <li><strong>Validation Evidence</strong> — A small chronological holdout report exists for AAPL and MSFT only. It is not walk-forward fold validation, and no MAE/RMSE/MAPE/sMAPE table or directional baseline comparison is published; no accuracy superiority claim is made.</li>
               </ul>
               <div className="rounded-lg bg-muted/50 p-3 mt-4">
                 <p className="text-xs text-muted-foreground">
-                  <strong>Important:</strong> Forecast outputs are probabilistic estimates, not predictions. Historical model evaluation metrics (such as backtesting accuracy) describe how the model performed on past data—they do not guarantee future performance. Forecasts should be used as one input in your research, not as the basis for investment decisions.
+                  <strong>Important:</strong> Forecast outputs are uncalibrated point estimates, not probabilities. The displayed in-sample MAPE-based fit is a reconstruction proxy, not out-of-sample accuracy or backtested performance. No confidence intervals are produced; the 10-step min–max is only the spread of point estimates. Forecasts should be used as one input in your research, not as the basis for investment decisions.
                 </p>
               </div>
               <p className="text-xs text-muted-foreground mt-4">
@@ -114,9 +114,9 @@ export default function MethodologyPage() {
                 The risk score (0–100, higher = riskier) is a weighted composite of three independently measured historical dimensions:
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><strong>Daily Volatility (40%)</strong> — Annualised standard deviation of daily log-returns. Scores linearly from &lt;10% (low risk) to &gt;40% (high risk).</li>
+                <li><strong>Daily Volatility (40%)</strong> — Annualized standard deviation of simple daily close-to-close returns, scaled by √252. Scores linearly from &lt;10% (low risk) to &gt;40% (high risk).</li>
                 <li><strong>Trend Stability (30%)</strong> — Inverted trend-strength score. A consistent trend is treated as lower risk; a chaotic or reversing trend as higher risk.</li>
-                <li><strong>ATR / Price Ratio (30%)</strong> — 14-day Average True Range as a percentage of current price. Scores linearly from &lt;1% (low) to &gt;5% (high).</li>
+                <li><strong>ATR / Price Ratio (30%)</strong> — 14-day simple-average true range as a percentage of the latest daily close. Scores linearly from &lt;1% (low) to &gt;5% (high).</li>
                 <li><strong>Risk Level Thresholds</strong> — Score &lt;35 → Low; 35–65 → Medium; ≥65 → High.</li>
                 <li><strong>Max Drawdown (Informational)</strong> — Peak-to-trough decline over the available history is reported separately and is not included in the composite score.</li>
               </ul>
@@ -143,7 +143,7 @@ export default function MethodologyPage() {
                 <li><strong>Display Bands</strong> — When the score is shown as a category (for example in screening lists), it is grouped as 70–100 strong, 40–70 moderate, below 40 weak. These are display groupings only; the underlying score is continuous and not a probability.</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-3">
-                Scores are recalculated from live data and are not calibrated against future returns. A high score does not indicate that a stock will rise. No backtest has been run linking score thresholds to profitable outcomes.
+                Scores are recalculated from the latest cached snapshot and are not calibrated against future returns. A high score does not indicate that a stock will rise. No backtest has been run linking score thresholds to profitable outcomes.
               </p>
             </section>
 
@@ -170,9 +170,18 @@ export default function MethodologyPage() {
             {/* Data Sources */}
             <section className="rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-xl font-bold mb-3">Data Sources</h2>
-              <p className="text-muted-foreground">
-                StockVantex uses market data from Yahoo Finance and news data from multiple financial news providers. All analysis is derived from this data and the models described above. Data may be delayed and is provided for informational purposes only.
-              </p>
+              <p className="text-muted-foreground mb-3">
+                  Historical OHLCV and quote data are requested at runtime from Yahoo Finance via the yahooquery adapter, with a yfinance fallback path when needed. News comes from Google News, Yahoo Finance, GDELT, Marketaux, NewsData.io, Currents, Alpha Vantage, RSS feeds and SEC EDGAR, selected by the news provider router. Some providers require API keys and availability varies; no paid-data partnership is implied.
+                </p>
+                <p className="text-muted-foreground mb-3">
+                  Yahoo history is flattened to Close, High, Low, Open and Volume; adjclose is mapped to Close when used. Rows with missing Close are dropped and missing Volume is recorded as 0. Inputs are not deduplicated, sorted, timezone-normalized or adjusted for corporate actions beyond the provider&apos;s own fields.
+                </p>
+                <p className="text-muted-foreground mb-3">
+                  Responses are cached in memory and SQLite with time-based expiry. The UI&apos;s &ldquo;Snapshot refreshed&rdquo; label reflects cache write time, not the exchange quote timestamp. Market status is estimated from UTC time and a static US-holiday list; it is not an exchange feed.
+                </p>
+                <p className="text-muted-foreground">
+                  Forecasting, technical, risk and volatility tools use daily closing prices for allowlisted symbols. News sentiment requires a company alias mapping and does not cover social media. Data may be delayed and is provided for informational purposes only.
+                </p>
             </section>
 
             {/* Limitations */}
@@ -184,13 +193,15 @@ export default function MethodologyPage() {
                   <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
                 </p>
                 <p>
-                  All analysis is based on historical and current market data. Past performance and historical model evaluation metrics do not guarantee future results.
+                  All analysis is based on historical and latest available market data. Past performance and historical model evaluation metrics do not guarantee future results.
                 </p>
                 <p>
-                  Forecasts are probabilistic estimates with inherent uncertainty. Market conditions change, and models may not adapt quickly enough to unprecedented events.
+                  Forecasts are uncalibrated point estimates with no confidence intervals. Market conditions change, and models may not adapt quickly enough to unprecedented events.
                 </p>
                 <p>
-                  Always conduct your own research and consider your personal financial situation and risk tolerance before making investment decisions.
+                  Always conduct your own research and consider your personal financial situation and risk tolerance before making investment decisions. See the{' '}
+                  <Link href="/editorial-standards" className="text-primary hover:underline">editorial standards and correction log</Link>{' '}
+                  for ownership, review status and correction history.
                 </p>
               </div>
             </section>

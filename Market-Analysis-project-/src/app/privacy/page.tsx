@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
+import { WebPageJsonLd } from '@/components/seo/StructuredData';
 
 export const metadata: Metadata = {
   title: { absolute: `Privacy Policy | ${SITE_NAME}` },
@@ -17,17 +18,9 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: 'Privacy Policy',
-    url: `${SITE_URL}/privacy`,
-    isPartOf: { '@id': `${SITE_URL}/#website` },
-  };
-
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <WebPageJsonLd name="Privacy Policy" url={`${SITE_URL}/privacy`} description="How StockVantex handles data, cookies, analytics, AdSense verification, server logs, market data, and information you share with us." />
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8 md:py-12 max-w-3xl">
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Privacy Policy</h1>
@@ -61,9 +54,10 @@ export default function PrivacyPage() {
               <h2 className="text-lg font-semibold text-foreground mb-2">3. What we do not collect</h2>
               <p>
                 You do not need to give us your name, phone number, payment details, or any other personal
-                information to browse the platform. We do not operate user databases or profiles, we do not run
-                accounts or logins, and we do not sell, rent, or share personal information with advertisers — we
-                have no advertising on the platform.
+                information to browse the platform.                 We do not operate user databases or profiles, we do not run
+                accounts or logins, and we do not sell, rent, or share personal information with advertisers. We
+                do not display advertising units; a Google AdSense verification script may load after you allow
+                non-essential measurement, as described below.
               </p>
             </section>
 
@@ -88,11 +82,12 @@ export default function PrivacyPage() {
                 consent tier derived from your connection&apos;s country is stored under{' '}
                 <code className="text-foreground">sv-analytics-region</code> (refreshed at most every 30 days).
                 Non-essential measurement cookies are set only by Google Analytics when analytics is active
-                for your visit — after you allow it in regions that require prior consent, or by default in
-                regions where it may run until you opt out. We do not set advertising, marketing, or
-                cross-site tracking cookies. Hosting and analytics providers may use strictly necessary or
-                performance cookies to deliver their services; those uses are governed by the providers&apos; own
-                policies.
+                 for your visit — after you allow it in regions that require prior consent, or by default in
+                 regions where it may run until you opt out. Google AdSense may request or set
+                 advertising-related identifiers only after you allow non-essential measurement; no ad units
+                 are displayed. Hosting, analytics, and advertising-verification providers may use strictly
+                 necessary, performance, or consent-related cookies to deliver their services; those uses are
+                 governed by the providers&apos; own policies.
               </p>
             </section>
 
@@ -102,6 +97,13 @@ export default function PrivacyPage() {
                 The site uses Vercel Analytics and Vercel Speed Insights to understand aggregate traffic and page
                 performance (for example, which pages are slow). These tools collect anonymous, aggregated usage
                 statistics and do not build advertising profiles.
+              </p>
+              <p className="mt-3">
+                A Google AdSense publisher verification script may load only after you allow non-essential
+                measurement. It is used to verify the publisher account; StockVantex does not place ad units or
+                sell personal information. Google may process technical data and cookies under its own policies.
+                Declining analytics keeps this script unloaded, and a Global Privacy Control signal has the same
+                effect.
               </p>
               <p className="mt-3">
                 We also use Google Analytics 4 to count aggregate page views (measurement ID{' '}

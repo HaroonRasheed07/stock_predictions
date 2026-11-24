@@ -74,14 +74,15 @@ const articles: Record<string, LearnArticle> = {
     description: 'Technical analysis is the study of price charts and market data to identify trading opportunities. Learn how indicators, patterns, and trends guide technical traders.',
     h1: 'What Is Technical Analysis?',
     publishedAt: '2026-01-15',
-    updatedAt: '2026-09-01',
+    updatedAt: '2026-11-24',
     author: 'Haroon Rasheed',
-    readingTime: '8 min',
+    readingTime: '9 min',
     tags: ['technical analysis', 'trading', 'indicators', 'stock market'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA', 'TSLA'],
     relatedArticles: ['what-is-rsi', 'what-is-macd', 'what-are-bollinger-bands', 'technical-vs-fundamental-analysis', 'what-is-adx'],
     toolLinks: [
       { href: '/markets/stock/technical', label: 'Open the technical analysis workspace' },
+      { href: '/methodology', label: 'How StockVantex calculates each indicator' },
       { href: '/learn', label: 'Browse all learn guides' },
     ],
     content: {
@@ -91,34 +92,69 @@ const articles: Record<string, LearnArticle> = {
           heading: 'How Technical Analysis Works',
           content: 'Technical analysis uses charts and other tools to identify patterns that can suggest future price direction. The core premise is that market price action reflects all available information, and that prices move in trends that can be identified and exploited. Traders use various timeframes, from minute charts for day trading to weekly charts for long-term investing.',
           subsections: [
-            { heading: 'Worked example: reading a signal stack (illustrative)', content: 'A trader looking at a daily chart might see: price above a rising 50-day moving average (uptrend), RSI at 62 (strong but not overbought), MACD line above its signal line and above zero (bullish momentum confirmed), and Bollinger Bands narrowing (volatility compressing, often preceding a larger move). No single reading is a signal on its own â€” the stack describes a stock in a confirmed uptrend with room before traditional overbought levels. This example is hypothetical and for learning only.' },
+            { heading: 'Worked example: reading a signal stack (illustrative)', content: 'A trader looking at a daily chart might see: price above a rising 50-day moving average (uptrend), RSI at 62 (strong but not overbought), MACD line above its signal line and above zero (bullish momentum confirmed), and Bollinger Bands narrowing (volatility compressing, often preceding a larger move). No single reading is a signal on its own — the stack describes a stock in a confirmed uptrend with room before traditional overbought levels. This example is hypothetical and for learning only.' },
           ],
+        },
+        {
+          heading: 'Three Core Assumptions',
+          content: 'Technical analysis rests on three assumptions worth stating plainly — understanding them explains both its strengths and its blind spots.',
+          list: {
+            ordered: true,
+            items: [
+              'Prices reflect available information. The market price already factors in public news, earnings, and expectations, so the chart is treated as a summarized record of everything the market knows.',
+              'Prices move in trends. Rather than random wandering, price tends to persist in a direction — up, down, or sideways — for extended periods, which is what makes trend-following possible.',
+              'History tends to repeat. Market patterns recur because investor psychology — fear, greed, hesitation — changes far more slowly than the companies and technologies being traded.',
+            ],
+          },
+          afterList: 'If an assumption breaks down — for example when a sudden event that no chart contained hits a stock — technical signals can fail. That is why risk controls and position sizing always sit alongside the analysis.',
         },
         {
           heading: 'Key Technical Indicators',
           content: 'Technical indicators are mathematical calculations based on price, volume, or open interest. They help traders confirm trends, identify momentum, and spot potential reversals.',
           subsections: [
-            { heading: 'Momentum Indicators', content: 'RSI (Relative Strength Index) and MACD (Moving Average Convergence Divergence) measure the speed and magnitude of price movements. They help identify overbought or oversold conditions.' },
-            { heading: 'Trend Indicators', content: 'Moving averages (SMA, EMA) and ADX smooth price data to reveal the underlying trend direction and strength.' },
-            { heading: 'Volatility Indicators', content: 'Bollinger Bands and ATR (Average True Range) measure how much prices fluctuate, helping traders set stop-loss levels and understand risk.' },
+            { heading: 'Momentum Indicators', content: 'RSI (Relative Strength Index) and MACD (Moving Average Convergence Divergence) measure the speed and magnitude of price movements. They help identify overbought or oversold conditions — see [what is RSI](/learn/what-is-rsi) and [what is MACD](/learn/what-is-macd).' },
+            { heading: 'Trend Indicators', content: 'Moving averages ([SMA and EMA](/learn/sma-vs-ema)) and [ADX](/learn/what-is-adx) smooth price data to reveal the underlying trend direction and strength.' },
+            { heading: 'Volatility Indicators', content: '[Bollinger Bands](/learn/what-are-bollinger-bands) and [ATR](/learn/what-is-atr) (Average True Range) measure how much prices fluctuate, helping traders set stop-loss levels and understand risk.' },
             { heading: 'Volume Indicators', content: 'OBV and Volume Profile help confirm trends by analyzing whether volume supports price movements.' },
           ],
         },
         {
+          heading: 'A Practical Reading Sequence',
+          content: 'Opening a chart and reading indicators one by one produces noise. Order matters. A sequence that keeps the analysis grounded:',
+          list: {
+            ordered: true,
+            items: [
+              'Identify the trend — is price above or below its key moving averages, and are highs and lows rising or falling?',
+              'Mark the levels — where are the obvious support and resistance zones?',
+              'Check momentum — do RSI and MACD confirm the trend, or diverge from it?',
+              'Confirm with volume — does participation support the move?',
+              'Define risk — how far away is the stop, sized from volatility (ATR), and what position size does that imply?',
+            ],
+          },
+          afterList: 'Only after those five steps does a trade idea have real context. StockVantex\'s technical page and research brief follow a version of this order — trend, momentum, volatility, volume, risk — and the exact calculations are documented on the [methodology](/methodology) page.',
+        },
+        {
           heading: 'Limitations of Technical Analysis',
           content: 'Technical analysis is not a guarantee of future results. Markets can be irrational in the short term, and external events (earnings reports, geopolitical news, economic data) can override technical signals. It works best when combined with other forms of analysis and sound risk management.',
+          paragraphs: [
+            'Two specific failure modes deserve attention. First, lag: indicators are calculated from past data, so they confirm a move only after it has begun — smoother signals come at the price of later confirmation.',
+            'Second, crowded patterns: when enough traders watch the same level, it can behave differently than expected — breakouts trigger clusters of orders, and obvious support can be front-run. Technical analysis is a disciplined map of past behavior, not a guarantee about future behavior.',
+          ],
         },
       ],
       keyTakeaways: [
-        'Technical analysis studies price charts and trading data to identify opportunities.',
+        'Technical analysis rests on three assumptions: prices reflect information, trends persist, and market psychology repeats.',
         'It uses indicators like RSI, MACD, moving averages, and Bollinger Bands.',
+        'Read charts in sequence: trend, levels, momentum, volume, then risk.',
         'Technical analysis works best as part of a broader research strategy, not in isolation.',
         'No indicator or pattern guarantees future price movement.',
       ],
-      limitations: 'Technical analysis is one tool among many. It does not predict the future with certainty. StockVantex presents technical signals as one layer of evidence alongside sentiment, risk, and forecastingâ€”not as definitive trading recommendations.',
+      limitations: 'Technical analysis is one tool among many. It does not predict the future with certainty. StockVantex presents technical signals as one layer of evidence alongside sentiment, risk, and forecasting—not as definitive trading recommendations.',
       faq: [
         { question: 'Is technical analysis reliable?', answer: 'Technical analysis can be useful for identifying trends and managing risk, but it is not foolproof. It works best when combined with fundamental analysis, risk management, and a clear trading plan.' },
         { question: 'Do professional traders use technical analysis?', answer: 'Many professional traders use technical analysis as one component of their strategy, often alongside fundamental analysis, quantitative models, and risk management frameworks.' },
+        { question: 'What is the best timeframe for technical analysis?', answer: 'There is no single best timeframe — it should match your holding period. Day traders use minutes, swing traders use daily charts, and longer-term investors use weekly or monthly charts. The same principles apply at every timeframe; only the speed and the noise change.' },
+        { question: 'Is technical analysis just guessing?', answer: 'No — but it is probabilistic, not certain. Technical analysis organizes price behavior into testable observations (trend, momentum, levels, volatility) so decisions follow a repeatable process instead of impulse. A repeatable process improves discipline; it does not remove uncertainty.' },
       ],
     },
   },
@@ -145,21 +181,21 @@ const articles: Record<string, LearnArticle> = {
           heading: 'How RSI Is Calculated',
           content: 'RSI compares the average gains to average losses over a specified period (typically 14 days). The formula is: RSI = 100 - (100 / (1 + RS)), where RS is the average gain divided by the average loss over the period. Higher RSI values indicate stronger recent upward price movement.',
           subsections: [
-            { heading: 'Worked example (illustrative)', content: 'If a stock averaged gains of $1.40 and losses of $0.70 over the last 14 days, RS = 1.40 / 0.70 = 2.0. RSI = 100 âˆ’ (100 / (1 + 2.0)) = 100 âˆ’ 33.3 = 66.7 â€” strong momentum, but not yet in the traditional overbought zone above 70. If losses later averaged $1.75 per day against $0.35 gains, RS = 0.2 and RSI = 100 âˆ’ (100/1.2) â‰ˆ 16.7 â€” deep in oversold territory. The numbers here are hypothetical and for learning only.' },
+            { heading: 'Worked example (illustrative)', content: 'If a stock averaged gains of $1.40 and losses of $0.70 over the last 14 days, RS = 1.40 / 0.70 = 2.0. RSI = 100 − (100 / (1 + 2.0)) = 100 − 33.3 = 66.7 — strong momentum, but not yet in the traditional overbought zone above 70. If losses later averaged $1.75 per day against $0.35 gains, RS = 0.2 and RSI = 100 − (100/1.2) ≈ 16.7 — deep in oversold territory. The numbers here are hypothetical and for learning only.' },
           ],
         },
         {
           heading: 'How to Read RSI',
           content: 'RSI provides several types of signals that traders use to make decisions.',
           subsections: [
-            { heading: 'Overbought and Oversold', content: 'Traditionally, RSI above 70 suggests a stock may be overbought (potentially due for a pullback), while RSI below 30 suggests it may be oversold (potentially due for a bounce). However, these levels are not absoluteâ€”strong trends can keep RSI in extreme ranges for extended periods.' },
+            { heading: 'Overbought and Oversold', content: 'Traditionally, RSI above 70 suggests a stock may be overbought (potentially due for a pullback), while RSI below 30 suggests it may be oversold (potentially due for a bounce). However, these levels are not absolute—strong trends can keep RSI in extreme ranges for extended periods.' },
             { heading: 'Divergence', content: 'When price makes a new high but RSI fails to make a new high, this bearish divergence may signal weakening momentum. The opposite (bullish divergence) occurs when price makes a new low but RSI does not.' },
             { heading: 'Centerline Crossover', content: 'RSI crossing above 50 can indicate strengthening momentum, while crossing below 50 may indicate weakening momentum.' },
           ],
         },
         {
           heading: 'RSI Limitations',
-          content: 'RSI can give false signals, especially in strong trends. A stock in a powerful uptrend can remain "overbought" (RSI > 70) for weeks. RSI works best when combined with other indicators, trend analysis, and volume confirmationâ€”not as a standalone trading signal.',
+          content: 'RSI can give false signals, especially in strong trends. A stock in a powerful uptrend can remain "overbought" (RSI > 70) for weeks. RSI works best when combined with other indicators, trend analysis, and volume confirmation—not as a standalone trading signal.',
         },
       ],
       keyTakeaways: [
@@ -168,9 +204,9 @@ const articles: Record<string, LearnArticle> = {
         'RSI works best in conjunction with trend analysis and other indicators.',
         'No single indicator provides complete trading information.',
       ],
-      limitations: 'RSI is a momentum indicator, not a prediction tool. It does not predict future price movements. StockVantex displays RSI as one data point within a broader analytical frameworkâ€”not as a standalone buy or sell signal.',
+      limitations: 'RSI is a momentum indicator, not a prediction tool. It does not predict future price movements. StockVantex displays RSI as one data point within a broader analytical framework—not as a standalone buy or sell signal.',
       faq: [
-        { question: 'What is a good RSI value?', answer: 'There is no single "good" RSI value. Context mattersâ€”a stock in a strong uptrend may sustain RSI above 70, while a stock in a downtrend may stay below 30. RSI is most useful when combined with trend direction and other analysis.' },
+        { question: 'What is a good RSI value?', answer: 'There is no single "good" RSI value. Context matters—a stock in a strong uptrend may sustain RSI above 70, while a stock in a downtrend may stay below 30. RSI is most useful when combined with trend direction and other analysis.' },
         { question: 'What period should I use for RSI?', answer: 'The standard period is 14 days, which is what most platforms use by default. Shorter periods make RSI more sensitive (more signals, more noise); longer periods make it smoother (fewer signals, less noise).' },
       ],
     },
@@ -200,9 +236,9 @@ const articles: Record<string, LearnArticle> = {
         },
         {
           heading: 'Convergence and Divergence',
-          content: 'The indicator\'s name describes its two core behaviors. Convergence occurs when the MACD line moves toward the signal line â€” the two averages are agreeing and momentum is steady. Divergence occurs when they pull apart: the gap widens, and the histogram grows, signaling accelerating momentum in one direction.',
+          content: 'The indicator\'s name describes its two core behaviors. Convergence occurs when the MACD line moves toward the signal line — the two averages are agreeing and momentum is steady. Divergence occurs when they pull apart: the gap widens, and the histogram grows, signaling accelerating momentum in one direction.',
           subsections: [
-            { heading: 'Price divergence', content: 'A separate, widely-watched signal is divergence between price and MACD itself. If price makes a new high but the MACD line does not, momentum is not confirming the move â€” a bearish divergence. If price makes a new low but MACD does not, that is a bullish divergence. Divergence is a warning to watch, not an automatic trade.' },
+            { heading: 'Price divergence', content: 'A separate, widely-watched signal is divergence between price and MACD itself. If price makes a new high but the MACD line does not, momentum is not confirming the move — a bearish divergence. If price makes a new low but MACD does not, that is a bullish divergence. Divergence is a warning to watch, not an automatic trade.' },
           ],
         },
         {
@@ -212,12 +248,12 @@ const articles: Record<string, LearnArticle> = {
             { heading: 'Signal Line Crossover', content: 'When the MACD line crosses above the signal line, it may indicate bullish momentum. When it crosses below, it may indicate bearish momentum. These crossovers are most meaningful when they confirm the direction of the prevailing trend.' },
             { heading: 'Histogram', content: 'The histogram shows the distance between the MACD line and the signal line. Growing histogram bars suggest strengthening momentum, while shrinking bars suggest weakening momentum.' },
             { heading: 'Zero Line Crossover', content: 'When the MACD line crosses above zero, it indicates the shorter-term average has crossed above the longer-term average (bullish). Crossing below zero indicates the opposite (bearish).' },
-            { heading: 'Worked example (illustrative)', content: 'Suppose a stock\'s 12-period EMA is 151.20 and its 26-period EMA is 148.60. The MACD line is 151.20 âˆ’ 148.60 = +2.60. If the 9-period EMA of the MACD line (the signal line) is +2.10, the histogram is +0.50 â€” a positive gap that is still widening, meaning bullish momentum is accelerating. If the MACD line later falls to +1.90 while the signal line holds at +2.10, a bearish crossover is forming. The numbers here are hypothetical and for learning only.' },
+            { heading: 'Worked example (illustrative)', content: 'Suppose a stock\'s 12-period EMA is 151.20 and its 26-period EMA is 148.60. The MACD line is 151.20 − 148.60 = +2.60. If the 9-period EMA of the MACD line (the signal line) is +2.10, the histogram is +0.50 — a positive gap that is still widening, meaning bullish momentum is accelerating. If the MACD line later falls to +1.90 while the signal line holds at +2.10, a bearish crossover is forming. The numbers here are hypothetical and for learning only.' },
           ],
         },
         {
           heading: 'MACD Limitations',
-          content: 'MACD is a lagging indicator because it is based on moving averages. It can produce false signals in sideways or choppy markets. Like all technical indicators, MACD should not be used in isolationâ€”it works best as part of a comprehensive analysis approach that includes trend identification, risk management, and other confirmation signals.',
+          content: 'MACD is a lagging indicator because it is based on moving averages. It can produce false signals in sideways or choppy markets. Like all technical indicators, MACD should not be used in isolation—it works best as part of a comprehensive analysis approach that includes trend identification, risk management, and other confirmation signals.',
         },
       ],
       keyTakeaways: [
@@ -226,11 +262,11 @@ const articles: Record<string, LearnArticle> = {
         'The signal line crossover is the most common MACD trading signal.',
         'MACD is a lagging indicator and works best in trending markets.',
       ],
-      limitations: 'MACD is based on historical price data and cannot predict future movements with certainty. It works best in trending markets and can produce misleading signals in sideways markets. StockVantex presents MACD as one component of its technical analysisâ€”not as a standalone trading recommendation.',
+      limitations: 'MACD is based on historical price data and cannot predict future movements with certainty. It works best in trending markets and can produce misleading signals in sideways markets. StockVantex presents MACD as one component of its technical analysis—not as a standalone trading recommendation.',
       faq: [
-        { question: 'Is MACD better than RSI?', answer: 'MACD and RSI measure different things. MACD is a trend-following momentum indicator, while RSI is a momentum oscillator. They complement each other wellâ€”many traders use both together to get a more complete picture.' },
+        { question: 'Is MACD better than RSI?', answer: 'MACD and RSI measure different things. MACD is a trend-following momentum indicator, while RSI is a momentum oscillator. They complement each other well—many traders use both together to get a more complete picture.' },
         { question: 'What are the best MACD settings?', answer: 'The standard settings are 12/26/9 (12-period EMA, 26-period EMA, 9-period signal). These work well for most timeframes. Some traders adjust these for shorter or longer-term analysis.' },
-        { question: 'What does MACD divergence mean?', answer: 'Price-MACD divergence means price and momentum disagree: price makes a new high while MACD does not (bearish), or price makes a new low while MACD does not (bullish). It is a warning that a trend may be weakening â€” not a guaranteed reversal.' },
+        { question: 'What does MACD divergence mean?', answer: 'Price-MACD divergence means price and momentum disagree: price makes a new high while MACD does not (bearish), or price makes a new low while MACD does not (bullish). It is a warning that a trend may be weakening — not a guaranteed reversal.' },
       ],
     },
   },
@@ -240,41 +276,83 @@ const articles: Record<string, LearnArticle> = {
     description: 'RSI and MACD are both popular technical indicators, but they measure different things. Learn the key differences, when to use each, and how they work together.',
     h1: 'RSI vs MACD: What Is the Difference?',
     publishedAt: '2026-02-01',
-    updatedAt: '2026-09-01',
+    updatedAt: '2026-11-24',
     author: 'Haroon Rasheed',
-    readingTime: '6 min',
+    readingTime: '8 min',
     tags: ['RSI', 'MACD', 'comparison', 'technical indicators'],
     relatedTickers: ['AAPL', 'MSFT'],
     relatedArticles: ['what-is-rsi', 'what-is-macd', 'what-is-technical-analysis'],
+    toolLinks: [
+      { href: '/markets/stock/technical', label: 'See live RSI and MACD values' },
+      { href: '/methodology', label: 'How StockVantex combines both signals' },
+    ],
     content: {
-      intro: 'RSI and MACD are two of the most widely used technical indicators, but they measure different aspects of price action. Understanding their differences helps traders choose the right tool for the right situationâ€”and using them together can provide a more complete picture.',
+      intro: 'RSI and MACD are two of the most widely used technical indicators, but they measure different aspects of price action. Understanding their differences helps traders choose the right tool for the right situation—and using them together can provide a more complete picture.',
       sections: [
         {
           heading: 'Key Differences',
           content: 'RSI is a momentum oscillator that measures the speed and magnitude of price changes on a scale of 0 to 100. MACD is a trend-following indicator that shows the relationship between two moving averages. RSI excels at identifying overbought/oversold conditions, while MACD excels at identifying trend direction and momentum shifts.',
         },
         {
+          heading: 'How They Are Calculated',
+          content: 'The construction difference explains the behavior difference — RSI compares gains against losses, while MACD compares a fast average against a slow one.',
+          table: {
+            headers: ['', 'RSI', 'MACD'],
+            rows: [
+              ['Core formula', 'RS = average gain ÷ average loss over 14 periods; RSI = 100 − (100 ÷ (1 + RS))', 'MACD line = 12-period EMA − 26-period EMA; signal line = 9-period EMA of the MACD line'],
+              ['Smoothing method', "Wilder's smoothing (an exponential average with alpha = 1/14)", 'Standard exponential moving averages'],
+              ['Scale', 'Fixed 0 to 100', 'Unbounded, centred on zero'],
+              ['Primary signals', 'Overbought/oversold extremes and divergence', 'Signal-line crossovers and zero-line crossovers'],
+              ['Works best in', 'Range-bound markets', 'Trending markets'],
+            ],
+          },
+          afterList: 'These are the standard settings — and the ones StockVantex uses (RSI period 14 with Wilder smoothing; MACD 12/26/9). Neither calculation contains a forecast; both are transformations of past prices.',
+        },
+        {
           heading: 'When to Use RSI',
-          content: 'RSI is most useful when you want to gauge whether a stock has moved too far, too fastâ€”either up (overbought) or down (oversold). It is particularly effective in range-bound markets where prices oscillate between support and resistance levels.',
+          content: 'RSI is most useful when you want to gauge whether a stock has moved too far, too fast—either up (overbought) or down (oversold). It is particularly effective in range-bound markets where prices oscillate between support and resistance levels.',
         },
         {
           heading: 'When to Use MACD',
           content: 'MACD is most useful when you want to identify trend direction and momentum. It performs better in trending markets where the moving average crossovers produce meaningful signals.',
         },
         {
+          heading: 'When the Two Signals Conflict',
+          content: 'Conflict between RSI and MACD is common, and how you read it depends on which situation you are in. Three scenarios cover most disagreements (all hypothetical, for learning only):',
+          subsections: [
+            { heading: 'MACD crosses bullish, but RSI is already above 70', content: 'Momentum is turning up, but the price has already run. In a strong trend this is normal — RSI can stay elevated for weeks — so look at where price sits relative to its trend and prior resistance rather than treating 70 as an automatic sell.' },
+            { heading: 'RSI is below 30, but MACD has not turned', content: 'The stock looks "cheap" on momentum, but the trend components disagree: the average gap is still widening to the downside. RSI can remain oversold through a long decline, so a falling RSI alone is not a reason to buy — wait for price structure and MACD to stabilize as well.' },
+            { heading: 'Both agree', content: 'When MACD crossovers and RSI turning from an extreme point in the same direction — with the trend context agreeing — that is the highest-quality version of either signal. It is still evidence, not a guarantee: gaps on earnings and news can invalidate any alignment overnight.' },
+          ],
+        },
+        {
           heading: 'Using RSI and MACD Together',
-          content: 'Many traders use both indicators to confirm signals. For example, if MACD shows a bullish crossover and RSI is rising from oversold territory, the combination may be more convincing than either signal alone. However, combining indicators does not eliminate risk or guarantee outcomes.',
+          content: 'Many traders use both indicators to confirm signals. A practical order of operations:',
+          list: {
+            ordered: true,
+            items: [
+              'Set the context: is the overall trend up, down, or sideways (moving averages and recent highs/lows)?',
+              'Use MACD for direction: does momentum confirm the trend, and is the histogram expanding or contracting?',
+              'Use RSI for timing: is the move extended, or is there room before traditional extremes?',
+              'Size the position from volatility (ATR), not from the indicators themselves.',
+            ],
+          },
+          afterList: 'The example that started this section still holds: if MACD shows a bullish crossover and RSI is rising from oversold territory, the combination may be more convincing than either signal alone. However, combining indicators does not eliminate risk or guarantee outcomes.',
         },
       ],
       keyTakeaways: [
         'RSI measures momentum and overbought/oversold conditions (0-100 scale).',
         'MACD measures trend direction and momentum through moving average crossovers.',
-        'They complement each other: RSI for extremes, MACD for trend direction.',
+        'RSI uses Wilder smoothing over 14 periods; MACD uses 12/26/9 exponential averages — the standard settings StockVantex also uses.',
+        'They complement each other: RSI for extremes, MACD for trend direction — and they disagree most in transitions between trending and ranging markets.',
         'Using both together can provide more confirmation, but does not eliminate risk.',
       ],
-      limitations: 'Neither RSI nor MACD predicts the future. They are analytical tools that help identify potential opportunities and risks. StockVantex uses both as part of its multi-layered evidence approachâ€”not as standalone trading signals.',
+      limitations: 'Neither RSI nor MACD predicts the future. They are analytical tools that help identify potential opportunities and risks. StockVantex uses both as part of its multi-layered evidence approach—not as standalone trading signals.',
       faq: [
         { question: 'Should I use RSI or MACD?', answer: 'It depends on your analysis goal. Use RSI to identify overbought/oversold conditions and MACD to identify trend direction. Using both gives a more complete view of price action.' },
+        { question: 'Which is better for beginners?', answer: 'RSI is often easier to start with, because its 0–100 scale and 30/70 reference levels are simple to interpret. MACD takes more context to read since it is unbounded and trend-dependent. Most beginners benefit from learning RSI first and adding MACD as a trend-confirmation layer.' },
+        { question: 'Why do RSI and MACD disagree?', answer: 'Because they are built differently. RSI compares recent gains to recent losses over a fixed window, so it reacts quickly to sharp moves in either direction. MACD compares two moving averages, so it follows the trend and lags turns. The disagreement is informative: it usually means the market is transitioning between trending and ranging behavior.' },
+        { question: 'Can I trade using only these two indicators?', answer: 'You could structure decisions around them, but indicators alone are not a strategy — they need trend context, risk management (stop distance and position size), and defined conditions for being wrong. StockVantex layers sentiment and risk scoring alongside RSI and MACD for the same reason.' },
       ],
     },
   },
@@ -284,24 +362,42 @@ const articles: Record<string, LearnArticle> = {
     description: 'ATR (Average True Range) measures market volatility by calculating the average range between high and low prices. Learn how ATR works and why volatility matters.',
     h1: 'What Is ATR? Average True Range Explained',
     publishedAt: '2026-02-05',
-    updatedAt: '2026-09-01',
+    updatedAt: '2026-11-24',
     author: 'Haroon Rasheed',
-    readingTime: '6 min',
+    readingTime: '8 min',
     tags: ['ATR', 'volatility', 'range', 'technical indicators'],
     relatedTickers: ['TSLA', 'NVDA', 'AAPL'],
     relatedArticles: ['what-are-bollinger-bands', 'what-is-stock-volatility', 'how-to-analyze-stock-risk', 'what-is-technical-analysis'],
     toolLinks: [
       { href: '/markets/stock/technical', label: 'See ATR in the expected range on technical analysis' },
       { href: '/markets/brief', label: 'Open the research brief with risk scoring' },
+      { href: '/methodology', label: 'How the ATR/price ratio is scored' },
     ],
     content: {
-      intro: 'The Average True Range (ATR) is a volatility indicator developed by J. Welles Wilder Jr. that measures the degree of price movement in a stock. Unlike momentum indicators that show direction, ATR shows how much a stock typically movesâ€”helping traders understand the character of price action and set appropriate stop-loss levels.',
+      intro: 'The Average True Range (ATR) is a volatility indicator developed by J. Welles Wilder Jr. that measures the degree of price movement in a stock. Unlike momentum indicators that show direction, ATR shows how much a stock typically moves—helping traders understand the character of price action and set appropriate stop-loss levels.',
       sections: [
         {
           heading: 'How ATR Is Calculated',
-          content: 'ATR is calculated as a moving average of the True Range. The True Range is the greatest of: the current high minus the current low, the absolute value of the current high minus the previous close, or the absolute value of the current low minus the previous close. The classic setting â€” and the one StockVantex uses â€” is a 14-period simple average of True Range.',
+          content: 'ATR is calculated as a moving average of the True Range. The True Range is the greatest of: the current high minus the current low, the absolute value of the current high minus the previous close, or the absolute value of the current low minus the previous close. The classic setting — and the one StockVantex uses — is a 14-period simple average of True Range.',
           subsections: [
-            { heading: 'Worked example (illustrative)', content: 'Suppose a stock has a previous close of $100, and today it trades between a low of $99 and a high of $102. The three candidates for True Range are: 102 âˆ’ 99 = 3.00; |102 âˆ’ 100| = 2.00; |99 âˆ’ 100| = 1.00. The True Range is the greatest, 3.00. Repeat this for 14 trading days and average the results: if the 14 True Range values average 2.15, the 14-period ATR is $2.15, meaning the stock has recently moved about $2.15 per day on average. The numbers here are hypothetical and for learning only.' },
+            { heading: 'Worked example (illustrative)', content: 'Suppose a stock has a previous close of $100, and today it trades between a low of $99 and a high of $102. The three candidates for True Range are: 102 − 99 = 3.00; |102 − 100| = 2.00; |99 − 100| = 1.00. The True Range is the greatest, 3.00. Repeat this for 14 trading days and average the results: if the 14 True Range values average 2.15, the 14-period ATR is $2.15, meaning the stock has recently moved about $2.15 per day on average. The numbers here are hypothetical and for learning only.' },
+          ],
+        },
+        {
+          heading: 'Simple Average vs Wilder Smoothing',
+          content: 'You will see two ways ATR is averaged in practice, and it is worth knowing which one a platform uses:',
+          paragraphs: [
+            'Wilder\'s own method is a recursive smoothing: today\'s smoothed ATR = (yesterday\'s smoothed ATR × 13 + today\'s True Range) ÷ 14. Mathematically this is an exponential average with alpha = 1/14, so recent days carry more weight and the oldest reading never fully drops out. Wilder introduced this same smoothing for RSI and ADX.',
+            'A simple average — the plain mean of the last 14 True Range values — treats all 14 days equally and drops the oldest day entirely when a new one arrives. This means it reacts a bit more sharply to sudden changes in volatility than Wilder\'s smoothing does.',
+          ],
+          afterList: 'Both measure the same underlying True Range; the difference is only how the 14 days are weighted. StockVantex uses the 14-period simple average of True Range, and every ATR number shown on the site comes from that definition — the calculation is documented on the [methodology](/methodology) page.',
+        },
+        {
+          heading: 'ATR%: Comparing Volatility Between Stocks',
+          content: 'Raw ATR is in dollars, so it cannot be compared directly across stocks: an ATR of $4 is enormous for a $20 stock (20% of price) but ordinary for a $400 stock (1% of price). The fix is ATR as a percentage of price: ATR% = (ATR ÷ current price) × 100.',
+          paragraphs: [
+            'Illustrative example: Stock A trades at $5 with an ATR of $0.05, so ATR% = 0.05 ÷ 5 × 100 = 1.0%. Stock B trades at $200 with an ATR of $4.00, so ATR% = 4.00 ÷ 200 × 100 = 2.0%. Even though Stock B\'s ATR in dollars is 80× larger, the meaningful comparison is 1.0% vs 2.0% — Stock B swings twice as much relative to its price. Numbers here are hypothetical.',
+            'StockVantex uses ATR% directly: in the risk scoring, the 14-day ATR as a percentage of price scores linearly from below 1% (low) to above 5% (high), and it is one of the heaviest components of the risk score. When you compare two stocks\' volatility, compare their ATR%, not their raw ATR.',
           ],
         },
         {
@@ -310,19 +406,23 @@ const articles: Record<string, LearnArticle> = {
           subsections: [
             { heading: 'Stop-Loss Placement', content: 'Traders often use ATR to set stop-loss distances. A common approach is placing stops 1.5x or 2x ATR away from the entry price, which accounts for normal price fluctuations.' },
             { heading: 'Position Sizing', content: 'ATR helps determine position size based on risk tolerance. Higher ATR means larger price swings, which may warrant smaller positions to maintain consistent risk levels.' },
+            { heading: 'Worked example: ATR-based position sizing (illustrative)', content: 'The logic is mechanical: decide how much money you are willing to lose on the trade, divide by the stop distance, and the answer is how many shares you can buy. Suppose a $10,000 account risks 1% per trade ($100), the stock\'s ATR is $2.15, and the stop sits 1.5 × ATR below entry: stop distance = 1.5 × 2.15 = $3.23 per share. Shares = $100 ÷ $3.23 ≈ 31 shares. If the stock were twice as volatile (ATR $4.30), the same risk budget buys ≈ 15 shares — the position shrinks automatically as volatility grows. The numbers here are hypothetical and for learning only.' },
             { heading: 'Volatility Assessment', content: 'Comparing current ATR to historical ATR shows whether volatility is expanding or contracting. Expanding ATR may signal increasing uncertainty; contracting ATR may signal consolidation.' },
           ],
         },
       ],
       keyTakeaways: [
         'ATR measures volatility by calculating the average range of price movement.',
-        'It does not indicate directionâ€”only the magnitude of price swings.',
+        'It does not indicate direction—only the magnitude of price swings.',
+        'StockVantex uses a 14-period simple average of True Range; Wilder\'s original smoothing weights recent days more heavily.',
+        'ATR% (ATR ÷ price) is the right way to compare volatility between stocks — and it drives StockVantex\'s risk bands.',
         'ATR is commonly used for stop-loss placement and position sizing.',
-        'Higher ATR means higher volatility; lower ATR means lower volatility.',
       ],
-      limitations: 'ATR is a backward-looking indicator based on historical price ranges. It does not predict future volatility. ATR values change over time and vary significantly between stocks, making direct comparisons across different securities less meaningful. StockVantex displays ATR as part of its risk and volatility analysis.',
+      limitations: 'ATR is a backward-looking indicator based on historical price ranges. It does not predict future volatility. ATR values change over time and vary significantly between stocks, making direct raw comparisons across different securities less meaningful — use ATR% instead. StockVantex displays ATR as part of its risk and volatility analysis.',
       faq: [
-        { question: 'What is a good ATR value?', answer: 'There is no universally "good" ATR value. ATR is relativeâ€”a $5 ATR might be high for a stable utility stock but low for a volatile tech stock. Compare ATR to the stock\'s price and historical ATR levels.' },
+        { question: 'What is a good ATR value?', answer: 'There is no universally "good" ATR value. ATR is relative—a $5 ATR might be high for a stable utility stock but low for a volatile tech stock. Compare ATR to the stock\'s price and historical ATR levels.' },
+        { question: 'What is ATR% and when should I use it?', answer: 'ATR% is ATR divided by the current price, multiplied by 100. Use it whenever you compare volatility between stocks (or any securities at different price levels), because raw ATR in dollars scales with the share price. StockVantex scores the 14-day ATR/price ratio from below 1% (low) to above 5% (high).' },
+        { question: 'Does a rising ATR mean the price will fall?', answer: 'No. A rising ATR only means daily ranges are widening — it applies to upside moves as much as downside ones, and it says nothing about direction. Combine ATR with trend and momentum indicators if you need directional context.' },
       ],
     },
   },
@@ -384,7 +484,7 @@ const articles: Record<string, LearnArticle> = {
     relatedTickers: ['AAPL', 'MSFT'],
     relatedArticles: ['what-is-macd', 'what-is-technical-analysis', 'rsi-vs-macd'],
     content: {
-      intro: 'Moving averages are among the most fundamental technical indicators. The two primary types are the Simple Moving Average (SMA) and the Exponential Moving Average (EMA). Both smooth price data to reveal trends, but they calculate averages differentlyâ€”leading to different characteristics and use cases.',
+      intro: 'Moving averages are among the most fundamental technical indicators. The two primary types are the Simple Moving Average (SMA) and the Exponential Moving Average (EMA). Both smooth price data to reveal trends, but they calculate averages differently—leading to different characteristics and use cases.',
       sections: [
         {
           heading: 'Simple Moving Average (SMA)',
@@ -396,7 +496,7 @@ const articles: Record<string, LearnArticle> = {
         },
         {
           heading: 'When to Use Each',
-          content: 'SMA works well for identifying longer-term trends and as support/resistance levels. EMA works well for shorter-term trading and when responsiveness to recent price action is important. Many traders use bothâ€”a shorter EMA and a longer SMAâ€”to generate crossover signals.',
+          content: 'SMA works well for identifying longer-term trends and as support/resistance levels. EMA works well for shorter-term trading and when responsiveness to recent price action is important. Many traders use both—a shorter EMA and a longer SMA—to generate crossover signals.',
         },
       ],
       keyTakeaways: [
@@ -432,7 +532,7 @@ const articles: Record<string, LearnArticle> = {
         },
         {
           heading: 'Why Sentiment Matters',
-          content: 'Sentiment can influence price movements, especially in the short term. When sentiment is extremely positive, it may indicate excessive optimism (potential contrarian signal). When sentiment is extremely negative, it may indicate excessive pessimism. However, sentiment is just one factorâ€”fundamentals, technicals, and macroeconomic conditions all matter.',
+          content: 'Sentiment can influence price movements, especially in the short term. When sentiment is extremely positive, it may indicate excessive optimism (potential contrarian signal). When sentiment is extremely negative, it may indicate excessive pessimism. However, sentiment is just one factor—fundamentals, technicals, and macroeconomic conditions all matter.',
         },
         {
           heading: 'Sentiment Limitations',
@@ -440,12 +540,12 @@ const articles: Record<string, LearnArticle> = {
         },
       ],
       keyTakeaways: [
-        'Sentiment measures investor attitudeâ€”bullish or bearish.',
+        'Sentiment measures investor attitude—bullish or bearish.',
         'It can be measured through news, social media, options activity, and fund flows.',
         'Extreme sentiment may signal potential reversals, but not reliably.',
         'Sentiment works best as one layer of analysis alongside technicals and fundamentals.',
       ],
-      limitations: 'Sentiment analysis is imprecise and subjective. Automated sentiment tools can misinterpret sarcasm, context, and nuance. Sentiment does not predict future price movements. StockVantex\'s sentiment analysis is one component of a broader analytical frameworkâ€”not a standalone investment signal.',
+      limitations: 'Sentiment analysis is imprecise and subjective. Automated sentiment tools can misinterpret sarcasm, context, and nuance. Sentiment does not predict future price movements. StockVantex\'s sentiment analysis is one component of a broader analytical framework—not a standalone investment signal.',
       faq: [
         { question: 'Can sentiment predict stock prices?', answer: 'Sentiment can provide clues about market psychology, but it does not reliably predict future prices. Extreme sentiment readings may suggest potential turning points, but markets can remain irrational longer than investors can remain solvent.' },
       ],
@@ -464,7 +564,7 @@ const articles: Record<string, LearnArticle> = {
     relatedTickers: ['AAPL', 'NVDA', 'TSLA'],
     relatedArticles: ['what-is-stock-sentiment', 'what-is-technical-analysis', 'how-to-analyze-stock-risk'],
     content: {
-      intro: 'News sentiment analysis applies natural language processing (NLP) techniques to financial news articles and headlines. By analyzing the language used in news coverage, automated systems can classify articles as positive, negative, or neutralâ€”and assign a numerical sentiment score.',
+      intro: 'News sentiment analysis applies natural language processing (NLP) techniques to financial news articles and headlines. By analyzing the language used in news coverage, automated systems can classify articles as positive, negative, or neutral—and assign a numerical sentiment score.',
       sections: [
         {
           heading: 'How Automated Sentiment Scoring Works',
@@ -472,20 +572,20 @@ const articles: Record<string, LearnArticle> = {
         },
         {
           heading: 'What Sentiment Scores Mean',
-          content: 'Sentiment scores typically range from -1 (very negative) to +1 (very positive), with 0 being neutral. A score above 0.1 generally suggests positive sentiment; below -0.1 suggests negative. However, these thresholds are approximateâ€”different systems use different scales.',
+          content: 'Sentiment scores typically range from -1 (very negative) to +1 (very positive), with 0 being neutral. A score above 0.1 generally suggests positive sentiment; below -0.1 suggests negative. However, these thresholds are approximate—different systems use different scales.',
         },
         {
           heading: 'Limitations of News Sentiment',
-          content: 'Automated sentiment analysis can misinterpret sarcasm, irony, and context. It may not capture the full nuance of financial reporting. News coverage can lag actual events. Sentiment scores should be used as one input among manyâ€”not as a definitive trading signal.',
+          content: 'Automated sentiment analysis can misinterpret sarcasm, irony, and context. It may not capture the full nuance of financial reporting. News coverage can lag actual events. Sentiment scores should be used as one input among many—not as a definitive trading signal.',
         },
       ],
       keyTakeaways: [
         'News sentiment uses NLP to classify financial news as positive, negative, or neutral.',
-        'Scores are numericalâ€”typically ranging from negative to positive.',
+        'Scores are numerical—typically ranging from negative to positive.',
         'Sentiment analysis has accuracy limitations, especially with context and nuance.',
         'It is one tool for understanding market psychology, not a prediction system.',
       ],
-      limitations: 'Automated sentiment analysis is not perfectly accurate. It can misinterpret financial jargon, miss important context, and produce misleading signals. StockVantex\'s sentiment analysis is one analytical layerâ€”not a guaranteed indicator of future price movement.',
+      limitations: 'Automated sentiment analysis is not perfectly accurate. It can misinterpret financial jargon, miss important context, and produce misleading signals. StockVantex\'s sentiment analysis is one analytical layer—not a guaranteed indicator of future price movement.',
     },
   },
   'what-is-stock-volatility': {
@@ -509,18 +609,18 @@ const articles: Record<string, LearnArticle> = {
       sections: [
         {
           heading: 'What Causes Volatility',
-          content: 'Volatility increases during periods of uncertaintyâ€”earnings reports, economic data releases, geopolitical events, and market-wide stress all contribute. Different stocks have different baseline volatility levels based on their sector, size, and market perception.',
+          content: 'Volatility increases during periods of uncertainty—earnings reports, economic data releases, geopolitical events, and market-wide stress all contribute. Different stocks have different baseline volatility levels based on their sector, size, and market perception.',
         },
         {
           heading: 'How Volatility Is Measured',
-          content: 'The most common measure is standard deviation of returnsâ€”how much daily returns deviate from the average. ATR measures the average range of daily price movement. The VIX index measures expected volatility of the S&P 500.',
+          content: 'The most common measure is standard deviation of returns—how much daily returns deviate from the average. ATR measures the average range of daily price movement. The VIX index measures expected volatility of the S&P 500.',
           subsections: [
-            { heading: 'Standard deviation vs ATR', content: 'Standard deviation uses closing returns and captures how spread out returns are around their average â€” it is direction-blind and the basis of most "historical volatility" figures. ATR uses the full high-low-close range, so it reflects intraday movement as well as closes; an ATR of $2.15 on a $100 stock says something different from a 20% annualized standard deviation. StockVantex shows both perspectives: a volatility percentage in the research brief and an ATR-based expected daily range in technical analysis.' },
+            { heading: 'Standard deviation vs ATR', content: 'Standard deviation uses closing returns and captures how spread out returns are around their average — it is direction-blind and the basis of most "historical volatility" figures. ATR uses the full high-low-close range, so it reflects intraday movement as well as closes; an ATR of $2.15 on a $100 stock says something different from a 20% annualized standard deviation. StockVantex shows both perspectives: a volatility percentage in the research brief and an ATR-based expected daily range in technical analysis.' },
           ],
         },
         {
           heading: 'Volatility and Risk',
-          content: 'Higher volatility means higher uncertainty about future prices. This does not mean higher volatility is always badâ€”some investors seek volatile stocks for potential gains. But volatility must be understood and managed through position sizing, diversification, and stop-loss strategies.',
+          content: 'Higher volatility means higher uncertainty about future prices. This does not mean higher volatility is always bad—some investors seek volatile stocks for potential gains. But volatility must be understood and managed through position sizing, diversification, and stop-loss strategies.',
         },
       ],
       keyTakeaways: [
@@ -529,7 +629,7 @@ const articles: Record<string, LearnArticle> = {
         'Volatility increases during earnings, economic events, and market stress.',
         'Understanding volatility is essential for risk management.',
       ],
-      limitations: 'Historical volatility does not predict future volatility with certainty. Volatility can change suddenly due to unexpected events. StockVantex\'s volatility analysis is backward-looking and should be used as one input in risk managementâ€”not as a definitive prediction.',
+      limitations: 'Historical volatility does not predict future volatility with certainty. Volatility can change suddenly due to unexpected events. StockVantex\'s volatility analysis is backward-looking and should be used as one input in risk management—not as a definitive prediction.',
     },
   },
   'how-to-analyze-stock-risk': {
@@ -543,7 +643,7 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '7 min',
     tags: ['risk analysis', 'volatility', 'risk management', 'stock analysis'],
     relatedTickers: ['AAPL', 'JPM', 'TSLA'],
-    relatedArticles: ['what-is-stock-volatility', 'what-is-atr', 'how-to-analyze-a-stock'],
+    relatedArticles: ['what-is-stock-volatility', 'what-is-atr', 'how-to-analyze-a-stock', 'how-to-research-a-stock-before-buying'],
     content: {
       intro: 'Analyzing stock risk involves evaluating multiple dimensions of uncertainty. No single metric captures all risk. Effective risk analysis combines volatility measures, trend stability assessment, market conditions, and fundamental factors to build a comprehensive picture of potential downside.',
       sections: [
@@ -554,21 +654,21 @@ const articles: Record<string, LearnArticle> = {
             { heading: 'Volatility Risk', content: 'How much does the stock price typically fluctuate? Measured by historical volatility, ATR, and Bollinger Band width.' },
             { heading: 'Trend Risk', content: 'Is the stock in a stable trend or choppy conditions? A stock in a clear trend may have directional risk; a stock in choppy conditions may have whipsaw risk.' },
             { heading: 'Drawdown Risk', content: 'How large has the stock\'s recent peak-to-trough decline been? Maximum drawdown indicates historical worst-case loss scenarios.' },
-            { heading: 'Market Risk', content: 'How sensitive is the stock to overall market movements? Stocks with high beta tend to amplify market movesâ€”both up and down.' },
+            { heading: 'Market Risk', content: 'How sensitive is the stock to overall market movements? Stocks with high beta tend to amplify market moves—both up and down.' },
           ],
         },
         {
           heading: 'Risk Assessment Limitations',
-          content: 'Risk analysis is inherently backward-looking. Past volatility and drawdowns do not guarantee future risk levels. Black swan events and regime changes can produce risks that historical analysis cannot anticipate. Risk assessment should be used to inform position sizing and diversificationâ€”not to eliminate uncertainty.',
+          content: 'Risk analysis is inherently backward-looking. Past volatility and drawdowns do not guarantee future risk levels. Black swan events and regime changes can produce risks that historical analysis cannot anticipate. Risk assessment should be used to inform position sizing and diversification—not to eliminate uncertainty.',
         },
       ],
       keyTakeaways: [
-        'Stock risk is multidimensionalâ€”no single metric captures it fully.',
+        'Stock risk is multidimensional—no single metric captures it fully.',
         'Key dimensions include volatility, trend stability, drawdown, and market sensitivity.',
         'Risk analysis is backward-looking and cannot predict future events.',
         'Use risk assessment to inform position sizing and diversification decisions.',
       ],
-      limitations: 'StockVantex\'s risk assessment is based on historical data and models. It cannot predict future risk with certainty. Risk scores and levels are approximate assessmentsâ€”not guarantees. Always conduct your own research and consider your personal risk tolerance.',
+      limitations: 'StockVantex\'s risk assessment is based on historical data and models. It cannot predict future risk with certainty. Risk scores and levels are approximate assessments—not guarantees. Always conduct your own research and consider your personal risk tolerance.',
     },
   },
   'how-to-analyze-a-stock': {
@@ -582,9 +682,9 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '9 min',
     tags: ['stock analysis', 'technical analysis', 'fundamental analysis', 'research'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
-    relatedArticles: ['what-is-technical-analysis', 'what-is-stock-sentiment', 'how-to-analyze-stock-risk', 'how-treasury-yields-affect-stock-market'],
+    relatedArticles: ['what-is-technical-analysis', 'what-is-stock-sentiment', 'how-to-analyze-stock-risk', 'how-treasury-yields-affect-stock-market', 'how-to-research-a-stock-before-buying'],
     content: {
-      intro: 'Analyzing a stock involves evaluating multiple dimensions of informationâ€”price trends, technical indicators, market sentiment, risk factors, and broader market conditions. No single approach provides a complete picture. The most effective analysis combines several evidence layers to form a comprehensive view.',
+      intro: 'Analyzing a stock involves evaluating multiple dimensions of information—price trends, technical indicators, market sentiment, risk factors, and broader market conditions. No single approach provides a complete picture. The most effective analysis combines several evidence layers to form a comprehensive view.',
       sections: [
         {
           heading: 'Step 1: Understand the Company',
@@ -633,32 +733,32 @@ const articles: Record<string, LearnArticle> = {
     relatedTickers: ['AAPL', 'NVDA', 'MSFT'],
     relatedArticles: ['how-lstm-forecasting-works', 'how-to-analyze-a-stock', 'what-is-stock-volatility', 'beyond-price-predictions',],
     content: {
-      intro: 'AI stock forecasting uses machine learning modelsâ€”particularly recurrent neural networks like LSTM (Long Short-Term Memory)â€”to analyze historical price patterns and project potential future price paths. These models identify complex patterns in sequential data that may not be apparent through traditional analysis.',
+      intro: 'AI stock forecasting uses machine learning models—particularly recurrent neural networks like LSTM (Long Short-Term Memory)—to analyze historical price patterns and project potential future price paths. These models identify complex patterns in sequential data that may not be apparent through traditional analysis.',
       sections: [
         {
           heading: 'How AI Forecasting Models Work',
-          content: 'AI forecasting models are trained on historical price data and related features (volume, technical indicators, market conditions). They learn patterns from the training data and use those patterns to project future price trajectories. The output is typically a range of potential future prices with associated confidence levels.',
+          content: 'AI forecasting models are trained on historical price data and related features. Outputs depend on the model design: some produce point estimates, while others require separate calibration to produce prediction intervals. StockVantex\'s deployed model produces point estimates only.',
         },
         {
           heading: 'What AI Forecasting Can Do',
-          content: 'AI models can identify complex nonlinear patterns in historical data. They can process multiple features simultaneously. They provide probabilistic outputs with confidence ranges. They can be backtested against historical data to evaluate performance.',
+          content: 'AI models can identify complex nonlinear patterns in historical data. They can process multiple features simultaneously. Calibrated probability estimates require an additional uncertainty model. They can be evaluated on held-out data or with walk-forward tests when such results are actually published.',
         },
         {
           heading: 'What AI Forecasting Cannot Do',
           content: 'AI models cannot predict the future with certainty. They cannot account for unprecedented events (black swans). They are limited by the quality and relevance of their training data. Past performance does not guarantee future results. Market regimes change, and models trained on historical data may not adapt quickly enough.',
         },
         {
-          heading: 'Understanding Forecast Confidence',
-          content: 'Confidence intervals represent the range within which the model expects future prices to fall with a certain probability. A 95% confidence interval is wider than an 80% interval. Confidence levels are based on historical model performanceâ€”not guarantees of future accuracy.',
+          heading: 'Point Estimates vs Confidence',
+          content: 'A confidence or prediction interval requires calibration against out-of-sample errors. StockVantex does not produce calibrated intervals; the displayed 10-step min–max is only the spread of point estimates, not a probability statement.',
         },
       ],
       keyTakeaways: [
         'AI forecasting uses machine learning to project potential future price paths.',
-        'Models analyze historical patterns to generate probabilistic forecasts.',
-        'Confidence intervals show the range of possible outcomes, not certainty.',
+        'Models analyze historical patterns to generate point estimates; probability requires separate calibration.',
+        'A path min–max shows the spread of point estimates, not a confidence interval.',
         'AI forecasting is a tool for research, not a guarantee of future results.',
       ],
-      limitations: 'StockVantex\'s forecasting is based on LSTM/attention models trained on historical data. Historical model performance metrics (such as backtesting accuracy) do not guarantee future prediction accuracy. Forecasts should be used as one input in your research processâ€”not as the basis for investment decisions.',
+      limitations: 'StockVantex\'s forecasting is based on LSTM/attention models trained on historical data. A small chronological holdout report exists for AAPL and MSFT only; no walk-forward fold results, no out-of-sample error table and no directional baseline comparison are published. Forecasts should be used as one input in your research process—not as the basis for investment decisions.',
     },
   },
   'how-lstm-forecasting-works': {
@@ -682,47 +782,47 @@ const articles: Record<string, LearnArticle> = {
       sections: [
         {
           heading: 'What Makes LSTM Different',
-          content: 'Standard neural networks process each input independently. LSTM networks have a "cell state" that acts as a memory, allowing them to retain information across many time steps. This makes them capable of learning patterns that depend on historical contextâ€”such as how a sequence of price movements over weeks might relate to future direction.',
+          content: 'Standard neural networks process each input independently. LSTM networks have a "cell state" that acts as a memory, allowing them to retain information across many time steps. This makes them capable of learning patterns that depend on historical context—such as how a sequence of price movements over weeks might relate to future direction.',
         },
         {
           heading: 'How LSTM Processes Stock Data',
           content: 'LSTM processes stock data as a sequence. The model used on StockVantex\'s forecast page works like this:',
           subsections: [
-            { heading: 'Training and preprocessing', content: 'Closing prices are scaled to a 0â€“1 range before training (neural networks learn far better on bounded inputs). A per-ticker scaler is fitted on roughly two years of daily history and reused at inference, so the model always sees prices on a familiar scale. The model is trained to predict the next close from a window of the previous ones.' },
-            { heading: 'The 60-day lookback window', content: 'At inference the model reads a sliding window of the last 60 trading days of closing prices. Sixty trading days is roughly one fiscal quarter of market activity â€” long enough to capture medium-term momentum, short enough to stay responsive to regime changes.' },
-            { heading: 'Recursive 10-day projection', content: 'The forecast page projects 10 trading days ahead, recursively: predict day +1, feed that prediction back as input, predict day +2, and so on. Recursive multi-step forecasting is standard but compounds error â€” each step builds on the previous prediction, so uncertainty grows with horizon length. Forecast dates follow the trading calendar (business days), so weekends never appear on the axis.' },
+            { heading: 'Training and preprocessing', content: 'Closing prices are scaled to a 0–1 range before training (neural networks learn far better on bounded inputs). Artifact metadata describes roughly five years of source history with an unknown exact date span; a per-ticker scaler is fitted on the training slice and reused at inference for known tickers. Unseen tickers use a scaler fitted on the supplied history, which is a documented limitation. The model is trained to predict the next close from a window of the previous ones.' },
+            { heading: 'The 60-day lookback window', content: 'At inference the model reads a sliding window of the last 60 trading days of closing prices. Sixty trading days is roughly one fiscal quarter of market activity — long enough to capture medium-term momentum, short enough to stay responsive to regime changes.' },
+            { heading: 'Recursive 10-day projection', content: 'The forecast page projects 10 weekday steps ahead, recursively: predict step +1, feed that prediction back as input, predict step +2, and so on. Recursive multi-step forecasting is standard but can compound error — each step builds on the previous prediction. Forecast dates use a weekday-only business-day frequency; exchange holidays are not modeled, so labels are approximate steps rather than a verified trading calendar.' },
           ],
         },
         {
           heading: 'How the Forecast Is Evaluated',
           content: 'Model quality is measured by comparing predicted historical prices against actual closes over the same window.',
           subsections: [
-            { heading: 'MAE, RMSE, and MAPE', content: 'Mean Absolute Error is the average dollar-size miss. Root Mean Squared Error penalizes large misses more heavily. Mean Absolute Percentage Error expresses the miss as a percentage of price, which is what the "Historical fit" percentage on the forecast page is based on â€” an MAPE-derived score of how closely the model tracked history, not a promise about the future.' },
-            { heading: 'In-sample vs out-of-sample', content: 'A model can score well on data it has already seen (in-sample) while performing worse on new data (out-of-sample). Walk-forward evaluation â€” training on past data and testing on the following period, repeatedly â€” gives a more honest picture. Even good out-of-sample performance does not guarantee live accuracy, because markets change.' },
+            { heading: 'MAE, RMSE, and MAPE', content: 'Mean Absolute Error is the average dollar-size miss. Root Mean Squared Error penalizes large misses more heavily. Mean Absolute Percentage Error expresses the miss as a percentage of price, which is what the "In-sample fit proxy" on the forecast page is based on — an MAPE-derived score of how closely the model reconstructed history, not a promise about the future.' },
+            { heading: 'In-sample vs out-of-sample', content: 'A model can score well on data it has already seen (in-sample) while performing worse on new data (out-of-sample). Walk-forward evaluation — training on past data and testing on the following period, repeatedly — gives a more honest picture. StockVantex has not published walk-forward fold results; the available holdout report is small and is not a substitute for that evidence.' },
           ],
         },
         {
           heading: 'LSTM Limitations for Stock Forecasting',
           content: 'LSTM models have specific limitations when applied to financial data.',
           subsections: [
-            { heading: 'Non-Stationarity', content: 'Stock prices are non-stationaryâ€”the statistical properties change over time. A model trained on one market regime may not work well in another.' },
+            { heading: 'Non-Stationarity', content: 'Stock prices are non-stationary—the statistical properties change over time. A model trained on one market regime may not work well in another.' },
             { heading: 'Overfitting Risk', content: 'LSTM models can overfit to historical noise rather than learning genuine patterns. Regularization and careful validation are essential.' },
-            { heading: 'Point estimates only', content: 'StockVantex\'s forecast returns point estimates â€” a single projected path, with no confidence bands. The real outcome distribution around each point is wide, and the model does not know about upcoming earnings, macro releases, or news. Treat the line as one scenario, never as a bound on outcomes.' },
+            { heading: 'Point estimates only', content: 'StockVantex\'s forecast returns point estimates — a single projected path, with no confidence bands. The real outcome distribution around each point is wide, and the model does not know about upcoming earnings, macro releases, or news. Treat the line as one scenario, never as a bound on outcomes.' },
             { heading: 'Price-only inputs', content: 'The model sees historical closing prices only. Volume, fundamentals, news, and macro conditions all move prices but are invisible to it.' },
           ],
         },
       ],
       keyTakeaways: [
         'LSTM is a neural network architecture designed for sequential data.',
-        'StockVantex reads a 60-trading-day window and recursively projects 10 trading days ahead.',
-        'The "historical fit" percentage is MAPE-based â€” a measure of past tracking, not future accuracy.',
-        'Forecasts are point estimates on the trading calendar, not certainties.',
+        'StockVantex reads a 60-observation close-price window and recursively projects 10 weekday steps ahead.',
+        'The in-sample fit proxy is MAPE-based — a measure of past reconstruction, not future accuracy.',
+        'Forecasts are point estimates on a weekday calendar, not calibrated probabilities.',
       ],
-      limitations: 'StockVantex uses an LSTM/attention-based model as one analytical tool. The historical-fit percentage shown with each forecast is computed from past data and does not guarantee future prediction accuracy. Forecasts represent one possible scenario among manyâ€”not a guaranteed outcome. Always consider multiple sources of information.',
+      limitations: 'StockVantex uses an LSTM/attention-based model as one analytical tool. The in-sample fit proxy shown with each forecast is computed from past data and does not guarantee future prediction accuracy. Forecasts represent one possible scenario among many—not a calibrated probability or guaranteed outcome. Always consider multiple sources of information.',
       faq: [
-        { question: 'How many days ahead does the forecast go?', answer: 'Ten trading days (business days). The model predicts recursively one day at a time, feeding each prediction back in, so error compounds with each step.' },
-        { question: 'Does a high historical fit mean the forecast will be accurate?', answer: 'No. Historical fit measures how closely the model tracked past prices â€” it says nothing reliable about future accuracy, because markets and regimes change.' },
-        { question: 'What data does the LSTM model use?', answer: 'Historical daily closing prices only â€” a 60-day lookback window, scaled per ticker. It does not ingest news, volume, fundamentals, or macro data.' },
+        { question: 'How many days ahead does the forecast go?', answer: 'Ten weekday steps by default. Exchange holidays are not modeled. The model predicts recursively one step at a time, feeding each prediction back in, so error can compound with each step.' },
+        { question: 'Does a high in-sample fit mean the forecast will be accurate?', answer: 'No. The in-sample fit proxy measures how closely the model reconstructed past prices — it says nothing reliable about future accuracy, because markets and regimes change.' },
+        { question: 'What data does the LSTM model use?', answer: 'Historical daily closing prices only — a 60-day lookback window, scaled per ticker. It does not ingest news, volume, fundamentals, or macro data.' },
       ],
     },
   },
@@ -732,72 +832,127 @@ const articles: Record<string, LearnArticle> = {
     description: 'Technical analysis and fundamental analysis are two major approaches to evaluating stocks. Learn the differences, strengths, and limitations of each.',
     h1: 'Technical Analysis vs Fundamental Analysis',
     publishedAt: '2026-03-25',
-    updatedAt: '2026-09-01',
+    updatedAt: '2026-11-24',
     author: 'Haroon Rasheed',
-    readingTime: '7 min',
+    readingTime: '10 min',
     tags: ['technical analysis', 'fundamental analysis', 'comparison', 'investment strategy'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
-    relatedArticles: ['what-is-technical-analysis', 'how-to-analyze-a-stock', 'what-is-stock-sentiment'],
+    relatedArticles: ['what-is-technical-analysis', 'how-to-analyze-a-stock', 'how-to-research-a-stock-before-buying', 'what-is-stock-sentiment'],
+    toolLinks: [
+      { href: '/markets/stock/technical', label: 'Open technical analysis for any stock' },
+      { href: '/methodology', label: 'See how StockVantex combines signals' },
+    ],
     content: {
-      intro: 'Technical analysis and fundamental analysis are the two primary approaches to evaluating stocks. Technical analysis focuses on price charts and trading data; fundamental analysis focuses on a company\'s financial health and intrinsic value. Both have strengths and limitations, and many successful investors use elements of both.',
+      intro: 'Technical analysis and fundamental analysis are the two primary approaches to evaluating stocks. Technical analysis focuses on price charts and trading data; fundamental analysis focuses on a company\'s financial health and intrinsic value. Both have strengths and limitations, and many successful investors use elements of both. The practical question is not "which one wins" — it is which question you are trying to answer: technical analysis is mainly about *when*, fundamental analysis is mainly about *what* and *why*.',
       sections: [
         {
           heading: 'Technical Analysis',
-          content: 'Technical analysis studies price movements, volume, and chart patterns to identify trading opportunities. It assumes that market price action reflects all available information and that prices move in recognizable trends. Technical analysts use indicators like RSI, MACD, moving averages, and Bollinger Bands.',
+          content: 'Technical analysis studies price movements, volume, and chart patterns to identify trading opportunities. It assumes that market price action reflects all available information and that prices move in recognizable trends. Technical analysts use indicators like RSI, MACD, moving averages, and Bollinger Bands. Because it only needs price and volume data, technical analysis works on any tradeable instrument — stocks, ETFs, and market indices alike — including situations where financial statements say little, such as a young company or a sector ETF.',
         },
         {
           heading: 'Fundamental Analysis',
-          content: 'Fundamental analysis evaluates a company\'s intrinsic value by examining financial statements, management quality, competitive position, industry dynamics, and growth prospects. Fundamental analysts look at metrics like revenue growth, earnings per share, P/E ratio, and free cash flow.',
+          content: 'Fundamental analysis evaluates a company\'s intrinsic value by examining financial statements, management quality, competitive position, industry dynamics, and growth prospects. Fundamental analysts look at metrics like revenue growth, earnings per share, P/E ratio, and free cash flow. A core building block is the valuation multiple: P/E ratio = share price ÷ earnings per share. If a stock trades at $120 with earnings per share of $4.00, its P/E is 30 — investors are paying $30 for every $1 of annual earnings, which is only meaningful when compared with the company\'s own history, its industry, and the growth expected ahead.',
         },
         {
-          heading: 'Key Differences',
-          content: 'Technical analysis is primarily concerned with "what" the price is doing; fundamental analysis is concerned with "why." Technical analysis tends to be shorter-term focused; fundamental analysis tends to be longer-term focused. Technical analysis works with any tradeable security; fundamental analysis requires access to financial statements.',
+          heading: 'Objectives, Inputs and Assumptions',
+          content: 'The two approaches differ on every dimension except the goal of making better decisions. The table below summarizes how they compare.',
+          table: {
+            headers: ['Dimension', 'Technical analysis', 'Fundamental analysis'],
+            rows: [
+              ['Primary objective', 'Identify timing — when price may rise or fall', 'Estimate value — what the business is worth'],
+              ['Main inputs', 'Price, volume, chart patterns, indicators', 'Financial statements, industry position, management quality'],
+              ['Core assumption', 'Prices reflect available information and trends tend to repeat', 'Price eventually reflects the company\'s intrinsic value'],
+              ['Typical horizon', 'Days to months (also applied on weekly charts)', 'Months to years'],
+              ['Data access needed', 'A price chart', 'Filings, earnings releases, industry research'],
+            ],
+          },
+        },
+        {
+          heading: 'Strengths and Limitations of Each',
+          content: 'Neither approach is complete on its own — each sees part of the picture the other misses.',
+          subsections: [
+            { heading: 'Where technical analysis shines', content: 'It gives concrete timing information: trend direction, support and resistance levels, momentum extremes, and volatility conditions. It is fast, works in real time, and applies equally to indices and ETFs where fundamentals are diffuse.' },
+            { heading: 'Where technical analysis struggles', content: 'It says nothing about business quality or valuation. A perfect chart pattern can still sit on top of an overvalued or deteriorating company, and news-driven gaps can ignore technical levels entirely.' },
+            { heading: 'Where fundamental analysis shines', content: 'It answers the question that matters for long-term ownership: is this business healthy, growing, and reasonably priced relative to what I am paying? It provides the "why" behind durable price moves.' },
+            { heading: 'Where fundamental analysis struggles', content: 'It gives little timing guidance — a fairly valued stock can stay fairly valued for a year, and reported financials are backward-looking. It also requires more data access and interpretation, and works poorly for instruments like broad ETFs.' },
+          ],
+        },
+        {
+          heading: 'Worked Example: One Stock, Two Lenses (illustrative)',
+          content: 'Imagine a fictional company, Example Corp, trading at $120 with trailing earnings per share of $4.00. The fundamental lens computes P/E = 120 ÷ 4 = 30 and compares it with the company\'s history and industry: if earnings are growing quickly, a 30x multiple may be justified; if growth is slowing, it may be rich. The technical lens does not care about the multiple — it sees price above a rising 50-day moving average, RSI near 61 (firm but not overbought), and a prior resistance zone near $124. The two lenses produce different, complementary answers: fundamentals say whether the stock belongs on a watchlist at all, and technicals suggest where interest might be rewarded — a breakout above $124 or a pullback toward support near $112 — with stop placement sized from the stock\'s ATR. Neither lens alone gives both answers. The numbers here are hypothetical and for learning only.',
         },
         {
           heading: 'Using Both Approaches',
-          content: 'Many successful investors combine both approaches. Fundamental analysis can identify which stocks to buy; technical analysis can help determine when to buy them. StockVantex primarily provides technical, sentiment, and risk analysisâ€”but understanding the fundamentals of a company remains important for long-term investment decisions.',
+          content: 'Many successful investors combine both approaches in a simple order: fundamental analysis can identify which stocks to watch or buy; technical analysis can help determine when to buy them; and volatility-based risk tools decide how large a position is sensible. StockVantex primarily provides technical, sentiment, and risk analysis — a timing-and-risk layer — but understanding the fundamentals of a company remains important for long-term investment decisions, and StockVantex does not replace that work.',
         },
       ],
       keyTakeaways: [
         'Technical analysis studies price patterns; fundamental analysis studies company value.',
-        'Technical analysis is shorter-term; fundamental analysis is longer-term.',
-        'Both approaches have strengths and limitations.',
-        'Combining both approaches can provide a more complete analysis.',
+        'Technical analysis answers "when"; fundamental analysis answers "what and why".',
+        'Technical tends to shorter-term decisions; fundamentals tend to longer-term ones — but both can be applied across horizons.',
+        'Each approach has blind spots: fundamentals miss timing, technicals miss business quality.',
+        'Combining both — with volatility-based risk sizing — gives a more complete picture than either alone.',
       ],
-      limitations: 'Neither technical nor fundamental analysis guarantees investment success. Both are tools for research and decision-makingâ€”not crystal balls. StockVantex provides technical and sentiment analysis tools to support your research, but investment decisions are ultimately your own.',
+      limitations: 'Neither technical nor fundamental analysis guarantees investment success. Both are tools for research and decision-making—not crystal balls. StockVantex provides technical and sentiment analysis tools to support your research, but investment decisions are ultimately your own. Worked examples in this article use hypothetical numbers and are for learning only.',
+      faq: [
+        { question: 'Which is better, technical or fundamental analysis?', answer: 'Neither is universally better — they answer different questions. Fundamental analysis helps decide what to own based on business quality and valuation; technical analysis helps decide when to act based on price behavior. Long-term investors often lean fundamental with technical timing, while shorter-term traders often lean technical with a fundamental sanity check.' },
+        { question: 'Can technical analysis be used for long-term investing?', answer: 'Yes. Longer-term investors use weekly and monthly charts to identify major trends, accumulate near support, and avoid buying into exhausted moves. Technical analysis still only uses price and volume data, so it complements — but does not replace — fundamental research for long horizons.' },
+        { question: 'Do I need strong math skills to use technical analysis?', answer: 'No. Platforms calculate the indicators for you; the important skill is understanding what each indicator measures and — more importantly — what it cannot tell you. Knowing the limits matters more than computing the formulas by hand.' },
+        { question: 'How does StockVantex fit into this comparison?', answer: 'StockVantex provides the technical side: indicators, sentiment, risk scoring, and forecasting with stated limitations. It does not perform fundamental analysis of financial statements, so treat it as one layer of evidence alongside your own fundamental research, not as a replacement for it.' },
+      ],
     },
   },
   'what-is-adx': {
     slug: 'what-is-adx',
     title: 'What Is ADX? How to Measure Trend Strength',
-    description: 'ADX (Average Directional Index) measures how strong a trend isâ€”not its direction. Learn how the ADX scale works, how to read it with +DI and -DI, and where it misleads.',
+    description: 'ADX (Average Directional Index) measures how strong a trend is—not its direction. Learn how the ADX scale works, how to read it with +DI and -DI, and where it misleads.',
     h1: 'What Is ADX? How to Measure Trend Strength',
     publishedAt: '2026-06-20',
-    updatedAt: '2026-10-08',
+    updatedAt: '2026-11-24',
     author: 'Haroon Rasheed',
-    readingTime: '6 min',
+    readingTime: '7 min',
     tags: ['technical analysis', 'indicators', 'trend', 'ADX'],
     relatedTickers: ['AAPL', 'NVDA', 'MSFT'],
-    relatedArticles: ['what-is-technical-analysis', 'what-is-rsi', 'sma-vs-ema'],
+    relatedArticles: ['what-is-technical-analysis', 'what-is-atr', 'what-is-rsi', 'sma-vs-ema'],
     content: {
-      intro: 'ADX (Average Directional Index) is an indicator that measures trend strength on a 0â€“100 scale. It answers a different question than most indicators: not "which way is price going?" but "how strong is the move at all?" Understanding that distinction is the key to using ADX without misreading it.',
+      intro: 'ADX (Average Directional Index) is an indicator that measures trend strength on a 0–100 scale. It answers a different question than most indicators: not "which way is price going?" but "how strong is the move at all?" Understanding that distinction is the key to using ADX without misreading it.',
       sections: [
         {
           heading: 'What the ADX Scale Means',
           content: 'Welles Wilder, who also created RSI and ATR, proposed conventional thresholds for ADX. Traders use them as rules of thumb rather than hard laws.',
           subsections: [
-            { heading: 'Below 20 â€” weak or absent trend', content: 'Readings under 20 suggest price is moving sideways or without direction. Range-trading approaches tend to interest traders more than trend-following ones in this zone.' },
-            { heading: '20 to 25 â€” emerging trend', content: 'A move above 20 can signal that a trend is beginning to form. Many traders treat 25 as the level where a trend is considered established.' },
-            { heading: 'Above 25 â€” strong trend', content: 'Readings above 25 indicate a well-established trend. Extremely high readings (above 50 or 60) often appear late in trends, which is why ADX is read as a lagging measure.' },
+            { heading: 'Below 20 — weak or absent trend', content: 'Readings under 20 suggest price is moving sideways or without direction. Range-trading approaches tend to interest traders more than trend-following ones in this zone.' },
+            { heading: '20 to 25 — emerging trend', content: 'A move above 20 can signal that a trend is beginning to form. Many traders treat 25 as the level where a trend is considered established.' },
+            { heading: 'Above 25 — strong trend', content: 'Readings above 25 indicate a well-established trend. Extremely high readings (above 50 or 60) often appear late in trends, which is why ADX is read as a lagging measure.' },
           ],
         },
         {
           heading: 'ADX Does Not Tell You Direction',
-          content: 'This is the most common ADX mistake. ADX rises whether price is trending up OR down â€” it only measures the intensity of the move. To establish direction, traders pair ADX with the directional movement lines (+DI and -DI) or with price structure itself: higher highs and higher lows indicate an uptrend, lower highs and lower lows a downtrend. When +DI is above -DI while ADX is above 25, the trend is considered up and strong; the reverse indicates a strong downtrend.',
+          content: 'This is the most common ADX mistake. ADX rises whether price is trending up OR down — it only measures the intensity of the move. To establish direction, traders pair ADX with the directional movement lines (+DI and -DI) or with price structure itself: higher highs and higher lows indicate an uptrend, lower highs and lower lows a downtrend. When +DI is above -DI while ADX is above 25, the trend is considered up and strong; the reverse indicates a strong downtrend.',
         },
         {
-          heading: 'How ADX Is Calculated (Intuitively)',
-          content: 'ADX is built from Wilder\'s Directional Movement system: today\'s range is compared with yesterday\'s to determine whether the market moved up or down more (positive and negative directional movement). These are smoothed with Wilder\'s smoothing method, converted into +DI and -DI, then into the Directional Indicator (DX), and ADX is simply a smoothed average of DX. The smoothing is what makes ADX stable â€” and what makes it lag.',
+          heading: 'How ADX Is Calculated',
+          content: 'ADX is built from Wilder\'s Directional Movement system: today\'s range is compared with yesterday\'s to determine whether the market moved up or down more (positive and negative directional movement). These are smoothed with Wilder\'s smoothing method, converted into +DI and -DI, then into the Directional Indicator (DX), and ADX is simply a smoothed average of DX. The smoothing is what makes ADX stable — and what makes it lag.',
+          subsections: [
+            {
+              heading: 'The formula chain, step by step',
+              content: 'The standard Wilder construction in explicit form:',
+              list: {
+                ordered: true,
+                items: [
+                  'Directional movement: +DM = today\'s high − yesterday\'s high, but only when that is greater than yesterday\'s low − today\'s low and greater than zero; otherwise +DM = 0. −DM is the mirror image (today\'s low vs yesterday\'s low compared with today\'s high vs yesterday\'s high).',
+                  'True Range (TR): the same three-way maximum used by [ATR](/learn/what-is-atr) — today\'s range, the gap up from the previous close, or the gap down from it.',
+                  'Directional indicators: +DI = 100 × (Wilder-smoothed +DM ÷ Wilder-smoothed TR), with −DI computed the same way. Both use 14-period smoothing by default.',
+                  'Directional movement index: DX = 100 × |+DI − (−DI)| ÷ (+DI + (−DI)).',
+                  'ADX = Wilder-smoothed average of DX over 14 periods — smoothing on top of smoothing, which is exactly why ADX moves so slowly.',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          heading: 'Trend Strength on StockVantex',
+          content: 'StockVantex does not compute ADX itself, and this article describes ADX as a standard concept rather than a platform feature. The platform\'s trend-strength reading is a composite 0–100 trend score derived from price vs SMA20, price vs SMA50, the SMA crossover, and MACD direction, using the conventional bands: Bullish above 60, Bearish below 40, Neutral in between. It answers the same "how strong is this trend?" question ADX was designed for, using components the platform already calculates — and, like ADX, it is descriptive, not predictive. The score components and bands are documented on the [methodology](/methodology) page.',
         },
         {
           heading: 'Where ADX Misleads',
@@ -805,16 +960,19 @@ const articles: Record<string, LearnArticle> = {
         },
       ],
       keyTakeaways: [
-        'ADX measures trend strength on a 0â€“100 scale, not direction.',
-        'Conventional thresholds: below 20 weak, 20â€“25 emerging, above 25 established trend.',
+        'ADX measures trend strength on a 0–100 scale, not direction.',
+        'Conventional thresholds: below 20 weak, 20–25 emerging, above 25 established trend.',
         'Direction comes from +DI/-DI or price structure, never from ADX alone.',
         'ADX lags: it describes trends already underway rather than predicting new ones.',
+        'StockVantex reports a composite 0–100 trend score rather than ADX — the same question, different construction.',
       ],
-      limitations: 'ADX thresholds are conventions, not laws, and smoothed indicators lag real-time price action. StockVantex shows trend-strength readings as one layer of descriptive evidence alongside momentum, sentiment, and risk data â€” not as trading signals.',
+      limitations: 'ADX thresholds are conventions, not laws, and smoothed indicators lag real-time price action. StockVantex shows trend-strength readings as one layer of descriptive evidence alongside momentum, sentiment, and risk data — not as trading signals.',
       faq: [
-        { question: 'What does an ADX above 25 mean?', answer: 'An ADX above 25 conventionally indicates that a trend â€” up or down â€” is well established. ADX does not indicate direction; use +DI/-DI or the price structure to determine which way the trend points.' },
+        { question: 'What does an ADX above 25 mean?', answer: 'An ADX above 25 conventionally indicates that a trend — up or down — is well established. ADX does not indicate direction; use +DI/-DI or the price structure to determine which way the trend points.' },
         { question: 'Is ADX a buy or sell signal?', answer: 'No. ADX only measures how strong a trend is. A high ADX can accompany a strong rise or a strong fall. Traders combine it with directional indicators or other analysis; it should never be read as a standalone buy or sell instruction.' },
-        { question: 'What is the difference between ADX and RSI?', answer: 'RSI measures momentum â€” the speed and magnitude of recent price changes on a 0â€“100 scale with overbought/oversold thresholds. ADX measures trend strength regardless of direction. They answer different questions and are often used together.' },
+        { question: 'What is the difference between ADX and RSI?', answer: 'RSI measures momentum — the speed and magnitude of recent price changes on a 0–100 scale with overbought/oversold thresholds. ADX measures trend strength regardless of direction. They answer different questions and are often used together.' },
+        { question: 'What period should be used for ADX?', answer: '14 periods is the standard — what Wilder proposed and what most platforms default to. Shorter periods react faster but produce choppier readings; longer periods smooth further but lag more. Because ADX already smooths several layers, very short settings usually add noise rather than insight.' },
+        { question: 'Does StockVantex show ADX?', answer: 'No — StockVantex shows a composite 0–100 trend score built from moving averages and MACD direction instead of ADX itself. Both answer the "how strong is the trend" question, and the score\'s bands and components are documented on the methodology page.' },
       ],
     },
   },
@@ -829,9 +987,9 @@ const articles: Record<string, LearnArticle> = {
     readingTime: '6 min',
     tags: ['watchlist', 'stock research', 'process', 'beginner'],
     relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
-    relatedArticles: ['how-to-analyze-a-stock', 'what-is-stock-volatility', 'how-to-analyze-stock-risk'],
+    relatedArticles: ['how-to-analyze-a-stock', 'what-is-stock-volatility', 'how-to-analyze-stock-risk', 'stock-watchlist-guide'],
     content: {
-      intro: 'A watchlist is the core organizing tool of ongoing stock research: the short list of companies you actively follow. Most watchlists fail the same way â€” they grow into an unmanageable catalog that nobody reviews. This guide covers how to build one that stays useful.',
+      intro: 'A watchlist is the core organizing tool of ongoing stock research: the short list of companies you actively follow. Most watchlists fail the same way — they grow into an unmanageable catalog that nobody reviews. This guide covers how to build one that stays useful.',
       sections: [
         {
           heading: 'Start With a Purpose, Not a List',
@@ -839,37 +997,37 @@ const articles: Record<string, LearnArticle> = {
         },
         {
           heading: 'Keep It Small and Bucketed',
-          content: 'Between 10 and 20 names is a workable range for most individual investors â€” large enough to capture opportunities, small enough to actually review. A useful structure splits names into buckets:',
+          content: 'Between 10 and 20 names is a workable range for most individual investors — large enough to capture opportunities, small enough to actually review. A useful structure splits names into buckets:',
           subsections: [
             { heading: 'Core holdings you already own', content: 'Companies where you need to stay informed about earnings, guidance, and changing thesis conditions.' },
             { heading: 'Candidates you are researching', content: 'Names on a short list for potential entry, each with a specific reason you are waiting or watching.' },
-            { heading: 'Context proxies', content: 'A few tickers that represent broader themes you care about â€” interest-rate sensitivity, semiconductor cycle, consumer health â€” used to read the market environment rather than to buy.' },
+            { heading: 'Context proxies', content: 'A few tickers that represent broader themes you care about — interest-rate sensitivity, semiconductor cycle, consumer health — used to read the market environment rather than to buy.' },
           ],
         },
         {
           heading: 'Track a Thesis, Not Just a Price',
-          content: 'For each name, write down why it is on the list: the one or two facts that would make you act. Add the level or event that would invalidate the idea (a broken support, a missed earnings date, a guidance cut). Price alone gives you nothing to react to; a written thesis turns every market swing into information you can evaluate. Keep each entry to two or three sentences â€” if it needs a paragraph, you do not understand the position yet.',
+          content: 'For each name, write down why it is on the list: the one or two facts that would make you act. Add the level or event that would invalidate the idea (a broken support, a missed earnings date, a guidance cut). Price alone gives you nothing to react to; a written thesis turns every market swing into information you can evaluate. Keep each entry to two or three sentences — if it needs a paragraph, you do not understand the position yet.',
         },
         {
           heading: 'Review on a Schedule, Prune Ruthlessly',
-          content: 'A weekly 15-minute review is enough for most lists: check what moved, what is coming up, and whether anything has left the original thesis. Quarterly, prune names you can no longer justify keeping â€” dead ideas accumulate quietly and are the main reason watchlists rot. If a name has been "someday" for a year, remove it; you can always add it back with fresh reasoning.',
+          content: 'A weekly 15-minute review is enough for most lists: check what moved, what is coming up, and whether anything has left the original thesis. Quarterly, prune names you can no longer justify keeping — dead ideas accumulate quietly and are the main reason watchlists rot. If a name has been "someday" for a year, remove it; you can always add it back with fresh reasoning.',
         },
         {
           heading: 'Common Watchlist Mistakes',
-          content: 'The typical failure modes are predictable: adding every stock mentioned on social media; never removing anything; tracking price without tracking why; and using the watchlist as a substitute for deeper analysis. A watchlist is an intake funnel for research, not a conclusion â€” being on the list means "I am paying attention," nothing more.',
+          content: 'The typical failure modes are predictable: adding every stock mentioned on social media; never removing anything; tracking price without tracking why; and using the watchlist as a substitute for deeper analysis. A watchlist is an intake funnel for research, not a conclusion — being on the list means "I am paying attention," nothing more.',
         },
       ],
       keyTakeaways: [
         'Define the watchlist\'s purpose first; it determines size and review cadence.',
-        'Keep it to 10â€“20 names, bucketed by role (held, candidate, context).',
+        'Keep it to 10–20 names, bucketed by role (held, candidate, context).',
         'Write a one-line thesis and invalidation condition for every entry.',
-        'Review weekly, prune quarterly â€” dead ideas are the main failure mode.',
+        'Review weekly, prune quarterly — dead ideas are the main failure mode.',
       ],
-      limitations: 'Watchlists organize attention; they do not evaluate investments. Inclusion on a list â€” yours or StockVantex\'s â€” is not a recommendation to buy or sell. StockVantex\'s watchlist stores entries in your own browser\'s local storage on your device.',
+      limitations: 'Watchlists organize attention; they do not evaluate investments. Inclusion on a list — yours or StockVantex\'s — is not a recommendation to buy or sell. StockVantex\'s watchlist stores entries in your own browser\'s local storage on your device.',
       faq: [
-        { question: 'How many stocks should be on a watchlist?', answer: 'For most individual investors, 10â€“20 names is manageable: large enough to catch opportunities, small enough to review regularly. If you cannot review the full list in 15 minutes weekly, it is too long.' },
-        { question: 'How often should I update my watchlist?', answer: 'A brief weekly review keeps entries current; a deeper quarterly prune removes names whose original thesis no longer holds. Add or remove names whenever the reason for tracking them changes â€” not on a fixed calendar alone.' },
-        { question: 'Does StockVantex save my watchlist?', answer: 'Your watchlist is stored in your own browser\'s local storage on your device â€” it is not uploaded to an account, because StockVantex has no user accounts. Clearing browser data will clear the list.' },
+        { question: 'How many stocks should be on a watchlist?', answer: 'For most individual investors, 10–20 names is manageable: large enough to catch opportunities, small enough to review regularly. If you cannot review the full list in 15 minutes weekly, it is too long.' },
+        { question: 'How often should I update my watchlist?', answer: 'A brief weekly review keeps entries current; a deeper quarterly prune removes names whose original thesis no longer holds. Add or remove names whenever the reason for tracking them changes — not on a fixed calendar alone.' },
+        { question: 'Does StockVantex save my watchlist?', answer: 'Your watchlist is stored in your own browser\'s local storage on your device — it is not uploaded to an account, because StockVantex has no user accounts. Clearing browser data will clear the list.' },
       ],
     },
   },
@@ -886,42 +1044,42 @@ const articles: Record<string, LearnArticle> = {
     relatedTickers: ['NVDA', 'TSLA', 'AAPL'],
     relatedArticles: ['how-lstm-forecasting-works', 'how-ai-stock-forecasting-works', 'what-is-stock-volatility', 'are-ai-stocks-in-a-bubble'],
     content: {
-      intro: 'Ask ten models where a stock will be in ten days and you will get ten different numbers â€” none of them certain. Uncertainty is not a flaw in forecasting; it is a property of markets. Understanding where forecast uncertainty comes from is what separates using model output as one input from mistaking it for a crystal ball.',
+      intro: 'Ask ten models where a stock will be in ten days and you will get ten different numbers — none of them certain. Uncertainty is not a flaw in forecasting; it is a property of markets. Understanding where forecast uncertainty comes from is what separates using model output as one input from mistaking it for a crystal ball.',
       sections: [
         {
           heading: 'What a Forecast Actually Is',
-          content: 'A stock forecast is a conditional estimate: if the future resembles the patterns in the historical data the model learned, price might follow the projected path. The condition is doing heavy lifting. Models learn from past price sequences â€” trends, volatility clusters, mean-reverting stretches â€” and extrapolate them. When the future plays out differently from the training history, the forecast is wrong by design, not by accident.',
+          content: 'A stock forecast is a conditional estimate: if the future resembles the patterns in the historical data the model learned, price might follow the projected path. The condition is doing heavy lifting. Models learn from past price sequences — trends, volatility clusters, mean-reverting stretches — and extrapolate them. When the future plays out differently from the training history, the forecast is wrong by design, not by accident.',
         },
         {
           heading: 'Where the Uncertainty Comes From',
           content: 'Several sources combine, and none of them disappear with more data.',
           subsections: [
-            { heading: 'Regime change', content: 'Markets shift between calm and crisis, trending and ranging. A model trained largely on one regime carries that regime\'s assumptions into the next â€” often exactly when they stop working.' },
+            { heading: 'Regime change', content: 'Markets shift between calm and crisis, trending and ranging. A model trained largely on one regime carries that regime\'s assumptions into the next — often exactly when they stop working.' },
             { heading: 'Unscheduled events', content: 'Earnings surprises, guidance cuts, geopolitical shocks, and regulatory moves are, by definition, absent from price history. No historical pattern contains next week\'s news.' },
-            { heading: 'Model limitations', content: 'Every model simplifies: fixed lookback windows, limited features (often price and volume), and assumptions about how today relates to tomorrow. Simplification is necessary to learn anything at all â€” and it is also where forecasts break.' },
+            { heading: 'Model limitations', content: 'Every model simplifies: fixed lookback windows, limited features (often price and volume), and assumptions about how today relates to tomorrow. Simplification is necessary to learn anything at all — and it is also where forecasts break.' },
             { heading: 'The crowd adapts', content: 'Markets react to the forecasts published about them. A pattern that is widely traded on tends to get arbitraged away, so historical regularities can weaken simply because everyone can see them.' },
           ],
         },
         {
           heading: 'Point Estimates vs Ranges',
-          content: 'A single predicted number implies a precision markets do not have. Ranges are more honest: a projection expressed as "expected average, with likely bounds" communicates that many outcomes are possible around the central estimate. When StockVantex shows a projected average alongside a projected range and session window, the range is the more informative figure â€” it is a visible reminder of uncertainty, not hedging language.',
+          content: 'A single predicted number implies a precision markets do not have. Ranges are more honest: a projection expressed as "expected average, with likely bounds" communicates that many outcomes are possible around the central estimate. When StockVantex shows a projected average alongside a projected range and session window, the range is the more informative figure — it is a visible reminder of uncertainty, not hedging language.',
         },
         {
           heading: 'How to Use Model Output Responsibly',
-          content: 'Treat a forecast as one layer of evidence alongside technicals, sentiment, and risk â€” never as a standalone instruction. Ask what would make the forecast invalid, not just what it predicts. Size decisions so that being wrong about the forecast is survivable. And be skeptical of any source â€” human or machine â€” that presents a specific future price with confidence: the honest answer to "will this stock go up?" is always "with some probability, under some conditions."',
+          content: 'Treat a forecast as one layer of evidence alongside technicals, sentiment, and risk — never as a standalone instruction. Ask what would make the forecast invalid, not just what it predicts. Size decisions so that being wrong about the forecast is survivable. And be skeptical of any source — human or machine — that presents a specific future price with confidence: the honest answer to "will this stock go up?" is always "with some probability, under some conditions."',
         },
       ],
       keyTakeaways: [
         'A forecast is a conditional estimate from historical patterns, not a glimpse of the future.',
         'Uncertainty comes from regime shifts, unscheduled events, model limits, and adapting markets.',
         'Ranges communicate uncertainty honestly; point estimates hide it.',
-        'Use forecasts as one input among many â€” never as a guaranteed outcome.',
+        'Use forecasts as one input among many — never as a guaranteed outcome.',
       ],
       limitations: 'StockVantex forecasts are statistical estimates produced by models trained on historical data. Backtested accuracy does not guarantee future accuracy, and model outputs should never be the sole basis for investment decisions. All investing involves risk, including loss of principal.',
       faq: [
         { question: 'Can a stock forecast ever be accurate?', answer: 'Forecasts can be directionally useful and sometimes land close to the mark, but no model predicts prices with certainty. Accuracy varies with market conditions, and a model that performs well in calm markets may perform poorly in volatile ones.' },
-        { question: 'Why do forecast models fail?', answer: 'Common reasons include regime changes the model never saw in training, unscheduled news events that have no precedent in price history, overfitting to historical noise, and the simple fact that markets are adaptive â€” participants change behavior when patterns become visible.' },
-        { question: 'Should I make a trade based on a forecast?', answer: 'A forecast alone is not a sufficient reason to trade. Use it as one layer alongside technical analysis, sentiment, risk assessment, and your own thesis â€” with position sizing that assumes the forecast could be wrong.' },
+        { question: 'Why do forecast models fail?', answer: 'Common reasons include regime changes the model never saw in training, unscheduled news events that have no precedent in price history, overfitting to historical noise, and the simple fact that markets are adaptive — participants change behavior when patterns become visible.' },
+        { question: 'Should I make a trade based on a forecast?', answer: 'A forecast alone is not a sufficient reason to trade. Use it as one layer alongside technical analysis, sentiment, risk assessment, and your own thesis — with position sizing that assumes the forecast could be wrong.' },
       ],
     },
   },
@@ -936,7 +1094,7 @@ const articles: Record<string, LearnArticle> = {
     author: 'Haroon Rasheed',
     readingTime: '8 min',
     tags: ['sentiment', 'fear and greed index', 'vix', 'beginners'],
-    relatedTickers: ['SPY', 'QQQ', 'AAPL'],
+    relatedTickers: ['AAPL', 'MSFT', 'NVDA'],
     relatedArticles: ['what-is-stock-sentiment', 'how-news-sentiment-works', 'what-is-stock-volatility', 'beyond-price-predictions',],
     resources: [
       { href: '/learn/what-is-stock-sentiment', label: 'What Is Stock Market Sentiment?' },
@@ -952,7 +1110,7 @@ const articles: Record<string, LearnArticle> = {
       },
       {
         href: 'https://www.cboe.com/tradable_products/vix/',
-        label: 'Cboe VIX â€” the market fear gauge (free data)',
+        label: 'Cboe VIX — the market fear gauge (free data)',
         external: true,
       },
     ],
@@ -1060,7 +1218,7 @@ const articles: Record<string, LearnArticle> = {
         },
       ],
       keyTakeaways: [
-        'Stock market sentiment is the overall mood of investors â€” bullish when people expect prices to rise, bearish when they expect them to fall.',
+        'Stock market sentiment is the overall mood of investors — bullish when people expect prices to rise, bearish when they expect them to fall.',
         'Five free tools cover most of the picture: the CNN Fear and Greed Index, the AAII survey, the VIX, the put/call ratio, and social or search trends.',
         'Sentiment works best as one clue alongside fundamentals, not as a stand-alone buy or sell signal.',
         'Trends matter more than one-day readings, and social media hype is a rough mood check, never proof.',
@@ -1096,12 +1254,12 @@ const articles: Record<string, LearnArticle> = {
   },
   'stock-watchlist-guide': {
     slug: 'stock-watchlist-guide',
-    title: 'How to Build a Stock Watchlist: A Practical Guide for Investors',
+    title: 'What Is a Stock Watchlist? A 5-Step Setup Guide',
     description:
       'Learn what a stock watchlist is, how many stocks to track, and a step-by-step way to build one that helps you find trades without overtrading.',
-    h1: 'How to Build a Stock Watchlist: A Practical Guide for Investors',
+    h1: 'What Is a Stock Watchlist? A 5-Step Setup Guide',
     publishedAt: '2026-10-27',
-    updatedAt: '2026-10-27',
+    updatedAt: '2026-11-24',
     author: 'Haroon Rasheed',
     readingTime: '4 min',
     tags: ['stock watchlist', 'watchlist', 'trading process', 'swing trading'],
@@ -1680,13 +1838,12 @@ const articles: Record<string, LearnArticle> = {
   },
   'beyond-price-predictions': {
     slug: 'beyond-price-predictions',
-    title:
-      'Beyond Price Predictions: Combining Technical Indicators, News Sentiment, and Machine Learning for Smarter Stock Market Research',
+    title: 'Beyond Price Predictions: Indicators, Sentiment and ML',
     description:
       'Learn how technical indicators, financial news sentiment, and machine learning models like LSTMs combine into a more systematic framework for stock research.',
-    h1: 'Beyond Price Predictions: Combining Technical Indicators, News Sentiment, and Machine Learning for Smarter Stock Market Research',
+    h1: 'Beyond Price Predictions: Indicators, Sentiment and ML',
     publishedAt: '2026-10-30',
-    updatedAt: '2026-10-30',
+    updatedAt: '2026-11-24',
     author: 'Haroon Rasheed',
     readingTime: '19 min',
     byline: 'By Haroon Rasheed | AI/ML Engineer and Founder of StockVantex',
@@ -1798,7 +1955,7 @@ const articles: Record<string, LearnArticle> = {
             'Financial language is context-dependent.',
             'Researchers therefore need to consider models trained or adapted for financial text, rather than assuming that general-purpose sentiment classification will perform equally well.',
             'One important example is FinBERT, a BERT-based language model adapted for financial sentiment analysis.',
-            'It can classify financial text into positive, negative, and neutral categories, offering a more domain-specific approach to interpreting market-related language.',
+            'It can classify financial text into positive, negative, and neutral categories, offering a more domain-specific approach to interpreting market-related language. StockVantex does not use FinBERT in production; it uses provider sentiment tags with a deterministic keyword fallback.',
             'Research also provides evidence that news and sentiment can contain information relevant to stock movements.',
             'Heston and Sinha\'s Federal Reserve research, *News versus Sentiment: Predicting Stock Returns from News Stories* (2016), examined more than 900,000 news stories. Their findings indicated that daily news-related return predictability was concentrated over a relatively short horizon, while weekly news measures displayed different predictive relationships.',
             'This highlights an important distinction: news sentiment is not simply a permanent directional signal. Its relevance can depend on the timing and nature of the information.',
@@ -2638,7 +2795,7 @@ const articles: Record<string, LearnArticle> = {
     author: 'Haroon Rasheed',
     readingTime: '9 min',
     tags: ['stock market correction', 'market correction explained', 'buying the dip', 'stock market volatility'],
-    relatedTickers: ['SPY', 'QQQ'],
+    relatedTickers: ['AAPL', 'NVDA'],
     relatedArticles: [
       'are-ai-stocks-in-a-bubble',
       'how-treasury-yields-affect-stock-market',
@@ -2685,7 +2842,7 @@ const articles: Record<string, LearnArticle> = {
           content:
             'A stock market correction is generally understood as a decline of at least 10% from a recent high.',
           paragraphs: [
-            'The term is commonly used when discussing major market indexes, such as the S&P 500 or Nasdaq Composite. It can also describe a decline in an individual stock.',
+            'The term is commonly used when discussing major market indexes, such as the [S&P 500](/learn/sp-500-etf-explained-voo-spy-ivv) or Nasdaq Composite. It can also describe a decline in an individual stock.',
             'There is no single official rule that defines every market correction. The 10% threshold is a widely used convention rather than a precise prediction of how far prices will fall.',
             'For example, imagine an index reaches 5,000 points and later declines to 4,500 points.',
             'The calculation is:',

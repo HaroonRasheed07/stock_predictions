@@ -43,13 +43,14 @@ interface ForecastData {
 }
 
 /** Fixed historical window for this page (the model horizon is always
- *  10 trading days and does not change with this value). */
+ *  10 weekday steps and does not change with this value). */
 const HISTORY_PERIOD = '1y';
 
 const DAY_MS = 86400000;
 
-/** Weekend-safe fallback dates (used only if the backend response predates
- *  the actual_dates field). Walks back from `end`, skipping Saturdays/Sundays. */
+/** Weekday-only fallback dates (used only if the backend response predates
+ *  the actual_dates field). Walks back from `end`, skipping Saturdays/Sundays.
+ *  Exchange holidays are not modeled. */
 function buildTradingDayDates(count: number, end: Date): string[] {
   const dates: string[] = [];
   const cursor = new Date(end.getTime() - DAY_MS);
@@ -349,7 +350,7 @@ export default function PriceForecasting() {
   const trend = lastForecast > currentPrice ? 'Bullish' : 'Bearish';
   
   // Calculate model accuracy on historical data
-  const modelAccuracy = calculateAccuracy(actualPrices, predictedHistoricalPrices);
+  const historicalFit = calculateHistoricalFit(actualPrices, predictedHistoricalPrices);
   
   // Calculate price volatility
   const volatility = calculateVolatility(actualPrices);
@@ -593,15 +594,15 @@ export default function PriceForecasting() {
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Lookback window</span>
-                <span className="font-semibold">60 trading days</span>
+                <span className="font-semibold">60 close-price observations</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Forecast method</span>
-                <span className="font-semibold">Recursive, business-day calendar</span>
+                <span className="font-semibold">Recursive weekday steps; holidays not modeled</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Historical fit (MAPE-based)</span>
-                <span className="font-semibold text-success">{modelAccuracy.toFixed(1)}%</span>
+                <span className="text-muted-foreground">In-sample fit proxy (not out-of-sample accuracy)</span>
+                <span className="font-semibold text-success">{historicalFit.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Learn more</span>
@@ -628,18 +629,18 @@ export default function PriceForecasting() {
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Forecast Horizon</span>
-                <span className="font-semibold">{forecastLength} trading days</span>
+                <span className="font-semibold">{forecastLength} weekday steps</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Historical Data Points</span>
                 <span className="font-semibold">{historicalLength} prices</span>
               </div>
               <div className="flex justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Price Range (Forecast)</span>
+                <span className="text-muted-foreground">10-step path min–max</span>
                 <span className="font-semibold">${Math.min(...futurePrices).toFixed(2)} - ${Math.max(...futurePrices).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Last Updated</span>
+                <span className="text-muted-foreground">Page rendered at</span>
                 <span className="font-semibold text-xs">{new Date().toLocaleTimeString()}</span>
               </div>
             </CardContent>
@@ -648,7 +649,7 @@ export default function PriceForecasting() {
       </div>
 
       <p className="text-xs text-muted-foreground text-center py-2">
-        Forecasts are projections from an LSTM model trained on historical closing prices — they are point estimates, not guarantees, and do not account for news, earnings, or macro events. Historical fit does not predict future accuracy. This analysis is for informational purposes only and does not constitute investment advice.{' '}
+        Forecasts are projections from an LSTM model trained on historical closing prices — they are point estimates, not calibrated probabilities, and do not account for news, earnings, or macro events. The in-sample fit proxy is not a measure of out-of-sample accuracy, and no confidence intervals are produced. This analysis is for informational purposes only and does not constitute investment advice.{' '}
         <Link href="/disclaimer" className="text-primary hover:underline">Financial disclaimer</Link>
       </p>
     </div>
@@ -656,21 +657,27 @@ export default function PriceForecasting() {
 }
 
 // Helper Functions
-function calculateAccuracy(actual: number[], predicted: number[]): number {
+function calculateHistoricalFit(actual: number[], predicted: number[]): number {
   if (actual.length === 0 || predicted.length === 0) return 0;
-  
+
   const minLen = Math.min(actual.length, predicted.length);
+  if (minLen === 0) return 0;
+
   let totalError = 0;
-  
+  let validCount = 0;
+
   for (let i = 0; i < minLen; i++) {
-    const error = Math.abs((actual[i] - predicted[i]) / actual[i]);
-    totalError += error;
+    if (!Number.isFinite(actual[i]) || actual[i] === 0 || !Number.isFinite(predicted[i])) {
+      continue;
+    }
+    totalError += Math.abs((actual[i] - predicted[i]) / actual[i]);
+    validCount++;
   }
-  
-  const meanError = totalError / minLen;
-  const accuracy = Math.max(0, (1 - meanError) * 100);
-  
-  return Math.min(99.99, accuracy);
+
+  if (validCount === 0) return 0;
+
+  const meanError = totalError / validCount;
+  return Math.min(99.99, Math.max(0, (1 - meanError) * 100));
 }
 
 function calculateVolatility(prices: number[]): number {

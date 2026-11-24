@@ -11,7 +11,8 @@
     "routing:checks": "node scripts/routing-checks.mjs",
     "sitemap:checks": "node scripts/sitemap-checks.mjs",
     "ga:checks": "node scripts/ga-checks.mjs",
-    "signal:checks": "node scripts/signal-checks.mjs"
+    "signal:checks": "node scripts/signal-checks.mjs",
+    "seo:regression": "node scripts/seo-regression.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

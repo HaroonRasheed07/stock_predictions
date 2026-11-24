@@ -1956,6 +1956,8 @@ def _compute_trade_confirmation_raw(ticker: str, period: str) -> Dict[str, Any]:
 
     df_ind_records = calculate_indicators(df)
     df_ind = pd.DataFrame(df_ind_records)
+    if df_ind.empty:
+        return {"ticker": ticker, "error": "Insufficient data for confirmation"}
 
     trend_score = calculate_trend_strength(df_ind)
     risk_data = assess_risk(df_ind, ticker)
@@ -2266,11 +2268,13 @@ def get_stock_forecast(request: ForecastRequest):
 
             # Use the pre-fitted scaler for this ticker
             ticker = request.ticker
+            scaler_source = "pre_fitted"
             if ticker in SCALERS:
                 scaler = SCALERS[ticker]
             else:
                 # Fallback if ticker was not in training set
                 from sklearn.preprocessing import MinMaxScaler
+                scaler_source = "fitted_on_request"
                 scaler = MinMaxScaler(feature_range=(0, 1))
                 close_prices = df[["Close"]].values
                 scaler.fit(close_prices)
@@ -2314,7 +2318,13 @@ def get_stock_forecast(request: ForecastRequest):
                 "status": "success",
                 "ticker": request.ticker,
                 "forecast_days": len(forecast),
-                "results": forecast_data
+                "results": forecast_data,
+                "model_metadata": {
+                    "output_type": "point_estimate",
+                    "date_calendar": "weekday_only_no_holidays",
+                    "confidence_intervals": False,
+                    "scaler_source": scaler_source,
+                },
             }
 
             # Cache the successful result
@@ -2322,11 +2332,18 @@ def get_stock_forecast(request: ForecastRequest):
 
             return response
 
-        except Exception as e:
+        except ValueError as e:
+            return {
+                "status": "error",
+                "message": str(e),
+                "forecast_prices": [],
+                "forecast_dates": []
+            }
+        except Exception:
             traceback.print_exc()
             return {
                 "status": "error",
-                "message": "Model not available on server",
+                "message": "Forecast service unavailable",
                 "forecast_prices": [],
                 "forecast_dates": []
             }

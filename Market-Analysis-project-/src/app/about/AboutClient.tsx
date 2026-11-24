@@ -171,7 +171,7 @@ export function AboutClient() {
                       Historical price-pattern analysis using LSTM neural networks with attention mechanisms, projecting potential price paths over a forecast horizon.
                     </p>
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {['LSTM / Attention Model', 'Price Projections', 'Confidence Ranges', 'Model Limitations Disclosed'].map((t) => (
+                      {['LSTM / Attention Model', 'Price Projections', 'Point-Estimate Path', 'Model Limitations Disclosed'].map((t) => (
                         <span key={t} className="text-[11px] px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium">{t}</span>
                       ))}
                     </div>
@@ -323,7 +323,8 @@ export function AboutClient() {
               <p className="text-xs uppercase font-semibold text-muted-foreground tracking-wider mb-2">Built from research into a real product</p>
               <h3 className="text-xl font-bold mb-2">Haroon Rasheed</h3>
               <p className="text-sm text-muted-foreground">
-                AI Developer &amp; Creator of StockVantex. StockVantex began as an AI-focused market-analysis project and evolved into a broader stock research platform combining technical analysis, sentiment intelligence, forecasting and risk context.
+                AI Developer &amp; Creator of StockVantex. StockVantex began as an AI-focused market-analysis project and evolved into a broader stock research platform combining technical analysis, sentiment intelligence, forecasting and risk context. Editorial ownership, evidence standards and the correction process are documented on the{' '}
+                <Link href="/editorial-standards" className="text-primary hover:underline">Editorial Standards</Link> page.
               </p>
             </div>
           </div>

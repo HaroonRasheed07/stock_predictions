@@ -54,7 +54,7 @@ export function MarketRead({
             {discoverAvailable ? (
               <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                Live feeds active
+                Snapshot available
               </span>
             ) : (
               <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">

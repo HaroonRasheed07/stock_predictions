@@ -23,13 +23,13 @@ export function formatIndex(v: number | null | undefined): string {
 
 /**
  * Human-readable age of the *data snapshot* (backend cache write time), NOT the
- * exchange quote timestamp. Wording intentionally says "Data" so it is never
- * mistaken for a verified real-time market quote.
+ * exchange quote timestamp. Wording intentionally says "Snapshot refreshed" so it
+ * is never mistaken for a verified real-time market quote.
  */
 export function formatUpdated(minutesAgo: number | null): string | null {
   if (minutesAgo === null) return null;
-  if (minutesAgo <= 1) return 'Data updated just now';
-  if (minutesAgo < 60) return `Data updated ${minutesAgo} min ago`;
+  if (minutesAgo <= 1) return 'Snapshot refreshed just now';
+  if (minutesAgo < 60) return `Snapshot refreshed ${minutesAgo} min ago`;
   const h = Math.floor(minutesAgo / 60);
-  return `Data updated ${h} hr ago`;
+  return `Snapshot refreshed ${h} hr ago`;
 }

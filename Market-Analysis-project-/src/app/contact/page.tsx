@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Github, Linkedin, Mail } from 'lucide-react';
 import { SITE_URL, SITE_NAME } from '@/lib/seo';
 
@@ -68,6 +69,22 @@ export default function ContactPage() {
               @HaroonRasheed07
             </p>
           </a>
+        </div>
+
+        <div className="rounded-xl border border-border/40 bg-card/30 p-6 text-left">
+          <h2 className="text-lg font-semibold mb-2">Report a factual correction</h2>
+          <p className="text-sm text-muted-foreground">
+            Email{' '}
+            <a className="text-primary hover:underline" href="mailto:haroon@stockvantex.com?subject=Correction%20request">
+              haroon@stockvantex.com
+            </a>{' '}
+            with the subject <strong>Correction request</strong>. Include the page URL, the exact claim,
+            your evidence and the date observed. Our ownership, evidence and correction policy is on the{' '}
+            <Link href="/editorial-standards" className="text-primary hover:underline">
+              Editorial Standards
+            </Link>{' '}
+            page.
+          </p>
         </div>
       </div>
     </div>
