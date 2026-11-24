@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils';
 import { formatPct, formatPrice, changeTone } from '@/components/home/format';
 import { trackEvent } from '@/lib/analytics';
 import { fetchMarketOverview, type DiscoverStock } from '@/lib/api';
-import type { ScanBuckets, RsiRow } from '@/lib/home-data';
+import type { RsiRow } from '@/lib/home-snapshot';
 import { Sparkline } from '@/components/home/Sparkline';
+import { useMarketSnapshot } from '@/components/home/MarketSnapshotProvider';
+import { SnapshotStatus } from '@/components/home/SnapshotStatus';
 
 type TabKey = 'movers' | 'oversold' | 'overbought' | 'highRisk';
 
@@ -156,7 +158,9 @@ function HighRiskCard({ stocks, sparks, ranks }: { stocks: DiscoverStock[]; spar
 }
 
 /** Section 6 — scan tabs built from the real discover + opportunity scans. */
-export function ScanTabs({ scan, discoverAvailable }: { scan: ScanBuckets | null; discoverAvailable: boolean }) {
+export function ScanTabs() {
+  const { snapshot } = useMarketSnapshot();
+  const scan = snapshot.scan;
   const [tab, setTab] = useState<TabKey>('movers');
   const [sparks, setSparks] = useState<Record<string, number[]>>({});
   const fetchedRef = useRef<Set<string>>(new Set());
@@ -200,15 +204,16 @@ export function ScanTabs({ scan, discoverAvailable }: { scan: ScanBuckets | null
   if (!scan) {
     return (
       <section id="scan" aria-labelledby="scan-heading" className="container mx-auto px-4 py-10 md:py-14">
-        <h2 id="scan-heading" className="text-xl font-semibold md:text-2xl">
-          Scan the universe
-        </h2>
-        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground flex items-center gap-2">
-          <span>The market scan is syncing for this snapshot.</span>
-          <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
-            Syncing
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="scan-heading" className="text-xl font-semibold md:text-2xl">
+            Scan the universe
+          </h2>
+          <SnapshotStatus compact />
+        </div>
+        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">
+          {snapshot.hasSnapshot
+            ? 'No scan buckets are available in this snapshot. Try refreshing the snapshot.'
+            : 'Waiting for the first complete snapshot.'}
         </div>
       </section>
     );
@@ -237,13 +242,18 @@ export function ScanTabs({ scan, discoverAvailable }: { scan: ScanBuckets | null
               Scan the universe
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {discoverAvailable ? 'Live snapshot across the tracked universe.' : 'Last cached snapshot.'}
+              {snapshot.refreshFailed || snapshot.isStale
+                ? 'Last available snapshot across the tracked universe.'
+                : 'Live snapshot across the tracked universe.'}
             </p>
           </div>
         </div>
-        <Link href="/stocks" className="text-sm font-medium text-primary hover:underline">
-          Full directory →
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <SnapshotStatus compact />
+          <Link href="/stocks" className="text-sm font-medium text-primary hover:underline">
+            Full directory →
+          </Link>
+        </div>
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground">

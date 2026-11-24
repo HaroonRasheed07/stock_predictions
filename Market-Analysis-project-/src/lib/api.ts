@@ -522,6 +522,32 @@ export interface CacheMeta {
 export interface OpportunityScanResponse {
   scan_results: OpportunityScore[];
   _cache_meta?: CacheMeta;
+  degraded?: boolean;
+  errors?: string[];
+}
+
+export interface HomeMarketSnapshotResponse {
+  stocks: Record<string, DiscoverStock>;
+  opportunities: OpportunityScore[];
+  source_updated_at?: number | null;
+  _cache_meta?: CacheMeta;
+  degraded?: boolean;
+  errors?: string[];
+}
+
+export async function fetchHomeMarketSnapshotComposite(
+  tickers: string[],
+  period = "1y",
+  signal?: AbortSignal
+): Promise<HomeMarketSnapshotResponse> {
+  const res = await fetch(`${API_BASE}/api/home/market-snapshot`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers, period }),
+    signal,
+  });
+  if (!res.ok) throw new Error("Failed to fetch home market snapshot");
+  return res.json();
 }
 
 export async function fetchOpportunityScan(tickers: string[], period = "1y"): Promise<OpportunityScanResponse> {
@@ -672,6 +698,8 @@ export interface DiscoverScanResponse {
   stocks: Record<string, DiscoverStock>;
   count: number;
   _cache_meta?: CacheMeta;
+  degraded?: boolean;
+  errors?: string[];
 }
 
 export async function fetchDiscoverScan(tickers: string[], period = "1y"): Promise<DiscoverScanResponse> {
@@ -729,9 +757,16 @@ export async function fetchDiscoverScanAll(tickers: string[], period = "1y"): Pr
   const list = normalizeTickers(tickers);
   if (list.length === 0) return { stocks: {}, count: 0 };
 
-  const responses = await Promise.all(
+  const results = await Promise.allSettled(
     chunkTickers(list, DISCOVER_SCAN_MAX).map((chunk) => fetchDiscoverScan(chunk, period))
   );
+
+  const responses: DiscoverScanResponse[] = [];
+  const errors: string[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") responses.push(result.value);
+    else errors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
+  }
 
   const stocks: Record<string, DiscoverStock> = {};
   for (const res of responses) {
@@ -741,6 +776,8 @@ export async function fetchDiscoverScanAll(tickers: string[], period = "1y"): Pr
     stocks,
     count: Object.keys(stocks).length,
     _cache_meta: newestMeta(responses.map((r) => r._cache_meta)),
+    degraded: errors.length > 0,
+    errors,
   };
 }
 
@@ -751,9 +788,16 @@ export async function fetchOpportunityScanAll(
   const list = normalizeTickers(tickers);
   if (list.length === 0) return { scan_results: [] };
 
-  const responses = await Promise.all(
+  const results = await Promise.allSettled(
     chunkTickers(list, OPPORTUNITY_SCAN_MAX).map((chunk) => fetchOpportunityScan(chunk, period))
   );
+
+  const responses: OpportunityScanResponse[] = [];
+  const errors: string[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") responses.push(result.value);
+    else errors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
+  }
 
   const byTicker = new Map<string, OpportunityScore>();
   for (const res of responses) {
@@ -762,7 +806,12 @@ export async function fetchOpportunityScanAll(
     }
   }
   const scan_results = Array.from(byTicker.values()).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-  return { scan_results, _cache_meta: newestMeta(responses.map((r) => r._cache_meta)) };
+  return {
+    scan_results,
+    _cache_meta: newestMeta(responses.map((r) => r._cache_meta)),
+    degraded: errors.length > 0,
+    errors,
+  };
 }
 
 // ─── Home Intelligence ──────────────────────────────────────────────────────

@@ -1,5 +1,8 @@
-import { formatPct, formatUpdated, changeTone } from '@/components/home/format';
-import type { BreadthSummary } from '@/lib/home-data';
+'use client';
+
+import { formatPct, changeTone } from '@/components/home/format';
+import { useMarketSnapshot } from '@/components/home/MarketSnapshotProvider';
+import { SnapshotStatus } from '@/components/home/SnapshotStatus';
 
 function StatCard({
   label,
@@ -24,23 +27,15 @@ function StatCard({
   );
 }
 
-/** Section 4 — breadth summary built from the real discover scan. */
 export function MarketRead({
-  breadth,
-  discoverAvailable,
-  updatedMinutesAgo,
   disagreeCount,
-  highRiskCount,
   modelAvailable,
 }: {
-  breadth: BreadthSummary | null;
-  discoverAvailable: boolean;
-  updatedMinutesAgo: number | null;
   disagreeCount: number;
-  highRiskCount: number;
   modelAvailable: boolean;
 }) {
-  const updated = formatUpdated(updatedMinutesAgo);
+  const { snapshot } = useMarketSnapshot();
+  const breadth = snapshot.breadth;
 
   return (
     <section id="market-read" aria-labelledby="market-read-heading" className="container mx-auto px-4 py-10 md:py-14">
@@ -49,22 +44,25 @@ export function MarketRead({
           <h2 id="market-read-heading" className="text-xl font-semibold md:text-2xl">
             Today’s market read
           </h2>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {updated && <span>{updated}</span>}
-            {discoverAvailable ? (
-              <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                Snapshot available
-              </span>
-            ) : (
-              <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                Syncing snapshot...
-              </span>
-            )}
-          </div>
+          <SnapshotStatus />
         </div>
 
-        {breadth ? (
+        {!snapshot.hasSnapshot ? (
+          <div className="mt-4 space-y-3" aria-busy="true">
+            <div className="h-4 w-full max-w-3xl animate-pulse rounded bg-muted/60" />
+            <div className="h-4 w-4/5 max-w-2xl animate-pulse rounded bg-muted/60" />
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[0, 1, 2, 3].map((key) => (
+                <div key={key} className="h-20 animate-pulse rounded-xl bg-muted/50" />
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">Waiting for the first complete snapshot.</p>
+          </div>
+        ) : !breadth ? (
+          <p className="mt-3 max-w-3xl text-sm text-muted-foreground md:text-base">
+            No tracked stocks are available in this snapshot. Index quotes and research tools below remain available.
+          </p>
+        ) : (
           <>
             <p className="mt-3 max-w-3xl text-sm text-muted-foreground md:text-base">
               Across {breadth.total} tracked stocks, technicals read{' '}
@@ -79,11 +77,10 @@ export function MarketRead({
               {modelAvailable
                 ? `${disagreeCount} ${disagreeCount === 1 ? 'stock shows' : 'stocks show'} signal disagreements today`
                 : 'The model outlook is refreshing for this snapshot'}
-              , and {highRiskCount} {highRiskCount === 1 ? 'stock sits' : 'stocks sit'} in the high-risk band — open
-              the sections below for the tickers behind each count.
+              , and {snapshot.highRiskCount} {snapshot.highRiskCount === 1 ? 'stock sits' : 'stocks sit'} in the
+              high-risk band — open the sections below for the tickers behind each count.
             </p>
 
-            {/* Four headline counts */}
             <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
               <StatCard label="Bullish stocks" value={breadth.bullish} tone="bull" />
               <StatCard label="Bearish stocks" value={breadth.bearish} tone="bear" />
@@ -92,10 +89,9 @@ export function MarketRead({
                 value={modelAvailable ? disagreeCount : '—'}
                 tone="amber"
               />
-              <StatCard label="High-risk stocks" value={highRiskCount} tone="bear" />
+              <StatCard label="High-risk stocks" value={snapshot.highRiskCount} tone="bear" />
             </div>
 
-            {/* Breadth bar */}
             <div
               className="mt-5 flex h-3 w-full overflow-hidden rounded-full bg-muted/60"
               role="img"
@@ -127,20 +123,6 @@ export function MarketRead({
                 <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-muted-foreground/50 align-middle" aria-hidden="true" />
                 Neutral {breadth.neutral} · {((breadth.neutral / breadth.total) * 100).toFixed(0)}%
               </span>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="mt-3 max-w-3xl text-sm text-muted-foreground md:text-base">
-              The breadth scan is refreshing for this snapshot. Index quotes, market status and the research
-              tools below stay available in the meantime.
-            </p>
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 font-medium text-muted-foreground flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
-                Updating snapshot...
-              </span>
-              {updated && <span>{updated}</span>}
             </div>
           </>
         )}

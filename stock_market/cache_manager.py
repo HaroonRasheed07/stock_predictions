@@ -224,7 +224,8 @@ class PersistentCacheManager:
         stale_ttl_seconds: float = 86400.0,
         category: str = "general",
         ticker: str = "",
-        period: str = ""
+        period: str = "",
+        schedule_on_miss: bool = True
     ) -> Tuple[Optional[Any], Dict[str, Any]]:
         """
         Stale-While-Revalidate getter:
@@ -309,7 +310,7 @@ class PersistentCacheManager:
             "refresh_in_progress": _single_flight.is_running(key),
             "status": "MISS"
         }
-        if refresh_func is not None and not _single_flight.is_running(key):
+        if schedule_on_miss and refresh_func is not None and not _single_flight.is_running(key):
             self.trigger_background_refresh(
                 key, refresh_func, fresh_ttl_seconds, stale_ttl_seconds, category, ticker, period
             )

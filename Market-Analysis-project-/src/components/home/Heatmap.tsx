@@ -1,8 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import { LayoutGrid } from 'lucide-react';
 import { formatPct, formatPrice } from '@/components/home/format';
 import { getStockInfo } from '@/lib/stock-allowlist';
 import type { DiscoverStock } from '@/lib/api';
+import { useMarketSnapshot } from '@/components/home/MarketSnapshotProvider';
+import { SnapshotStatus } from '@/components/home/SnapshotStatus';
 
 function tileStyle(changePercent: number): React.CSSProperties {
   const ch = typeof changePercent === 'number' && isFinite(changePercent) ? changePercent : 0;
@@ -14,24 +18,27 @@ function tileStyle(changePercent: number): React.CSSProperties {
 }
 
 /** Section 8 — sector-grouped daily-move heatmap; every tile links to its brief. */
-export function Heatmap({ stocks, available }: { stocks: DiscoverStock[]; available: boolean }) {
+export function Heatmap() {
+  const { snapshot } = useMarketSnapshot();
+  const stocks = snapshot.stocks as DiscoverStock[];
   const usable = stocks.filter(
     (s) => typeof s.changePercent === 'number' && isFinite(s.changePercent)
   );
   const sorted = [...usable].sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
 
-  if (!available || sorted.length === 0) {
+  if (!snapshot.hasSnapshot || sorted.length === 0) {
     return (
       <section id="heatmap" aria-labelledby="heatmap-heading" className="container mx-auto px-4 py-10 md:py-14">
-        <h2 id="heatmap-heading" className="text-xl font-semibold md:text-2xl">
-          Daily move heatmap
-        </h2>
-        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground flex items-center gap-2">
-          <span>The heatmap updates with each scan.</span>
-          <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
-            Updating
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="heatmap-heading" className="text-xl font-semibold md:text-2xl">
+            Daily move heatmap
+          </h2>
+          <SnapshotStatus compact />
+        </div>
+        <div className="mt-4 rounded-xl border border-border/60 bg-card p-6 text-sm text-muted-foreground" aria-busy={!snapshot.hasSnapshot}>
+          {snapshot.hasSnapshot
+            ? 'No daily moves are available in this snapshot. Try refreshing the snapshot.'
+            : 'Waiting for the first complete snapshot.'}
         </div>
       </section>
     );
@@ -66,15 +73,18 @@ export function Heatmap({ stocks, available }: { stocks: DiscoverStock[]; availa
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'rgba(220,38,38,0.75)' }} aria-hidden="true" />
-            down
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'rgba(22,163,74,0.75)' }} aria-hidden="true" />
-            up
-          </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <SnapshotStatus compact />
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'rgba(220,38,38,0.75)' }} aria-hidden="true" />
+              down
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'rgba(22,163,74,0.75)' }} aria-hidden="true" />
+              up
+            </span>
+          </div>
         </div>
       </div>
 

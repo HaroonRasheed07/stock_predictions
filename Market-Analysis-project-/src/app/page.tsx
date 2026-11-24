@@ -11,6 +11,7 @@ import { MarketRead } from '@/components/home/MarketRead';
 import { DisagreementSection } from '@/components/home/DisagreementSection';
 import { ScanTabs } from '@/components/home/ScanTabs';
 import { Heatmap } from '@/components/home/Heatmap';
+import { MarketSnapshotProvider } from '@/components/home/MarketSnapshotProvider';
 import { Explorer } from '@/components/home/Explorer';
 import { WatchlistSection } from '@/components/home/WatchlistSection';
 import { LearnTeasers } from '@/components/home/LearnTeasers';
@@ -100,24 +101,22 @@ export default async function Home() {
       {/* 3. Feature bar */}
       <FeatureBar />
 
-      {/* 4. Today's market read */}
-      <MarketRead
-        breadth={home.breadth}
-        discoverAvailable={home.discoverAvailable}
-        updatedMinutesAgo={home.updatedMinutesAgo}
-        disagreeCount={home.disagreements.length}
-        highRiskCount={home.highRiskCount}
-        modelAvailable={home.modelAvailable}
-      />
+      <MarketSnapshotProvider initial={home.marketSnapshot}>
+        {/* 4. Today's market read */}
+        <MarketRead
+          disagreeCount={home.disagreements.length}
+          modelAvailable={home.modelAvailable}
+        />
 
-      {/* 5. Disagreement cards */}
-      <DisagreementSection cards={home.disagreements} />
+        {/* 5. Disagreement cards */}
+        <DisagreementSection cards={home.disagreements} />
 
-      {/* 6. Scan tabs */}
-      <ScanTabs scan={home.scan} discoverAvailable={home.discoverAvailable} />
+        {/* 6. Scan tabs */}
+        <ScanTabs />
 
-      {/* 7. Heatmap + browse-all directory link */}
-      <Heatmap stocks={home.discover} available={home.discoverAvailable} />
+        {/* 7. Heatmap */}
+        <Heatmap />
+      </MarketSnapshotProvider>
       <section aria-label="Stock directory" className="container mx-auto -mt-4 pb-6">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Link

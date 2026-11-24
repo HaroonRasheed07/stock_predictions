@@ -18,6 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.MOCK_PORT || 8787);
+const HOME_SNAPSHOT_MODE = process.env.MOCK_HOME_SNAPSHOT_MODE || 'healthy';
 const UPDATED_AT = 1791444000; // fixed unix ts → deterministic "computed" timestamps
 const LOG_FILE = path.join(os.tmpdir(), 'mock-seo-requests.log');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -236,6 +237,33 @@ function discoverScanFor(tickers) {
   };
 }
 
+function marketSnapshotFor(tickers) {
+  if (HOME_SNAPSHOT_MODE === 'empty') {
+    return {
+      stocks: {},
+      opportunities: [],
+      source_updated_at: UPDATED_AT,
+      degraded: true,
+      errors: ['mock empty snapshot'],
+      _cache_meta: { created_at: UPDATED_AT, updated_at: UPDATED_AT, fresh_until: UPDATED_AT + 120, is_stale: true, status: 'STALE' },
+    };
+  }
+  const discover = discoverScanFor(tickers);
+  const opportunities = opportunityScanFor(tickers);
+  const partial = HOME_SNAPSHOT_MODE === 'partial';
+  const stocks = partial
+    ? Object.fromEntries(Object.entries(discover.stocks).slice(0, 2))
+    : discover.stocks;
+  return {
+    stocks,
+    opportunities: opportunities.scan_results,
+    source_updated_at: UPDATED_AT,
+    degraded: partial,
+    errors: partial ? ['mock partial snapshot'] : [],
+    _cache_meta: { created_at: UPDATED_AT, updated_at: UPDATED_AT, fresh_until: UPDATED_AT + 120, is_stale: partial, status: partial ? 'STALE' : 'HIT' },
+  };
+}
+
 function opportunityScanFor(tickers) {
   const list = (Array.isArray(tickers) ? tickers : []).slice(0, 20);
   const scan_results = [];
@@ -405,12 +433,32 @@ const server = http.createServer((req, res) => {
     } catch {}
 
     if (req.method === 'POST' && url.pathname === '/api/discover/scan') {
+      if (HOME_SNAPSHOT_MODE === 'error') {
+        res.statusCode = 503;
+        res.end(JSON.stringify({ detail: 'mock discover failure' }));
+        return;
+      }
       res.end(JSON.stringify(discoverScanFor(tickers)));
       return;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/opportunities/scan') {
+      if (HOME_SNAPSHOT_MODE === 'error') {
+        res.statusCode = 503;
+        res.end(JSON.stringify({ detail: 'mock opportunity failure' }));
+        return;
+      }
       res.end(JSON.stringify(opportunityScanFor(tickers)));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/home/market-snapshot') {
+      if (HOME_SNAPSHOT_MODE === 'error') {
+        res.statusCode = 503;
+        res.end(JSON.stringify({ detail: 'mock market snapshot failure' }));
+        return;
+      }
+      res.end(JSON.stringify(marketSnapshotFor(tickers)));
       return;
     }
 

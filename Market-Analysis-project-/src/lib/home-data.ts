@@ -11,6 +11,7 @@ import YahooFinance from 'yahoo-finance2';
 import {
   fetchDiscoverScanAll,
   fetchOpportunityScanAll,
+  fetchHomeMarketSnapshotComposite,
   fetchHomeBrief,
   fetchMarketOverview,
   fetchForecast,
@@ -24,9 +25,20 @@ import {
   type EnhancedSentiment,
   type CacheMeta,
 } from '@/lib/api';
+import {
+  buildMarketSnapshot,
+  mergeSnapshots,
+  validateMarketSnapshotResponse,
+  type BreadthSummary,
+  type MarketSnapshot,
+  type ScanBuckets,
+} from '@/lib/home-snapshot';
 import { getAllAllowlistedSymbols, getStockInfo } from '@/lib/stock-allowlist';
 import { deriveOutlook, type ModelOutlook } from '@/lib/model-outlook';
 import { normalizeOverviewSentiment } from '@/lib/overview-sentiment';
+
+export { buildBreadth, buildScanBuckets } from '@/lib/home-snapshot';
+export type { BreadthSummary, MarketSnapshot, RsiRow, ScanBuckets } from '@/lib/home-snapshot';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://stock-predictions-b6yx.onrender.com';
 
@@ -65,32 +77,6 @@ export interface MarketStatusView {
   source: 'backend' | 'local';
 }
 
-export interface BreadthSummary {
-  total: number;
-  bullish: number;
-  bearish: number;
-  neutral: number;
-  advancers: number;
-  decliners: number;
-  unchanged: number;
-  avgMove: number;
-}
-
-export interface RsiRow {
-  ticker: string;
-  name: string;
-  price: number;
-  changePercent: number;
-  rsi: number;
-}
-
-export interface ScanBuckets {
-  movers: DiscoverStock[];
-  oversold: RsiRow[];
-  overbought: RsiRow[];
-  highRisk: DiscoverStock[];
-}
-
 export interface HeroBundle {
   ticker: string;
   name: string;
@@ -120,6 +106,7 @@ export interface HomeData {
   status: MarketStatusView;
   discover: DiscoverStock[];
   discoverAvailable: boolean;
+  marketSnapshot: MarketSnapshot;
   breadth: BreadthSummary | null;
   scan: ScanBuckets | null;
   hero: HeroBundle;
@@ -324,6 +311,8 @@ export async function fetchMarketStatusView(): Promise<MarketStatusView> {
 
 // ─── universe scans (discover + opportunity factors) ────────────────────────
 
+let lastGoodMarketSnapshot: MarketSnapshot | null = null;
+
 export async function fetchUniverse(): Promise<{
   stocks: Record<string, DiscoverStock>;
   opportunities: OpportunityScore[];
@@ -343,85 +332,37 @@ export async function fetchUniverse(): Promise<{
   };
 }
 
-function parseRsi(op: OpportunityScore): number | null {
-  const factor = (op.factors || []).find((f) => /RSI/i.test(f.name));
-  if (!factor) return null;
-  const m = /RSI:\s*([0-9]+(?:\.[0-9]+)?)/.exec(factor.detail || '');
-  if (!m) return null;
-  const v = parseFloat(m[1]);
-  return isFinite(v) ? v : null;
-}
+export async function fetchHomeMarketSnapshot(symbols = getAllAllowlistedSymbols()): Promise<MarketSnapshot> {
+  let payload: any = null;
+  let requestFailed = false;
 
-export function buildBreadth(stocks: Record<string, DiscoverStock>): BreadthSummary | null {
-  const list = Object.values(stocks);
-  if (list.length === 0) return null;
-  let bullish = 0;
-  let bearish = 0;
-  let neutral = 0;
-  let advancers = 0;
-  let decliners = 0;
-  let unchanged = 0;
-  let moveSum = 0;
-  for (const s of list) {
-    const t = (s.technical || '').toLowerCase();
-    if (t.includes('bullish')) bullish++;
-    else if (t.includes('bearish')) bearish++;
-    else neutral++;
-    const ch = typeof s.changePercent === 'number' && isFinite(s.changePercent) ? s.changePercent : 0;
-    moveSum += ch;
-    if (ch > 0.0001) advancers++;
-    else if (ch < -0.0001) decliners++;
-    else unchanged++;
+  try {
+    const response = await withTimeout(fetchHomeMarketSnapshotComposite(symbols), 25000);
+    payload = validateMarketSnapshotResponse(response);
+    if (!payload) throw new Error('invalid market snapshot response');
+  } catch {
+    requestFailed = true;
+    const [discover, opps] = await Promise.all([
+      safe(withTimeout(fetchDiscoverScanAll(symbols), 18000), 20000),
+      safe(withTimeout(fetchOpportunityScanAll(symbols), 22000), 24000),
+    ]);
+    const errors = [
+      ...(discover?.errors ?? []),
+      ...(opps?.errors ?? []),
+    ];
+    payload = {
+      stocks: discover?.stocks ?? {},
+      opportunities: opps?.scan_results ?? [],
+      source_updated_at: newestUpdatedAt(discover?._cache_meta, opps?._cache_meta),
+      degraded: Boolean(discover?.degraded || opps?.degraded || errors.length > 0),
+      errors,
+    };
   }
-  return {
-    total: list.length,
-    bullish,
-    bearish,
-    neutral,
-    advancers,
-    decliners,
-    unchanged,
-    avgMove: moveSum / list.length,
-  };
-}
 
-export function buildScanBuckets(
-  stocks: Record<string, DiscoverStock>,
-  opportunities: OpportunityScore[]
-): ScanBuckets | null {
-  const list = Object.values(stocks);
-  if (list.length === 0) return null;
-
-  const byAbsMove = [...list].sort(
-    (a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0)
-  );
-
-  const highRisk = list
-    .filter((s) => (s.risk || '').toLowerCase() === 'high')
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    .slice(0, 8);
-
-  const rsiRows: RsiRow[] = [];
-  for (const op of opportunities) {
-    const rsi = parseRsi(op);
-    if (rsi === null) continue;
-    rsiRows.push({
-      ticker: op.ticker,
-      name: op.name || getStockInfo(op.ticker)?.name || op.ticker,
-      price: op.price ?? 0,
-      changePercent: op.change_percent ?? 0,
-      rsi,
-    });
-  }
-  const oversold = rsiRows.filter((r) => r.rsi < 40).sort((a, b) => a.rsi - b.rsi).slice(0, 6);
-  const overbought = rsiRows.filter((r) => r.rsi > 60).sort((a, b) => b.rsi - a.rsi).slice(0, 6);
-
-  return {
-    movers: byAbsMove.slice(0, 8),
-    oversold,
-    overbought,
-    highRisk,
-  };
+  const snapshot = buildMarketSnapshot(payload, lastGoodMarketSnapshot);
+  const next = mergeSnapshots(lastGoodMarketSnapshot, snapshot, requestFailed);
+  if (next.hasSnapshot) lastGoodMarketSnapshot = next;
+  return next;
 }
 
 // ─── hero bundle ────────────────────────────────────────────────────────────
@@ -505,15 +446,16 @@ export async function fetchDisagreements(
 export async function getHomeData(): Promise<HomeData> {
   const symbols = getAllAllowlistedSymbols();
 
-  const [indexes, status, brief, universe] = await Promise.all([
+  const [indexes, status, brief, snapshot] = await Promise.all([
     safe(fetchIndexQuotes(), 15000),
     fetchMarketStatusView(),
     safe(withTimeout(fetchHomeBrief(), 6000), 8000),
-    fetchUniverse(),
+    fetchHomeMarketSnapshot(symbols),
   ]);
 
   const idx = indexes ?? [];
-  const stocks = universe.stocks;
+  const stocks: Record<string, DiscoverStock> = {};
+  for (const stock of snapshot.stocks) stocks[stock.ticker] = stock as DiscoverStock;
   const dailyChips = getDailyChips();
   // Only feature an allowlisted individual equity — never a forex pair,
   // commodity, or index that the backend might rank highly by % move.
@@ -541,20 +483,21 @@ export async function getHomeData(): Promise<HomeData> {
     };
   });
 
-  const updated = minutesSince(newestUpdatedAt(universe.meta, brief?._cache_meta));
+  const updated = minutesSince(snapshot.updatedAt ?? brief?._cache_meta?.updated_at ?? null);
 
   return {
     indexes: idx,
     status,
-    discover: Object.values(stocks),
-    discoverAvailable: universe.available,
-    breadth: buildBreadth(stocks),
-    scan: buildScanBuckets(stocks, universe.opportunities),
+    discover: snapshot.stocks as DiscoverStock[],
+    discoverAvailable: snapshot.available,
+    marketSnapshot: snapshot,
+    breadth: snapshot.breadth,
+    scan: snapshot.scan as ScanBuckets,
     hero,
     chips,
     disagreements: disagreement.cards,
     modelAvailable: disagreement.modelAvailable,
-    highRiskCount: Object.values(stocks).filter((s) => (s.risk || '').toLowerCase() === 'high').length,
+    highRiskCount: snapshot.highRiskCount,
     updatedMinutesAgo: updated,
     indicesDelayed: idx.length === 0,
   };

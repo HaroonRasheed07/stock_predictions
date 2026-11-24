@@ -3,6 +3,7 @@ import time
 import threading
 import traceback
 import os
+import hashlib
 from dotenv import load_dotenv
 
 # Load .env from stock_market directory
@@ -290,6 +291,10 @@ class ForecastRequest(BaseModel):
     period: str = "1y"
 
 class WatchlistScanRequest(BaseModel):
+    tickers: List[str]
+    period: str = "1y"
+
+class HomeMarketSnapshotRequest(BaseModel):
     tickers: List[str]
     period: str = "1y"
 
@@ -1709,6 +1714,144 @@ def scan_opportunities(req: WatchlistScanRequest):
     res = dict(res_payload)
     res["_cache_meta"] = meta
     return res
+
+
+@app.post("/api/home/market-snapshot")
+def home_market_snapshot(req: HomeMarketSnapshotRequest):
+    start_t = time.perf_counter()
+    seen = set()
+    tickers = []
+    for raw in req.tickers[:60]:
+        symbol = str(raw or "").strip().upper()
+        if symbol and symbol not in seen:
+            seen.add(symbol)
+            tickers.append(symbol)
+
+    key_names = ",".join(sorted(tickers))
+    cache_key = "home:market-snapshot:{0}:{1}".format(
+        req.period,
+        hashlib.sha256(key_names.encode("utf-8")).hexdigest()[:16],
+    )
+
+    def _previous_snapshot():
+        try:
+            previous, _ = cache_manager.get_swr(
+                key=cache_key,
+                refresh_func=None,
+                category="home_market_snapshot",
+                schedule_on_miss=False,
+            )
+            return previous if isinstance(previous, dict) else None
+        except Exception:
+            return None
+
+    def _compute_snapshot():
+        stocks = {}
+        opportunities = []
+        errors = []
+        metas = []
+
+        def _chunks(values, size):
+            return [values[i:i + size] for i in range(0, len(values), size)]
+
+        def _run_discover(chunk):
+            return discover_scan(DiscoverScanRequest(tickers=chunk, period=req.period))
+
+        def _run_opportunities(chunk):
+            return scan_opportunities(WatchlistScanRequest(tickers=chunk, period=req.period))
+
+        if not tickers:
+            errors.append("no tickers supplied")
+        else:
+            jobs = []
+            with ThreadPoolExecutor(max_workers=6) as executor:
+                for chunk in _chunks(tickers, 10):
+                    jobs.append(("discover", executor.submit(_run_discover, chunk)))
+                for chunk in _chunks(tickers, 20):
+                    jobs.append(("opportunities", executor.submit(_run_opportunities, chunk)))
+                for kind, future in jobs:
+                    try:
+                        result = future.result(timeout=25)
+                        if not isinstance(result, dict):
+                            raise ValueError("invalid response shape")
+                        meta = result.get("_cache_meta")
+                        if isinstance(meta, dict):
+                            metas.append(meta)
+                        if kind == "discover":
+                            rows = result.get("stocks")
+                            if isinstance(rows, dict):
+                                for symbol, row in rows.items():
+                                    if isinstance(symbol, str) and isinstance(row, dict):
+                                        stocks[symbol.strip().upper()] = row
+                        else:
+                            rows = result.get("scan_results")
+                            if isinstance(rows, list):
+                                for row in rows:
+                                    if isinstance(row, dict) and row.get("ticker"):
+                                        opportunities.append(row)
+                    except Exception as exc:
+                        errors.append("{0} chunk failed: {1}".format(kind, type(exc).__name__))
+
+        by_ticker = {}
+        for row in opportunities:
+            by_ticker[str(row.get("ticker")).upper()] = row
+        opportunities = sorted(
+            by_ticker.values(),
+            key=lambda row: float(row.get("score") or 0),
+            reverse=True,
+        )
+
+        source_updated_at = 0.0
+        for meta in metas:
+            value = float(meta.get("updated_at") or 0)
+            if value > source_updated_at:
+                source_updated_at = value
+
+        previous = _previous_snapshot()
+        if not stocks and isinstance(previous, dict):
+            previous_stocks = previous.get("stocks")
+            if isinstance(previous_stocks, dict):
+                stocks = dict(previous_stocks)
+            previous_opportunities = previous.get("opportunities")
+            if isinstance(previous_opportunities, list):
+                opportunities = list(previous_opportunities)
+            if not source_updated_at:
+                source_updated_at = float(previous.get("source_updated_at") or 0)
+
+        degraded = bool(errors) or not stocks
+        return {
+            "stocks": stocks,
+            "opportunities": opportunities,
+            "source_updated_at": source_updated_at or None,
+            "degraded": degraded,
+            "errors": errors,
+        }
+
+    payload, meta = cache_manager.get_swr(
+        key=cache_key,
+        refresh_func=_compute_snapshot,
+        fresh_ttl_seconds=120.0,
+        stale_ttl_seconds=86400.0,
+        category="home_market_snapshot",
+        schedule_on_miss=False,
+    )
+
+    if payload is None:
+        payload = _compute_snapshot()
+        cache_manager.set(
+            key=cache_key,
+            payload=payload,
+            fresh_ttl_seconds=120.0,
+            stale_ttl_seconds=86400.0,
+            category="home_market_snapshot",
+        )
+        meta["status"] = "MISS"
+
+    elapsed = (time.perf_counter() - start_t) * 1000
+    logger.info(f"[PERF] endpoint=/api/home/market-snapshot status={meta['status']} latency={elapsed:.1f}ms")
+    result = dict(payload)
+    result["_cache_meta"] = meta
+    return result
 
 
 @app.post("/api/volatility/summary")

@@ -12,6 +12,7 @@
     "sitemap:checks": "node scripts/sitemap-checks.mjs",
     "ga:checks": "node scripts/ga-checks.mjs",
     "signal:checks": "node scripts/signal-checks.mjs",
+    "home:snapshot:checks": "node scripts/home-snapshot-checks.mjs",
     "seo:regression": "node scripts/seo-regression.mjs"
   },
   "dependencies": {
